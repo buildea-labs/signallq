@@ -35,7 +35,7 @@ internal data class AppShellResultadoVelocidadeEntry(
     val localizacaoServidor: String?,
     val ispInfo: IspInfo?,
     val operadoraMovel: String?,
-    val adsEnabled: Boolean,
+    val adsGate: io.signallq.app.ads.NativeAdsGate,
     val onTestarNovamente: () -> Unit,
     val onIrParaHome: () -> Unit,
     val onVoltar: () -> Unit,
@@ -87,7 +87,7 @@ internal fun AppShellResultadoVelocidadeOverlay(
                 onIniciarDiagnosticoGuiado = entry.onIniciarDiagnosticoGuiado,
                 onIniciarModoGamer = entry.onIniciarModoGamer,
                 onVerDetalhesTecnicos = entry.onVerDetalhesTecnicos,
-                adsEnabled = entry.adsEnabled,
+                adsGate = entry.adsGate,
             )
         }
     }

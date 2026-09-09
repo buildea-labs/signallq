@@ -54,7 +54,9 @@ fun DispositivosScreen(
     bandasWifi: String? = null,
     /** Toggle remoto (Firebase Remote Config) + gate de consentimento UMP -- issue #555.
      *  Default `false`: nunca mostra anuncio sem sinal explicito de que pode. */
-    adsEnabled: Boolean = false,
+    adsGate: io.signallq.app.ads.NativeAdsGate =
+        io.signallq.app.ads
+            .NativeAdsGate(),
     /** #983 (Fase 4) — correlacao best-effort topologia/gateway, chaveada por id do dispositivo
      *  (ver MainViewModel.correlacoesTopologia). Mapa vazio (default) preserva o comportamento
      *  anterior a Fase 4 — nenhuma secao nova aparece no detalhe do dispositivo. */
@@ -149,7 +151,7 @@ fun DispositivosScreen(
                         apelidos = apelidos,
                         onSalvarApelido = onSalvarApelido,
                         bandasWifi = bandasWifi,
-                        adsEnabled = adsEnabled,
+                        adsGate = adsGate,
                         correlacoesTopologia = correlacoesTopologia,
                     )
                 }

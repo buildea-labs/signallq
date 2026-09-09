@@ -95,7 +95,9 @@ fun SpeedTestScreen(
     movelSnapshot: MovelSnapshot? = null,
     /** Toggle remoto (Firebase Remote Config) + gate de consentimento UMP -- issue #555.
      *  Default `false`: nunca mostra anuncio sem sinal explicito de que pode. */
-    adsEnabled: Boolean = false,
+    adsGate: io.signallq.app.ads.NativeAdsGate =
+        io.signallq.app.ads
+            .NativeAdsGate(),
 ) {
     val c = LocalLkTokens.current
 
@@ -191,7 +193,7 @@ fun SpeedTestScreen(
             mostrarDialogCancelar = { mostrarDialogCancelar = true },
             temResultado = temResultado,
             estadoIdle = estadoIdle,
-            adsEnabled = adsEnabled,
+            adsGate = adsGate,
             c = c,
         )
     }
@@ -203,13 +205,12 @@ fun SpeedTestScreen(
  * consentimento UMP nem de conectividade separados (mesma limitação que `rememberNativeAd()`,
  * o wrapper antigo, já tinha).
  */
+internal fun eligibilidadeAnuncioVelocidade(adsGate: io.signallq.app.ads.NativeAdsGate): NativeAdEligibility =
+    adsGate.eligibilityFor(AdSlot.VELOCIDADE)
+
+/** Compatibilidade para testes legados; o fluxo de produção usa [NativeAdsGate]. */
 internal fun eligibilidadeAnuncioVelocidade(adsEnabled: Boolean): NativeAdEligibility =
-    NativeAdEligibility(
-        slot = AdSlot.VELOCIDADE,
-        flagEnabled = adsEnabled,
-        canRequestAds = adsEnabled,
-        online = true,
-    )
+    NativeAdEligibility(AdSlot.VELOCIDADE, buildEnabled = true, flagEnabled = adsEnabled, canRequestAds = adsEnabled, online = true)
 
 @Composable
 private fun ConteudoSpeedTest(
@@ -224,7 +225,7 @@ private fun ConteudoSpeedTest(
     mostrarDialogCancelar: () -> Unit,
     temResultado: Boolean,
     estadoIdle: Boolean,
-    adsEnabled: Boolean,
+    adsGate: io.signallq.app.ads.NativeAdsGate,
     c: LkTokens,
 ) {
     Column(
@@ -315,7 +316,7 @@ private fun ConteudoSpeedTest(
             val nativeAdState by rememberNativeAdState(
                 adUnitId = AdUnitIds.para(AdSlot.VELOCIDADE),
                 contentSignal = NativeAdContentSignal.forSlot(AdSlot.VELOCIDADE),
-                eligibility = eligibilidadeAnuncioVelocidade(adsEnabled),
+                eligibility = eligibilidadeAnuncioVelocidade(adsGate),
             )
             val nativeAd = (nativeAdState as? NativeAdLoadState.Fill)?.ad
             NativeAdRow(

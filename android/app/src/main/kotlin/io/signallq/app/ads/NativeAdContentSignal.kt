@@ -38,6 +38,7 @@ package io.signallq.app.ads
  * dois sinais compara [contentUrl].
  */
 class NativeAdContentSignal private constructor(
+    val slot: AdSlot,
     val contentUrl: String,
 ) {
     /**
@@ -46,9 +47,9 @@ class NativeAdContentSignal private constructor(
      * impede que cada frame cancele e reinicie a mesma solicitação de anúncio.
      */
     override fun equals(other: Any?): Boolean =
-        other is NativeAdContentSignal && contentUrl == other.contentUrl
+        other is NativeAdContentSignal && slot == other.slot && contentUrl == other.contentUrl
 
-    override fun hashCode(): Int = contentUrl.hashCode()
+    override fun hashCode(): Int = 31 * slot.hashCode() + contentUrl.hashCode()
 
     companion object {
         private const val BASE = "https://signallq.app/contexto-anuncio"
@@ -68,6 +69,6 @@ class NativeAdContentSignal private constructor(
          * Nao ha parametro de diagnostico, e a ausencia e o ponto -- ver o KDoc da classe.
          */
         fun forSlot(slot: AdSlot): NativeAdContentSignal =
-            NativeAdContentSignal(contentUrl = "$BASE/${topicoPorSlot.getValue(slot)}")
+            NativeAdContentSignal(slot = slot, contentUrl = "$BASE/${topicoPorSlot.getValue(slot)}")
     }
 }

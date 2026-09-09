@@ -9,6 +9,7 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
+import io.signallq.app.ads.NativeAdsGate
 import io.signallq.app.ui.FiltroConexaoHistorico
 import io.signallq.app.ui.SignallQTheme
 import org.junit.Assert.assertEquals
@@ -65,7 +66,7 @@ class AppShellRootRegistryTest {
         onIniciarTeste: () -> Unit = {},
     ) = AppShellHistoricoRootEntry(
         state = state,
-        adsEnabled = false,
+        adsGate = NativeAdsGate(),
         onAbrirMenu = {},
         onIniciarTeste = onIniciarTeste,
     )
@@ -121,7 +122,7 @@ class AppShellRootRegistryTest {
             SignallQTheme {
                 AppShellHistoricoRoot(
                     state = AppShellHistoricoState(),
-                    adsEnabled = false,
+                    adsGate = NativeAdsGate(),
                     onAbrirMenu = {},
                     onIniciarTeste = { iniciou = true },
                 )
@@ -144,7 +145,7 @@ class AppShellRootRegistryTest {
             SignallQTheme {
                 AppShellHistoricoRoot(
                     state = AppShellHistoricoState(filtroConexao = FiltroConexaoHistorico.MOVEL),
-                    adsEnabled = false,
+                    adsGate = NativeAdsGate(),
                     onAbrirMenu = {},
                     onIniciarTeste = {},
                 )
@@ -301,7 +302,7 @@ class AppShellRootRegistryTest {
                 historico =
                     AppShellHistoricoRootEntry(
                         state = AppShellHistoricoState(),
-                        adsEnabled = false,
+                        adsGate = NativeAdsGate(),
                         onAbrirMenu = { abriuMenu = true },
                         onIniciarTeste = {},
                     ),

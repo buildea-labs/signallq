@@ -41,7 +41,7 @@ import kotlin.coroutines.resumeWithException
 class AdsRemoteConfigRepository(
     private val remoteConfig: Lazy<FirebaseRemoteConfig>,
 ) {
-    suspend fun buscarFlags(): AdsFlags =
+    suspend fun buscarFlags(): ResultadoFlagsRemotas =
         withContext(Dispatchers.IO) {
             // GH#1224 -- `remoteConfig.get()` precisa estar DENTRO da protecao contra
             // excecao tambem: `dagger.Lazy.get()` pode lancar se o FirebaseApp ainda nao
@@ -52,10 +52,10 @@ class AdsRemoteConfigRepository(
                 .onFailure { erro -> Timber.w(erro, "Falha ao obter instancia de Remote Config -- usando fallback desligado") }
                 .getOrNull()
                 ?.let { rc -> resolverFlags(rc) }
-                ?: AdsFlags.DESLIGADO
+                ?: ResultadoFlagsRemotas.fallback()
         }
 
-    private suspend fun resolverFlags(rc: FirebaseRemoteConfig): AdsFlags {
+    private suspend fun resolverFlags(rc: FirebaseRemoteConfig): ResultadoFlagsRemotas {
         // RF-01/RF-02 -- o booleano de fetchAndActivate() so diz se uma config NOVA
         // foi ativada, nao se a operacao "deu certo". So entra no ramo de erro se a
         // chamada lancar excecao/timeout de verdade.
@@ -78,9 +78,10 @@ class AdsRemoteConfigRepository(
         // FirebaseRemoteConfig sempre tem algum valor ativo (default local ou
         // ultima config buscada com sucesso), e so nao ha nada utilizavel se essa
         // propria leitura falhar (ex.: Remote Config nunca inicializado).
-        return runCatching { lerFlagsAtivas(rc) }
+        val origem = if (fetchResult.getOrNull() == true) OrigemFlagsRemotas.REMOTE_NEW else OrigemFlagsRemotas.CACHE
+        return runCatching { ResultadoFlagsRemotas(lerFlagsAtivas(rc), origem) }
             .onFailure { erro -> Timber.w(erro, "Falha ao ler flags ativas de anuncios -- usando fallback desligado") }
-            .getOrElse { AdsFlags.DESLIGADO }
+            .getOrElse { ResultadoFlagsRemotas.fallback() }
     }
 
     private fun lerFlagsAtivas(rc: FirebaseRemoteConfig): AdsFlags =
@@ -115,6 +116,24 @@ class AdsRemoteConfigRepository(
                 CHAVE_HISTORICO to false,
                 CHAVE_JOGOS to false,
             )
+    }
+}
+
+/** Origem categorizada, sem expor valores ou detalhes do Firebase na telemetria. */
+enum class OrigemFlagsRemotas(
+    val analyticsId: String,
+) {
+    REMOTE_NEW("remote_new"),
+    CACHE("cache"),
+    FALLBACK_ERROR("fallback_error"),
+}
+
+data class ResultadoFlagsRemotas(
+    val flags: AdsFlags,
+    val origem: OrigemFlagsRemotas,
+) {
+    companion object {
+        fun fallback() = ResultadoFlagsRemotas(AdsFlags.DESLIGADO, OrigemFlagsRemotas.FALLBACK_ERROR)
     }
 }
 

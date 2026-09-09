@@ -75,13 +75,12 @@ import io.signallq.app.ui.component.ads.NativeAdSource
  * `adsEnabled` de fora, sem sinal de consentimento UMP nem de conectividade separados
  * (mesma limitação que `rememberNativeAd()`, o wrapper antigo, já tinha).
  */
+internal fun eligibilidadeAnuncioDispositivos(adsGate: io.signallq.app.ads.NativeAdsGate): NativeAdEligibility =
+    adsGate.eligibilityFor(AdSlot.DISPOSITIVOS)
+
+/** Compatibilidade para testes legados; o fluxo de produção usa [NativeAdsGate]. */
 internal fun eligibilidadeAnuncioDispositivos(adsEnabled: Boolean): NativeAdEligibility =
-    NativeAdEligibility(
-        slot = AdSlot.DISPOSITIVOS,
-        flagEnabled = adsEnabled,
-        canRequestAds = adsEnabled,
-        online = true,
-    )
+    NativeAdEligibility(AdSlot.DISPOSITIVOS, buildEnabled = true, flagEnabled = adsEnabled, canRequestAds = adsEnabled, online = true)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -98,7 +97,9 @@ internal fun DispositivosLista(
     apelidos: Map<String, String>,
     onSalvarApelido: (mac: String, apelido: String) -> Unit,
     bandasWifi: String? = null,
-    adsEnabled: Boolean = false,
+    adsGate: io.signallq.app.ads.NativeAdsGate =
+        io.signallq.app.ads
+            .NativeAdsGate(),
     correlacoesTopologia: Map<String, ResultadoCorrelacaoTopologia> = emptyMap(),
 ) {
     val gateways = remember(dispositivos) { dispositivos.filter { it.fonteNome == "gateway" } }
@@ -118,7 +119,7 @@ internal fun DispositivosLista(
     val nativeAdState by rememberNativeAdState(
         adUnitId = AdUnitIds.para(AdSlot.DISPOSITIVOS),
         contentSignal = NativeAdContentSignal.forSlot(AdSlot.DISPOSITIVOS),
-        eligibility = eligibilidadeAnuncioDispositivos(adsEnabled),
+        eligibility = eligibilidadeAnuncioDispositivos(adsGate),
     )
     val nativeAd = (nativeAdState as? NativeAdLoadState.Fill)?.ad
 

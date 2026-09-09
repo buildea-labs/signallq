@@ -37,9 +37,10 @@ class AdsRemoteConfigRepositoryTest {
             every { remoteConfig.getBoolean(AdsRemoteConfigRepository.CHAVE_HISTORICO) } returns false
             every { remoteConfig.getBoolean(AdsRemoteConfigRepository.CHAVE_JOGOS) } returns false
 
-            val flags = AdsRemoteConfigRepository(Lazy { remoteConfig }).buscarFlags()
+            val resultado = AdsRemoteConfigRepository(Lazy { remoteConfig }).buscarFlags()
 
-            assertEquals(AdsFlags(masterEnabled = true, velocidade = true), flags)
+            assertEquals(AdsFlags(masterEnabled = true, velocidade = true), resultado.flags)
+            assertEquals(OrigemFlagsRemotas.REMOTE_NEW, resultado.origem)
         }
 
     @Test
@@ -56,7 +57,7 @@ class AdsRemoteConfigRepositoryTest {
             every { remoteConfig.getBoolean(AdsRemoteConfigRepository.CHAVE_HISTORICO) } returns true
             every { remoteConfig.getBoolean(AdsRemoteConfigRepository.CHAVE_JOGOS) } returns true
 
-            val flags = AdsRemoteConfigRepository(Lazy { remoteConfig }).buscarFlags()
+            val resultado = AdsRemoteConfigRepository(Lazy { remoteConfig }).buscarFlags()
 
             assertEquals(
                 AdsFlags(
@@ -67,8 +68,9 @@ class AdsRemoteConfigRepositoryTest {
                     historico = true,
                     jogos = true,
                 ),
-                flags,
+                resultado.flags,
             )
+            assertEquals(OrigemFlagsRemotas.CACHE, resultado.origem)
         }
 
     @Test
@@ -86,9 +88,10 @@ class AdsRemoteConfigRepositoryTest {
             every { remoteConfig.getBoolean(AdsRemoteConfigRepository.CHAVE_HISTORICO) } returns false
             every { remoteConfig.getBoolean(AdsRemoteConfigRepository.CHAVE_JOGOS) } returns false
 
-            val flags = AdsRemoteConfigRepository(Lazy { remoteConfig }).buscarFlags()
+            val resultado = AdsRemoteConfigRepository(Lazy { remoteConfig }).buscarFlags()
 
-            assertEquals(AdsFlags(masterEnabled = true, velocidade = true), flags)
+            assertEquals(AdsFlags(masterEnabled = true, velocidade = true), resultado.flags)
+            assertEquals(OrigemFlagsRemotas.CACHE, resultado.origem)
         }
 
     @Test
@@ -98,10 +101,11 @@ class AdsRemoteConfigRepositoryTest {
             every { remoteConfig.fetchAndActivate() } returns fakeFailedTask(RuntimeException("sem rede"))
             every { remoteConfig.getBoolean(any()) } throws IllegalStateException("Remote Config nao inicializado")
 
-            val flags = AdsRemoteConfigRepository(Lazy { remoteConfig }).buscarFlags()
+            val resultado = AdsRemoteConfigRepository(Lazy { remoteConfig }).buscarFlags()
 
-            assertEquals(AdsFlags.DESLIGADO, flags)
-            assertFalse(flags.masterEnabled)
+            assertEquals(AdsFlags.DESLIGADO, resultado.flags)
+            assertEquals(OrigemFlagsRemotas.FALLBACK_ERROR, resultado.origem)
+            assertFalse(resultado.flags.masterEnabled)
         }
 
     /** Task fake que ja chega "completa" -- invoca o listener sincronamente, sem

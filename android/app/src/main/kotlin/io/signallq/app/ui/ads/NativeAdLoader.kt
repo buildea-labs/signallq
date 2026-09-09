@@ -11,6 +11,7 @@ import com.google.android.gms.ads.AdLoader
 import com.google.android.gms.ads.AdRequest
 import com.google.android.gms.ads.LoadAdError
 import com.google.android.gms.ads.nativead.NativeAd
+import io.signallq.app.ads.AdsTelemetry
 import io.signallq.app.ads.NativeAdContentSignal
 import kotlinx.coroutines.awaitCancellation
 import timber.log.Timber
@@ -27,8 +28,9 @@ fun rememberNativeAdState(
     eligibility: NativeAdEligibility,
 ): State<NativeAdLoadState> {
     val context = LocalContext.current
-    val requester = remember(context) { GoogleNativeAdRequester(context) }
-    return rememberNativeAdState(adUnitId, contentSignal, eligibility, requester)
+    val telemetry = LocalAdsTelemetry.current
+    val requester = remember(context, telemetry) { GoogleNativeAdRequester(context, telemetry) }
+    return rememberNativeAdState(adUnitId, contentSignal, eligibility, requester, telemetry)
 }
 
 @Composable
@@ -37,6 +39,7 @@ internal fun rememberNativeAdState(
     contentSignal: NativeAdContentSignal,
     eligibility: NativeAdEligibility,
     requester: NativeAdRequester,
+    telemetry: AdsTelemetry? = null,
 ): State<NativeAdLoadState> {
     return produceState<NativeAdLoadState>(
         initialValue = eligibility.initialState(),
@@ -46,6 +49,10 @@ internal fun rememberNativeAdState(
     ) {
         value = eligibility.initialState()
         if (!eligibility.canLoad) {
+            telemetry?.registrarElegibilidadeInvalida(
+                slot = eligibility.slot,
+                reason = eligibility.initialState().analyticsOutcome(),
+            )
             return@produceState
         }
 
@@ -63,6 +70,7 @@ internal fun rememberNativeAdState(
                     adCarregado?.destroy()
                     adCarregado = nativeAd
                     value = NativeAdLoadState.Fill(nativeAd)
+                    telemetry?.registrarResultadoDeLoad(eligibility.slot, outcome = "fill")
                 },
                 onFailure = { errorCode ->
                     if (!sessionActive) return@load
@@ -72,6 +80,11 @@ internal fun rememberNativeAdState(
                         } else {
                             NativeAdLoadState.RecoverableError(errorCode)
                         }
+                    telemetry?.registrarResultadoDeLoad(
+                        slot = eligibility.slot,
+                        outcome = if (errorCode == ADMOB_NO_FILL_ERROR_CODE) "no_fill" else "error",
+                        errorCode = errorCode,
+                    )
                 },
             )
 
@@ -100,6 +113,7 @@ internal interface NativeAdRequester {
 
 private class GoogleNativeAdRequester(
     private val context: Context,
+    private val telemetry: AdsTelemetry?,
 ) : NativeAdRequester {
     override fun load(
         adUnitId: String,
@@ -107,6 +121,7 @@ private class GoogleNativeAdRequester(
         onFill: (NativeAd) -> Unit,
         onFailure: (Int) -> Unit,
     ): NativeAdRequestHandle {
+        telemetry?.registrarTentativaDeLoad(contentSignal.slot)
         val loader =
             AdLoader
                 .Builder(context, adUnitId)
@@ -125,6 +140,18 @@ private class GoogleNativeAdRequester(
         return NativeAdRequestHandle {}
     }
 }
+
+private fun NativeAdLoadState.analyticsOutcome(): String =
+    when (this) {
+        is NativeAdLoadState.Ineligible ->
+            when (reason) {
+                NativeAdIneligibleReason.FlagDisabled -> "flag_disabled"
+                NativeAdIneligibleReason.BuildDisabled -> "build_disabled"
+                NativeAdIneligibleReason.ConsentUnavailable -> "consent_unavailable"
+            }
+        NativeAdLoadState.Offline -> "offline"
+        else -> "not_loadable"
+    }
 
 private fun buildAdRequest(signal: NativeAdContentSignal): AdRequest {
     // GH#1717 — `setNeighboringContentUrls` saiu junto com os marcadores de diagnóstico. O único

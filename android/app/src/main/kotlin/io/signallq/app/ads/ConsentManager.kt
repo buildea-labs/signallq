@@ -18,6 +18,12 @@ import timber.log.Timber
  * pela politica do AdMob/UMP independente da nossa propria tela de privacidade.
  */
 object ConsentManager {
+    data class ResultadoAtualizacao(
+        val podeRequisitarAnuncio: Boolean,
+        val atualizacaoFalhou: Boolean,
+        val formularioFalhou: Boolean,
+    )
+
     /**
      * Atualiza info de consentimento e mostra o formulario da UMP se necessario.
      * [onResultado] e sempre chamado exatamente uma vez, com `true` quando o app pode
@@ -26,7 +32,7 @@ object ConsentManager {
      */
     fun atualizarEMostrarSeNecessario(
         activity: Activity,
-        onResultado: (podeRequisitarAnuncio: Boolean) -> Unit,
+        onResultado: (ResultadoAtualizacao) -> Unit,
     ) {
         val consentInformation = UserMessagingPlatform.getConsentInformation(activity)
         val params = ConsentRequestParameters.Builder().build()
@@ -47,7 +53,13 @@ object ConsentManager {
                         "UMP: consentInfoUpdate OK -- status=${consentInformation.consentStatus}, " +
                             "podeRequisitarAnuncio=$podeRequisitar",
                     )
-                    onResultado(podeRequisitar)
+                    onResultado(
+                        ResultadoAtualizacao(
+                            podeRequisitarAnuncio = podeRequisitar,
+                            atualizacaoFalhou = false,
+                            formularioFalhou = formError != null,
+                        ),
+                    )
                 }
             },
             { requestError ->
@@ -58,7 +70,13 @@ object ConsentManager {
                 // Falha na atualizacao nao apaga consentimento ja obtido em sessao anterior.
                 val podeRequisitar = consentInformation.canRequestAds()
                 Timber.w("UMP: apos falha, status=${consentInformation.consentStatus}, podeRequisitarAnuncio=$podeRequisitar")
-                onResultado(podeRequisitar)
+                onResultado(
+                    ResultadoAtualizacao(
+                        podeRequisitarAnuncio = podeRequisitar,
+                        atualizacaoFalhou = true,
+                        formularioFalhou = false,
+                    ),
+                )
             },
         )
     }
