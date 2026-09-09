@@ -43,14 +43,13 @@ data class AppShellHistoricoState(
 )
 
 /**
- * A raiz em si. [adsEnabled] e os dois callbacks de navegação continuam vindo do shell porque são
- * decisão dele, não do Histórico: o gate de anúncio combina flag remota com consentimento UMP
- * (issue #555) e a navegação para outra raiz é do `AppShellNavigator`.
+ * A raiz em si. [adsGate] e os dois callbacks de navegação continuam vindo do shell porque são
+ * decisão dele; a navegação para outra raiz é do `AppShellNavigator`.
  */
 @Composable
 internal fun AppShellHistoricoRoot(
     state: AppShellHistoricoState,
-    adsEnabled: Boolean,
+    adsGate: io.signallq.app.ads.NativeAdsGate,
     onAbrirMenu: () -> Unit,
     onIniciarTeste: () -> Unit,
 ) {
@@ -66,6 +65,6 @@ internal fun AppShellHistoricoRoot(
         operadorasDisponiveis = state.operadorasDisponiveis,
         onExcluirMedicao = state.onExcluirMedicao,
         blocosUptime = state.blocosUptime,
-        adsEnabled = adsEnabled,
+        adsGate = adsGate,
     )
 }

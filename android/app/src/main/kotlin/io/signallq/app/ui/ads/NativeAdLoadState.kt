@@ -5,6 +5,8 @@ import com.google.android.gms.ads.nativead.NativeAd
 import io.signallq.app.ads.AdSlot
 
 sealed interface NativeAdIneligibleReason {
+    data object BuildDisabled : NativeAdIneligibleReason
+
     data object FlagDisabled : NativeAdIneligibleReason
 
     data object ConsentUnavailable : NativeAdIneligibleReason
@@ -32,12 +34,14 @@ sealed interface NativeAdLoadState {
 
 data class NativeAdEligibility(
     val slot: AdSlot? = null,
+    val buildEnabled: Boolean = true,
     val flagEnabled: Boolean,
     val canRequestAds: Boolean,
     val online: Boolean,
 ) {
     fun initialState(): NativeAdLoadState =
         when {
+            !buildEnabled -> NativeAdLoadState.Ineligible(NativeAdIneligibleReason.BuildDisabled)
             !flagEnabled -> NativeAdLoadState.Ineligible(NativeAdIneligibleReason.FlagDisabled)
             !canRequestAds -> NativeAdLoadState.Ineligible(NativeAdIneligibleReason.ConsentUnavailable)
             !online -> NativeAdLoadState.Offline
@@ -45,7 +49,7 @@ data class NativeAdEligibility(
         }
 
     val canLoad: Boolean
-        get() = flagEnabled && canRequestAds && online
+        get() = buildEnabled && flagEnabled && canRequestAds && online
 }
 
 internal const val ADMOB_NO_FILL_ERROR_CODE = 3

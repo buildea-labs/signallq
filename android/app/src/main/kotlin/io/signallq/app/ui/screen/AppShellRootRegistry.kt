@@ -60,7 +60,7 @@ internal fun AppShellRootRegistry(
         AppShellRoot.History ->
             AppShellHistoricoRoot(
                 state = historico.state,
-                adsEnabled = historico.adsEnabled,
+                adsGate = historico.adsGate,
                 onAbrirMenu = historico.onAbrirMenu,
                 onIniciarTeste = historico.onIniciarTeste,
             )
@@ -85,7 +85,7 @@ internal fun AppShellRootRegistry(
 @Stable
 internal data class AppShellHistoricoRootEntry(
     val state: AppShellHistoricoState,
-    val adsEnabled: Boolean,
+    val adsGate: io.signallq.app.ads.NativeAdsGate,
     val onAbrirMenu: () -> Unit,
     val onIniciarTeste: () -> Unit,
 )

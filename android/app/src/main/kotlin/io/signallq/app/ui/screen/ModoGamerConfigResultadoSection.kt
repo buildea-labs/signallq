@@ -215,13 +215,12 @@ internal fun ModoGamerAguardandoTesteRapidoConteudo(
  * consentimento UMP nem de conectividade separados (mesma limitação que `rememberNativeAd()`,
  * o wrapper antigo, já tinha).
  */
+internal fun eligibilidadeAnuncioModoGamer(adsGate: io.signallq.app.ads.NativeAdsGate): NativeAdEligibility =
+    adsGate.eligibilityFor(AdSlot.JOGOS)
+
+/** Compatibilidade para testes legados; o fluxo de produção usa [NativeAdsGate]. */
 internal fun eligibilidadeAnuncioModoGamer(adsEnabled: Boolean): NativeAdEligibility =
-    NativeAdEligibility(
-        slot = AdSlot.JOGOS,
-        flagEnabled = adsEnabled,
-        canRequestAds = adsEnabled,
-        online = true,
-    )
+    NativeAdEligibility(AdSlot.JOGOS, buildEnabled = true, flagEnabled = adsEnabled, canRequestAds = adsEnabled, online = true)
 
 /**
  * Resultado do Modo gamer: o veredito e as métricas vêm exclusivamente do motor determinístico.
@@ -238,7 +237,9 @@ internal fun ModoGamerResultadoConteudo(
     /** Toggle remoto (Firebase Remote Config) + gate de consentimento UMP -- issue #555,
      *  reconectado do fluxo legado "Jogos" (GH#935) pela issue #1489. Default `false`: nunca
      *  mostra anuncio sem sinal explicito de que pode. */
-    adsEnabled: Boolean = false,
+    adsGate: io.signallq.app.ads.NativeAdsGate =
+        io.signallq.app.ads
+            .NativeAdsGate(),
 ) {
     val c = LocalLkTokens.current
     val resultado = etapa.resultado
@@ -328,7 +329,7 @@ internal fun ModoGamerResultadoConteudo(
         val nativeAdState by rememberNativeAdState(
             adUnitId = AdUnitIds.para(AdSlot.JOGOS),
             contentSignal = NativeAdContentSignal.forSlot(AdSlot.JOGOS),
-            eligibility = eligibilidadeAnuncioModoGamer(adsEnabled),
+            eligibility = eligibilidadeAnuncioModoGamer(adsGate),
         )
         val nativeAd = (nativeAdState as? NativeAdLoadState.Fill)?.ad
         NativeAdCard(nativeAd = nativeAd, source = NativeAdSource.ADMOB)

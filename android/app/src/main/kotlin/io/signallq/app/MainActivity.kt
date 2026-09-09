@@ -18,6 +18,7 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
@@ -30,8 +31,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import com.google.android.gms.ads.MobileAds
 import dagger.hilt.android.AndroidEntryPoint
-import io.signallq.app.ads.AdsFlags
 import io.signallq.app.ads.AdsFlagsManager
+import io.signallq.app.ads.AdsTelemetry
 import io.signallq.app.ads.ConsentManager
 import io.signallq.app.core.network.AnalyticsHelper
 import io.signallq.app.core.network.AnalyticsTracker
@@ -40,6 +41,7 @@ import io.signallq.app.feature.devices.DevicesViewModel
 import io.signallq.app.feature.speedtest.SpeedtestViewModel
 import io.signallq.app.review.InAppReviewManager
 import io.signallq.app.ui.SignallQTheme
+import io.signallq.app.ui.ads.LocalAdsTelemetry
 import io.signallq.app.ui.component.LgpdConsentDialog
 import io.signallq.app.ui.screen.AppShell
 import io.signallq.app.ui.screen.OnboardingScreen
@@ -59,6 +61,9 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var adsFlagsManager: AdsFlagsManager
+
+    @Inject
+    lateinit var adsTelemetry: AdsTelemetry
 
     // GH#970 — resolve identidade/contato de operadora local -> diretorio remoto do
     // worker signallq-diagnostic -> fallback generico. Injetado aqui (nao dentro de
@@ -138,10 +143,15 @@ class MainActivity : ComponentActivity() {
         // Issue #555 -- gate de consentimento UMP antes de qualquer AdRequest, mesmo
         // so contextual. MobileAds.initialize so roda depois do consentimento resolvido
         // (ordem recomendada pelo proprio guia UMP+AdMob do Google).
+        adsTelemetry.registrarBootstrap(BuildConfig.ADS_ENABLED)
         if (BuildConfig.ADS_ENABLED) {
-            ConsentManager.atualizarEMostrarSeNecessario(this) { podeRequisitar ->
-                podeRequisitarAnuncio = podeRequisitar
-                if (podeRequisitar) {
+            ConsentManager.atualizarEMostrarSeNecessario(this) { resultado ->
+                podeRequisitarAnuncio = resultado.podeRequisitarAnuncio
+                adsTelemetry.registrarConsentimento(
+                    podeRequisitar = resultado.podeRequisitarAnuncio,
+                    atualizacaoFalhou = resultado.atualizacaoFalhou,
+                )
+                if (resultado.podeRequisitarAnuncio) {
                     MobileAds.initialize(this) {}
                 }
             }
@@ -404,215 +414,221 @@ class MainActivity : ComponentActivity() {
                             onRecusar = { viewModel.definirConsentimentoLgpd(false) },
                         )
                     RotaInicialApp.Home ->
-                        AppShell(
-                            snapshotRede = snapshotRede,
-                            speedtest =
-                                io.signallq.app.ui.screen.AppShellSpeedtestState(
-                                    snapshotSpeedtest = snapshotSpeedtest,
-                                    speedtestPendenteModoMovel = speedtestPendenteModoMovel,
-                                    speedtestPermiteHeavyMovel = speedtestPermiteHeavyMovel,
-                                    speedtestMbConsumidosMes = speedtestMbConsumidosMes,
-                                    onNovoTeste = { modo -> viewModel.reiniciarSuite(modo) },
-                                    onNovoTesteJaConfirmadoMovel = { modo ->
-                                        viewModel.reiniciarSuite(modo, jaConfirmadoRedeMovel = true)
-                                    },
-                                    onCancelarTeste = { viewModel.executorSpeedtest.cancelar() },
-                                    onConfirmarSpeedtestMovel = { viewModel.confirmarSpeedtestEmMovel() },
-                                    onCancelarSpeedtestMovel = { viewModel.cancelarSpeedtestMovel() },
-                                    onSetSpeedtestPermiteHeavyMovel = { valor -> viewModel.setSpeedtestPermiteHeavyMovel(valor) },
-                                    diagnosticoConectividade = diagnosticoConectividade,
-                                    onLimparDiagnosticoConectividade = { viewModel.limparDiagnosticoConectividade() },
-                                ),
-                            wifi =
-                                io.signallq.app.ui.screen.AppShellWifiState(
-                                    snapshotWifi = snapshotWifi,
-                                    connectedNetwork = connectedNetwork,
-                                    snapshotDevices = snapshotDevices,
-                                    apelidos = apelidos,
-                                    onRefreshDispositivos = { viewModel.refreshDispositivos() },
-                                    onRefreshSinal = {
-                                        viewModel.refreshSinal()
-                                        analyticsTracker.registrarFeatureUsada("wifi")
-                                    },
-                                    onSalvarApelido = { mac, apelido -> viewModel.salvarApelido(mac, apelido) },
-                                    correlacoesTopologia = correlacoesTopologia,
-                                ),
-                            diagnostico =
-                                io.signallq.app.ui.screen.AppShellDiagnosticoState(
-                                    snapshotDiagnostico = snapshotDiagnostico,
-                                    medicaoBaseModoGamer = medicaoBaseModoGamer,
-                                    networkIdAtual = networkIdAtual,
-                                    onIniciarDiagnostico = {
-                                        // GH#919 — feature_used("diagnostico") era disparado dentro do
-                                        // SignallQOrchestrator (motor SignallQ Pulse), correlacionado com
-                                        // diagnostic_sessions.id/ai_usage.session_id. O motor foi removido
-                                        // por ser codigo morto sem consumidor de UI (GH#1682) e nada
-                                        // retomou esse disparo — feature_used("diagnostico") com
-                                        // correlacao real fica pendente de decisao de produto/analytics
-                                        // (nao adicionado aqui para nao emitir com session_id generico
-                                        // e sem correlacao, que era exatamente o problema original).
-                                        viewModel.iniciarDiagnostico()
-                                    },
-                                    onSolicitarDiagnostico = { viewModel.solicitarDiagnostico() },
-                                    analisadorState = analisadorState,
-                                    onAnalisarProblema = { problema -> viewModel.analisarProblema(problema) },
-                                    onResetarAnalisador = { viewModel.resetarAnalisador() },
-                                    onLaudoFechado = { viewModel.onLaudoFechado() },
-                                    recommendationDecision = recommendationDecision,
-                                    recommendationFeedback = recommendationFeedback,
-                                    onRecommendationShown = { viewModel.registrarRecomendacaoMostrada() },
-                                    onRecommendationClicked = { viewModel.registrarRecomendacaoClicada() },
-                                    onRecommendationFeedback = { feedback -> viewModel.registrarFeedbackRecomendacao(feedback) },
-                                    onTestarNovamenteVinculado = { analiseId, acaoAnteriorId ->
-                                        viewModel.testarNovamenteVinculado(analiseId, acaoAnteriorId)
-                                    },
-                                    comparacaoRetesteState = comparacaoRetesteState,
-                                ),
-                            signallQ =
-                                io.signallq.app.ui.screen.AppShellSignallQState(
-                                    gemmaAvailable = gemmaAvailable,
-                                    operadoraMovel =
-                                        simsAtivos.firstOrNull { it.isDefaultData }?.operadora
-                                            ?: simsAtivos.firstOrNull()?.operadora,
-                                    onVerificarGemma = { viewModel.verificarDisponibilidadeGemma() },
-                                ),
-                            ads =
-                                io.signallq.app.ui.screen.AppShellAdsState(
-                                    flags = if (BuildConfig.ADS_ENABLED) adsFlags else AdsFlags.DESLIGADO,
-                                    podeRequisitarAnuncio = BuildConfig.ADS_ENABLED && podeRequisitarAnuncio,
-                                ),
-                            featureFlags = featureFlagsState,
-                            snapshotDns = snapshotDns,
-                            history = history,
-                            localIp = localIpUiState,
-                            publicIp = publicIpUiState,
-                            ispInfo = ispInfoUiState,
-                            gateways = gateways,
-                            deviceName = Build.MODEL,
-                            nomeUsuario = nomeUsuario,
-                            fotoUriUsuario = fotoUriUsuario,
-                            operadora = operadora,
-                            planoInternet = planoInternet,
-                            regiao = regiao,
-                            connectionProfileAtual = connectionProfileAtual,
-                            onSalvarConnectionProfile = { providerFixed, down, up, cidade, uf, userConfirmed ->
-                                viewModel.salvarConnectionProfileAtual(providerFixed, down, up, cidade, uf, userConfirmed)
-                            },
-                            limiteAlertaMbps = limiteAlertaMbps,
-                            dnsResolverIp = snapshotRede.dnsServidores.firstOrNull(),
-                            historico = historico,
-                            snapshotFibra = snapshotFibra,
-                            localDevice = localDeviceSnapshot,
-                            natStatus = natStatus,
-                            modemHost = modemHost,
-                            modemUsername = modemUsername,
-                            modemPassword = modemPassword,
-                            modemPermanecerConectado = modemPermanecerConectado,
-                            gatewaySessionBssid = gatewaySessionBssid,
-                            gatewayIpDetectado = gatewayIpDetectado,
-                            localizacaoServidor = localizacaoServidorUiState,
-                            onDispararBenchmarkDns = {
-                                viewModel.dispararBenchmarkDns()
-                                analyticsTracker.registrarFeatureUsada("dns")
-                            },
-                            onReconectarFibra = { host, user, pass ->
-                                viewModel.reconectarFibra(host, user, pass)
-                                analyticsTracker.registrarFeatureUsada("fibra")
-                            },
-                            onReiniciarEquipamento = {
-                                viewModel.reiniciarEquipamento()
-                                analyticsTracker.registrarFeatureUsada("fibra")
-                            },
-                            onSalvarConfiguracaoModem = { host, user, pass, perm ->
-                                viewModel.salvarConfiguracaoModem(host, user, pass, perm)
-                            },
-                            onRegistrarConexaoGateway = { ip, usuario, senha, lembrarSenha, manterConectado, bssidAtual ->
-                                viewModel.registrarConexaoGateway(ip, usuario, senha, lembrarSenha, manterConectado, bssidAtual)
-                                analyticsTracker.registrarFeatureUsada("fibra")
-                            },
-                            temaSelecionado = temaSelecionado,
-                            analiseAvancada = analiseAvancada,
-                            onDefinirTemaSelecionado = { tema -> viewModel.definirTemaSelecionado(tema) },
-                            onDefinirAnaliseAvancada = { ativa -> viewModel.definirAnaliseAvancada(ativa) },
-                            onLimparHistorico = { viewModel.limparHistorico() },
-                            onApagarDadosLocais = { viewModel.apagarDadosLocais() },
-                            onResetarApp = { viewModel.resetarApp() },
-                            dadosLocaisAcaoEstado = dadosLocaisAcaoEstado,
-                            onConsumirDadosLocaisAcaoEstado = { viewModel.consumirDadosLocaisAcaoEstado() },
-                            monitoramentoAtivo = monitoramentoAtivo,
-                            onAtivarMonitoramento = { ativo ->
-                                // Issue #1671 -- permissao de notificacao e contextual: so e
-                                // pedida aqui, no momento em que o usuario liga o monitoramento
-                                // (a funcionalidade que de fato precisa dela), nunca no onboarding.
-                                if (ativo && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                                    val notificacaoConcedida =
-                                        ContextCompat.checkSelfPermission(
-                                            this@MainActivity,
-                                            Manifest.permission.POST_NOTIFICATIONS,
-                                        ) == PackageManager.PERMISSION_GRANTED
-                                    when (decidirPermissaoContextual(notificacaoConcedida, notificacaoBloqueadaPermanentemente)) {
-                                        DecisaoPermissaoContextual.JA_CONCEDIDA -> Unit
-                                        DecisaoPermissaoContextual.SOLICITAR ->
-                                            solicitarNotificacoesLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                                        DecisaoPermissaoContextual.ABRIR_AJUSTES -> abrirAjustesDoApp()
+                        CompositionLocalProvider(LocalAdsTelemetry provides adsTelemetry) {
+                            AppShell(
+                                snapshotRede = snapshotRede,
+                                speedtest =
+                                    io.signallq.app.ui.screen.AppShellSpeedtestState(
+                                        snapshotSpeedtest = snapshotSpeedtest,
+                                        speedtestPendenteModoMovel = speedtestPendenteModoMovel,
+                                        speedtestPermiteHeavyMovel = speedtestPermiteHeavyMovel,
+                                        speedtestMbConsumidosMes = speedtestMbConsumidosMes,
+                                        onNovoTeste = { modo -> viewModel.reiniciarSuite(modo) },
+                                        onNovoTesteJaConfirmadoMovel = { modo ->
+                                            viewModel.reiniciarSuite(modo, jaConfirmadoRedeMovel = true)
+                                        },
+                                        onCancelarTeste = { viewModel.executorSpeedtest.cancelar() },
+                                        onConfirmarSpeedtestMovel = { viewModel.confirmarSpeedtestEmMovel() },
+                                        onCancelarSpeedtestMovel = { viewModel.cancelarSpeedtestMovel() },
+                                        onSetSpeedtestPermiteHeavyMovel = { valor -> viewModel.setSpeedtestPermiteHeavyMovel(valor) },
+                                        diagnosticoConectividade = diagnosticoConectividade,
+                                        onLimparDiagnosticoConectividade = { viewModel.limparDiagnosticoConectividade() },
+                                    ),
+                                wifi =
+                                    io.signallq.app.ui.screen.AppShellWifiState(
+                                        snapshotWifi = snapshotWifi,
+                                        connectedNetwork = connectedNetwork,
+                                        snapshotDevices = snapshotDevices,
+                                        apelidos = apelidos,
+                                        onRefreshDispositivos = { viewModel.refreshDispositivos() },
+                                        onRefreshSinal = {
+                                            viewModel.refreshSinal()
+                                            analyticsTracker.registrarFeatureUsada("wifi")
+                                        },
+                                        onSalvarApelido = { mac, apelido -> viewModel.salvarApelido(mac, apelido) },
+                                        correlacoesTopologia = correlacoesTopologia,
+                                    ),
+                                diagnostico =
+                                    io.signallq.app.ui.screen.AppShellDiagnosticoState(
+                                        snapshotDiagnostico = snapshotDiagnostico,
+                                        medicaoBaseModoGamer = medicaoBaseModoGamer,
+                                        networkIdAtual = networkIdAtual,
+                                        onIniciarDiagnostico = {
+                                            // GH#919 — feature_used("diagnostico") era disparado dentro do
+                                            // SignallQOrchestrator (motor SignallQ Pulse), correlacionado com
+                                            // diagnostic_sessions.id/ai_usage.session_id. O motor foi removido
+                                            // por ser codigo morto sem consumidor de UI (GH#1682) e nada
+                                            // retomou esse disparo — feature_used("diagnostico") com
+                                            // correlacao real fica pendente de decisao de produto/analytics
+                                            // (nao adicionado aqui para nao emitir com session_id generico
+                                            // e sem correlacao, que era exatamente o problema original).
+                                            viewModel.iniciarDiagnostico()
+                                        },
+                                        onSolicitarDiagnostico = { viewModel.solicitarDiagnostico() },
+                                        analisadorState = analisadorState,
+                                        onAnalisarProblema = { problema -> viewModel.analisarProblema(problema) },
+                                        onResetarAnalisador = { viewModel.resetarAnalisador() },
+                                        onLaudoFechado = { viewModel.onLaudoFechado() },
+                                        recommendationDecision = recommendationDecision,
+                                        recommendationFeedback = recommendationFeedback,
+                                        onRecommendationShown = { viewModel.registrarRecomendacaoMostrada() },
+                                        onRecommendationClicked = { viewModel.registrarRecomendacaoClicada() },
+                                        onRecommendationFeedback = { feedback -> viewModel.registrarFeedbackRecomendacao(feedback) },
+                                        onTestarNovamenteVinculado = { analiseId, acaoAnteriorId ->
+                                            viewModel.testarNovamenteVinculado(analiseId, acaoAnteriorId)
+                                        },
+                                        comparacaoRetesteState = comparacaoRetesteState,
+                                    ),
+                                signallQ =
+                                    io.signallq.app.ui.screen.AppShellSignallQState(
+                                        gemmaAvailable = gemmaAvailable,
+                                        operadoraMovel =
+                                            simsAtivos.firstOrNull { it.isDefaultData }?.operadora
+                                                ?: simsAtivos.firstOrNull()?.operadora,
+                                        onVerificarGemma = { viewModel.verificarDisponibilidadeGemma() },
+                                    ),
+                                ads =
+                                    io.signallq.app.ui.screen.AppShellAdsState(
+                                        gate =
+                                            io.signallq.app.ads.NativeAdsGate(
+                                                buildEnabled = BuildConfig.ADS_ENABLED,
+                                                umpCanRequestAds = podeRequisitarAnuncio,
+                                                flags = adsFlags,
+                                            ),
+                                    ),
+                                featureFlags = featureFlagsState,
+                                snapshotDns = snapshotDns,
+                                history = history,
+                                localIp = localIpUiState,
+                                publicIp = publicIpUiState,
+                                ispInfo = ispInfoUiState,
+                                gateways = gateways,
+                                deviceName = Build.MODEL,
+                                nomeUsuario = nomeUsuario,
+                                fotoUriUsuario = fotoUriUsuario,
+                                operadora = operadora,
+                                planoInternet = planoInternet,
+                                regiao = regiao,
+                                connectionProfileAtual = connectionProfileAtual,
+                                onSalvarConnectionProfile = { providerFixed, down, up, cidade, uf, userConfirmed ->
+                                    viewModel.salvarConnectionProfileAtual(providerFixed, down, up, cidade, uf, userConfirmed)
+                                },
+                                limiteAlertaMbps = limiteAlertaMbps,
+                                dnsResolverIp = snapshotRede.dnsServidores.firstOrNull(),
+                                historico = historico,
+                                snapshotFibra = snapshotFibra,
+                                localDevice = localDeviceSnapshot,
+                                natStatus = natStatus,
+                                modemHost = modemHost,
+                                modemUsername = modemUsername,
+                                modemPassword = modemPassword,
+                                modemPermanecerConectado = modemPermanecerConectado,
+                                gatewaySessionBssid = gatewaySessionBssid,
+                                gatewayIpDetectado = gatewayIpDetectado,
+                                localizacaoServidor = localizacaoServidorUiState,
+                                onDispararBenchmarkDns = {
+                                    viewModel.dispararBenchmarkDns()
+                                    analyticsTracker.registrarFeatureUsada("dns")
+                                },
+                                onReconectarFibra = { host, user, pass ->
+                                    viewModel.reconectarFibra(host, user, pass)
+                                    analyticsTracker.registrarFeatureUsada("fibra")
+                                },
+                                onReiniciarEquipamento = {
+                                    viewModel.reiniciarEquipamento()
+                                    analyticsTracker.registrarFeatureUsada("fibra")
+                                },
+                                onSalvarConfiguracaoModem = { host, user, pass, perm ->
+                                    viewModel.salvarConfiguracaoModem(host, user, pass, perm)
+                                },
+                                onRegistrarConexaoGateway = { ip, usuario, senha, lembrarSenha, manterConectado, bssidAtual ->
+                                    viewModel.registrarConexaoGateway(ip, usuario, senha, lembrarSenha, manterConectado, bssidAtual)
+                                    analyticsTracker.registrarFeatureUsada("fibra")
+                                },
+                                temaSelecionado = temaSelecionado,
+                                analiseAvancada = analiseAvancada,
+                                onDefinirTemaSelecionado = { tema -> viewModel.definirTemaSelecionado(tema) },
+                                onDefinirAnaliseAvancada = { ativa -> viewModel.definirAnaliseAvancada(ativa) },
+                                onLimparHistorico = { viewModel.limparHistorico() },
+                                onApagarDadosLocais = { viewModel.apagarDadosLocais() },
+                                onResetarApp = { viewModel.resetarApp() },
+                                dadosLocaisAcaoEstado = dadosLocaisAcaoEstado,
+                                onConsumirDadosLocaisAcaoEstado = { viewModel.consumirDadosLocaisAcaoEstado() },
+                                monitoramentoAtivo = monitoramentoAtivo,
+                                onAtivarMonitoramento = { ativo ->
+                                    // Issue #1671 -- permissao de notificacao e contextual: so e
+                                    // pedida aqui, no momento em que o usuario liga o monitoramento
+                                    // (a funcionalidade que de fato precisa dela), nunca no onboarding.
+                                    if (ativo && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                        val notificacaoConcedida =
+                                            ContextCompat.checkSelfPermission(
+                                                this@MainActivity,
+                                                Manifest.permission.POST_NOTIFICATIONS,
+                                            ) == PackageManager.PERMISSION_GRANTED
+                                        when (decidirPermissaoContextual(notificacaoConcedida, notificacaoBloqueadaPermanentemente)) {
+                                            DecisaoPermissaoContextual.JA_CONCEDIDA -> Unit
+                                            DecisaoPermissaoContextual.SOLICITAR ->
+                                                solicitarNotificacoesLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                            DecisaoPermissaoContextual.ABRIR_AJUSTES -> abrirAjustesDoApp()
+                                        }
                                     }
-                                }
-                                viewModel.atualizarMonitoramento(ativo)
-                            },
-                            notificacaoLatenciaAtiva = notificacaoLatenciaAtiva,
-                            notificacaoDnsAtiva = notificacaoDnsAtiva,
-                            notificacaoRssiAtiva = notificacaoRssiAtiva,
-                            notificacaoSemInternetAtiva = notificacaoSemInternetAtiva,
-                            onDefinirNotificacaoLatenciaAtiva = { viewModel.definirNotificacaoLatenciaAtiva(it) },
-                            onDefinirNotificacaoDnsAtiva = { viewModel.definirNotificacaoDnsAtiva(it) },
-                            onDefinirNotificacaoRssiAtiva = { viewModel.definirNotificacaoRssiAtiva(it) },
-                            onDefinirNotificacaoSemInternetAtiva = { viewModel.definirNotificacaoSemInternetAtiva(it) },
-                            onSalvarPerfil = { nome, fotoUri -> viewModel.salvarPerfil(nome, fotoUri) },
-                            onSalvarLimiteAlerta = { limite -> viewModel.salvarLimiteAlerta(limite) },
-                            movelSnapshot = movelSnapshot,
-                            simsAtivos = simsAtivos,
-                            temPermissaoTelefonia = temPermissaoTelefonia,
-                            onSolicitarPermissaoTelefonia = { solicitarPermissaoTelefoniaContextual() },
-                            temPermissaoLocalizacao = temPermissaoLocalizacao,
-                            localizacaoBloqueadaPermanentemente = localizacaoBloqueadaPermanentemente,
-                            onSolicitarPermissaoLocalizacao = { solicitarPermissaoLocalizacaoContextual() },
-                            historicoTela =
-                                io.signallq.app.ui.screen.AppShellHistoricoState(
-                                    historicoFiltrado = historicoFiltrado,
-                                    resumoHistorico = resumoHistorico,
-                                    filtroConexao = filtroConexaoHistorico,
-                                    onFiltroConexaoChange = {
-                                        viewModel.setFiltroConexaoHistorico(it)
-                                        analyticsTracker.registrarFeatureUsada("historico")
-                                    },
-                                    filtroOperadora = filtroOperadoraHistorico,
-                                    onFiltroOperadoraChange = {
-                                        viewModel.setFiltroOperadoraHistorico(it)
-                                        analyticsTracker.registrarFeatureUsada("historico")
-                                    },
-                                    operadorasDisponiveis = operadorasDisponiveisHistorico,
-                                    onExcluirMedicao = viewModel::deletarMedicao,
-                                    blocosUptime = blocosUptimeHistorico,
-                                ),
-                            onScreenView = { screenName -> analyticsTracker.registrarScreenView(screenName) },
-                            // GH#1706 — funil do diagnostico guiado (spec §12, passos 3 e 4).
-                            onDiagnosticoPlanoIniciado = analyticsTracker::registrarDiagnosticoPlanoIniciado,
-                            onAvaliarAssist = viewModel::avaliarAssist,
-                            onCompartilharResultadoVelocidade = {
-                                analyticsTracker.registrarFeatureUsada("speedtest_compartilhou")
-                            },
-                            // GH#970 — cadeia local -> diretorio remoto -> fallback generico
-                            // (io.signallq.app.ui.OperadoraDirectoryResolver, injetado via Hilt).
-                            operadoraResolvers =
-                                io.signallq.app.ui.screen.AppShellOperadoraResolvers(
-                                    identidadeLocal = operadoraDirectoryResolver::resolveLocalIdentity,
-                                    contatoLocal = operadoraDirectoryResolver::resolveLocalContact,
-                                    identidadeRemota = operadoraDirectoryResolver::resolveIdentity,
-                                    contatoRemoto = operadoraDirectoryResolver::resolveContact,
-                                ),
-                            modoGamerPadrao = modoGamerPadrao,
-                            onSalvarModoGamerPadrao = viewModel::salvarModoGamerPadrao,
-                        )
+                                    viewModel.atualizarMonitoramento(ativo)
+                                },
+                                notificacaoLatenciaAtiva = notificacaoLatenciaAtiva,
+                                notificacaoDnsAtiva = notificacaoDnsAtiva,
+                                notificacaoRssiAtiva = notificacaoRssiAtiva,
+                                notificacaoSemInternetAtiva = notificacaoSemInternetAtiva,
+                                onDefinirNotificacaoLatenciaAtiva = { viewModel.definirNotificacaoLatenciaAtiva(it) },
+                                onDefinirNotificacaoDnsAtiva = { viewModel.definirNotificacaoDnsAtiva(it) },
+                                onDefinirNotificacaoRssiAtiva = { viewModel.definirNotificacaoRssiAtiva(it) },
+                                onDefinirNotificacaoSemInternetAtiva = { viewModel.definirNotificacaoSemInternetAtiva(it) },
+                                onSalvarPerfil = { nome, fotoUri -> viewModel.salvarPerfil(nome, fotoUri) },
+                                onSalvarLimiteAlerta = { limite -> viewModel.salvarLimiteAlerta(limite) },
+                                movelSnapshot = movelSnapshot,
+                                simsAtivos = simsAtivos,
+                                temPermissaoTelefonia = temPermissaoTelefonia,
+                                onSolicitarPermissaoTelefonia = { solicitarPermissaoTelefoniaContextual() },
+                                temPermissaoLocalizacao = temPermissaoLocalizacao,
+                                localizacaoBloqueadaPermanentemente = localizacaoBloqueadaPermanentemente,
+                                onSolicitarPermissaoLocalizacao = { solicitarPermissaoLocalizacaoContextual() },
+                                historicoTela =
+                                    io.signallq.app.ui.screen.AppShellHistoricoState(
+                                        historicoFiltrado = historicoFiltrado,
+                                        resumoHistorico = resumoHistorico,
+                                        filtroConexao = filtroConexaoHistorico,
+                                        onFiltroConexaoChange = {
+                                            viewModel.setFiltroConexaoHistorico(it)
+                                            analyticsTracker.registrarFeatureUsada("historico")
+                                        },
+                                        filtroOperadora = filtroOperadoraHistorico,
+                                        onFiltroOperadoraChange = {
+                                            viewModel.setFiltroOperadoraHistorico(it)
+                                            analyticsTracker.registrarFeatureUsada("historico")
+                                        },
+                                        operadorasDisponiveis = operadorasDisponiveisHistorico,
+                                        onExcluirMedicao = viewModel::deletarMedicao,
+                                        blocosUptime = blocosUptimeHistorico,
+                                    ),
+                                onScreenView = { screenName -> analyticsTracker.registrarScreenView(screenName) },
+                                // GH#1706 — funil do diagnostico guiado (spec §12, passos 3 e 4).
+                                onDiagnosticoPlanoIniciado = analyticsTracker::registrarDiagnosticoPlanoIniciado,
+                                onAvaliarAssist = viewModel::avaliarAssist,
+                                onCompartilharResultadoVelocidade = {
+                                    analyticsTracker.registrarFeatureUsada("speedtest_compartilhou")
+                                },
+                                // GH#970 — cadeia local -> diretorio remoto -> fallback generico
+                                // (io.signallq.app.ui.OperadoraDirectoryResolver, injetado via Hilt).
+                                operadoraResolvers =
+                                    io.signallq.app.ui.screen.AppShellOperadoraResolvers(
+                                        identidadeLocal = operadoraDirectoryResolver::resolveLocalIdentity,
+                                        contatoLocal = operadoraDirectoryResolver::resolveLocalContact,
+                                        identidadeRemota = operadoraDirectoryResolver::resolveIdentity,
+                                        contatoRemoto = operadoraDirectoryResolver::resolveContact,
+                                    ),
+                                modoGamerPadrao = modoGamerPadrao,
+                                onSalvarModoGamerPadrao = viewModel::salvarModoGamerPadrao,
+                            )
+                        }
                 }
             }
         }

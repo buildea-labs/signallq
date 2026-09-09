@@ -20,13 +20,17 @@ class AdsFlagsManager
     @Inject
     constructor(
         private val repository: AdsRemoteConfigRepository,
+        private val telemetry: AdsTelemetry,
     ) {
         private val _flags = MutableStateFlow(AdsFlags.DESLIGADO)
         val flags: StateFlow<AdsFlags> = _flags
 
         fun inicializar(scope: CoroutineScope) {
             scope.launch {
-                _flags.value = repository.buscarFlags()
+                repository.buscarFlags().also {
+                    _flags.value = it
+                    telemetry.registrarFlagsRemotas(it)
+                }
             }
         }
     }

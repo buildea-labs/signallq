@@ -421,13 +421,12 @@ private fun HistoricoResumoMetric(
  * consentimento UMP nem de conectividade separados (mesma limitação que `rememberNativeAd()`,
  * o wrapper antigo, já tinha).
  */
+internal fun eligibilidadeAnuncioHistorico(adsGate: io.signallq.app.ads.NativeAdsGate): NativeAdEligibility =
+    adsGate.eligibilityFor(AdSlot.HISTORICO)
+
+/** Compatibilidade para testes legados; o fluxo de produção usa [NativeAdsGate]. */
 internal fun eligibilidadeAnuncioHistorico(adsEnabled: Boolean): NativeAdEligibility =
-    NativeAdEligibility(
-        slot = AdSlot.HISTORICO,
-        flagEnabled = adsEnabled,
-        canRequestAds = adsEnabled,
-        online = true,
-    )
+    NativeAdEligibility(AdSlot.HISTORICO, buildEnabled = true, flagEnabled = adsEnabled, canRequestAds = adsEnabled, online = true)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -446,7 +445,9 @@ fun HistoricoScreen(
     blocosUptime: List<BlocoUptime> = emptyList(),
     /** Toggle remoto (Firebase Remote Config) + gate de consentimento UMP -- issue #555.
      *  Default `false`: nunca mostra anuncio sem sinal explicito de que pode. */
-    adsEnabled: Boolean = false,
+    adsGate: io.signallq.app.ads.NativeAdsGate =
+        io.signallq.app.ads
+            .NativeAdsGate(),
 ) {
     val c = LocalLkTokens.current
     val context = LocalContext.current
@@ -636,7 +637,7 @@ fun HistoricoScreen(
                     val nativeAdState by rememberNativeAdState(
                         adUnitId = AdUnitIds.para(AdSlot.HISTORICO),
                         contentSignal = NativeAdContentSignal.forSlot(AdSlot.HISTORICO),
-                        eligibility = eligibilidadeAnuncioHistorico(adsEnabled),
+                        eligibility = eligibilidadeAnuncioHistorico(adsGate),
                     )
                     val nativeAd = (nativeAdState as? NativeAdLoadState.Fill)?.ad
                     NativeAdCard(nativeAd = nativeAd, source = NativeAdSource.ADMOB)

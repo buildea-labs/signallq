@@ -92,7 +92,9 @@ internal fun ModoGamerScreen(
     /** Toggle remoto (Firebase Remote Config) + gate de consentimento UMP -- issue #555,
      *  reconectado do fluxo legado "Jogos" (GH#935) pela issue #1489. Default `false`: nunca
      *  mostra anuncio sem sinal explicito de que pode. */
-    adsEnabled: Boolean = false,
+    adsGate: io.signallq.app.ads.NativeAdsGate =
+        io.signallq.app.ads
+            .NativeAdsGate(),
 ) {
     val c = LocalLkTokens.current
     val scope = rememberCoroutineScope()
@@ -211,7 +213,7 @@ internal fun ModoGamerScreen(
                     },
                     onTrocarJogoOuDevice = viewModel::trocarJogoOuDevice,
                     onIrParaHome = onIrParaHome,
-                    adsEnabled = adsEnabled,
+                    adsGate = adsGate,
                 )
             }
         }

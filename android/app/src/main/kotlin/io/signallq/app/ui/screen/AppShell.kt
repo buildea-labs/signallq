@@ -50,7 +50,6 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import io.signallq.app.BuildConfig
 import io.signallq.app.R
-import io.signallq.app.ads.AdSlot
 import io.signallq.app.bssidElegivelParaAutoconexao
 import io.signallq.app.core.database.MedicaoEntity
 import io.signallq.app.core.datastore.ConnectionProfilePersistido
@@ -286,10 +285,8 @@ fun AppShell(
     val resolveOperadoraIdentidadeLocal = operadoraResolvers.identidadeLocal
     val resolveOperadoraIdentidadeRemota = operadoraResolvers.identidadeRemota
 
-    // Monetizacao nativa (issue #555) -- resolvido uma vez aqui, repassado como
-    // booleano simples "adsEnabled" por tela para nao acoplar as 4 telas ao tipo AdsFlags.
-    val adsFlags = ads.flags
-    val podeRequisitarAnuncio = ads.podeRequisitarAnuncio
+    // Monetização nativa: build, UMP e Remote Config permanecem separados até cada slot.
+    val adsGate = ads.gate
 
     val c = LocalLkTokens.current
     val context = LocalContext.current
@@ -714,7 +711,7 @@ fun AppShell(
                     historico =
                         AppShellHistoricoRootEntry(
                             state = historicoTela,
-                            adsEnabled = podeRequisitarAnuncio && adsFlags.habilitadoPara(AdSlot.HISTORICO),
+                            adsGate = adsGate,
                             onAbrirMenu = onAbrirMenuDaRaiz,
                             onIniciarTeste = { navigator.select(AppShellRoot.Speed) },
                         ),
@@ -784,7 +781,7 @@ fun AppShell(
                                 onConfirmarSpeedtestMovel = onConfirmarSpeedtestMovel,
                                 onCancelarSpeedtestMovel = onCancelarSpeedtestMovel,
                                 movelSnapshot = movelSnapshot,
-                                adsEnabled = podeRequisitarAnuncio && adsFlags.habilitadoPara(AdSlot.VELOCIDADE),
+                                adsGate = adsGate,
                             )
                         else ->
                             error(
@@ -948,7 +945,7 @@ fun AppShell(
                     localizacaoServidor = localizacaoServidorStr,
                     ispInfo = ispInfoData,
                     operadoraMovel = operadoraMovel,
-                    adsEnabled = podeRequisitarAnuncio && adsFlags.habilitadoPara(AdSlot.RESULTADO),
+                    adsGate = adsGate,
                     onTestarNovamente = {
                         overlayStack.remove(Overlay.ResultadoVelocidade)
                         // Issue #1656 — novo teste invalida a pré-seleção do Assist do anterior.
@@ -997,7 +994,7 @@ fun AppShell(
                     overlayStack.remove(Overlay.ResultadoVelocidade)
                     navigator.select(AppShellRoot.Home)
                 },
-                adsEnabled = podeRequisitarAnuncio && adsFlags.habilitadoPara(AdSlot.JOGOS),
+                adsGate = adsGate,
             )
         }
 
@@ -1072,7 +1069,7 @@ fun AppShell(
                     onDefinirTemaSelecionado(if (temaSelecionado == "escuro") "claro" else "escuro")
                 },
                 bandasWifi = bandasWifiGateway,
-                adsEnabled = podeRequisitarAnuncio && adsFlags.habilitadoPara(AdSlot.DISPOSITIVOS),
+                adsGate = adsGate,
                 correlacoesTopologia = wifi.correlacoesTopologia,
             )
         }

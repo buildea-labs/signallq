@@ -106,13 +106,12 @@ import kotlinx.coroutines.launch
  * MainViewModel, fora do escopo desta fatia puramente técnica (decisão de arquitetura de ads,
  * issues #1330/#1694 — ver o mesmo limite documentado em `AppShellRootRegistryTest`).
  */
+internal fun eligibilidadeAnuncioResultado(adsGate: io.signallq.app.ads.NativeAdsGate): NativeAdEligibility =
+    adsGate.eligibilityFor(AdSlot.RESULTADO)
+
+/** Compatibilidade para testes legados; o fluxo de produção usa [NativeAdsGate]. */
 internal fun eligibilidadeAnuncioResultado(adsEnabled: Boolean): NativeAdEligibility =
-    NativeAdEligibility(
-        slot = AdSlot.RESULTADO,
-        flagEnabled = adsEnabled,
-        canRequestAds = adsEnabled,
-        online = true,
-    )
+    NativeAdEligibility(AdSlot.RESULTADO, buildEnabled = true, flagEnabled = adsEnabled, canRequestAds = adsEnabled, online = true)
 
 /**
  * GH#1659a — mensagem exibida quando `ResultadoPdfGenerator.gerarECompartilhar` lança durante o
@@ -172,7 +171,9 @@ fun ResultadoVelocidadeScreen(
     onVerDetalhesTecnicos: () -> Unit = {},
     /** Toggle remoto (Firebase Remote Config) + gate de consentimento UMP -- issue #555.
      *  Default `false`: nunca mostra anuncio sem sinal explicito de que pode. */
-    adsEnabled: Boolean = false,
+    adsGate: io.signallq.app.ads.NativeAdsGate =
+        io.signallq.app.ads
+            .NativeAdsGate(),
 ) {
     val c = LocalLkTokens.current
     val scrollState = rememberScrollState()
@@ -530,7 +531,7 @@ fun ResultadoVelocidadeScreen(
                     val nativeAdState by rememberNativeAdState(
                         adUnitId = AdUnitIds.para(AdSlot.RESULTADO),
                         contentSignal = NativeAdContentSignal.forSlot(AdSlot.RESULTADO),
-                        eligibility = eligibilidadeAnuncioResultado(adsEnabled),
+                        eligibility = eligibilidadeAnuncioResultado(adsGate),
                     )
                     val nativeAd = (nativeAdState as? NativeAdLoadState.Fill)?.ad
                     NativeAdCard(nativeAd = nativeAd, source = NativeAdSource.ADMOB)
