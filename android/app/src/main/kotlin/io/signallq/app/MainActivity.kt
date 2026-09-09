@@ -10,7 +10,6 @@ import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
-import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
@@ -25,6 +24,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.ComposeView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
@@ -168,7 +168,13 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        setContent {
+        // `ComponentActivity.setContent {}` procura o content view atual no decor. Em Android 16,
+        // durante certos relaunches de configuracao, esse lookup pode observar o decor sem
+        // `android.R.id.content` e lancar NPE. Criar a ComposeView e instala-la diretamente evita
+        // essa leitura transitoria. `setContentView` de ComponentActivity continua inicializando
+        // os ViewTree owners de lifecycle, ViewModelStore e SavedStateRegistry antes de anexar a view.
+        val rootContent = ComposeView(this)
+        rootContent.setContent {
             // --- Snapshots de features (ciclos de vida independentes — NAO combinar) ---
             val snapshotRede =
                 viewModel.monitorRede.snapshotFlow
@@ -610,6 +616,7 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+        setContentView(rootContent)
     }
 
     override fun onStart() {
