@@ -150,6 +150,7 @@ class MainActivity : ComponentActivity() {
                 adsTelemetry.registrarConsentimento(
                     podeRequisitar = resultado.podeRequisitarAnuncio,
                     atualizacaoFalhou = resultado.atualizacaoFalhou,
+                    formularioFalhou = resultado.formularioFalhou,
                 )
                 if (resultado.podeRequisitarAnuncio) {
                     MobileAds.initialize(this) {}

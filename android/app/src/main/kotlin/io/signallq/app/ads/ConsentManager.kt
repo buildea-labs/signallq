@@ -21,6 +21,7 @@ object ConsentManager {
     data class ResultadoAtualizacao(
         val podeRequisitarAnuncio: Boolean,
         val atualizacaoFalhou: Boolean,
+        val formularioFalhou: Boolean,
     )
 
     /**
@@ -56,6 +57,7 @@ object ConsentManager {
                         ResultadoAtualizacao(
                             podeRequisitarAnuncio = podeRequisitar,
                             atualizacaoFalhou = false,
+                            formularioFalhou = formError != null,
                         ),
                     )
                 }
@@ -72,6 +74,7 @@ object ConsentManager {
                     ResultadoAtualizacao(
                         podeRequisitarAnuncio = podeRequisitar,
                         atualizacaoFalhou = true,
+                        formularioFalhou = false,
                     ),
                 )
             },

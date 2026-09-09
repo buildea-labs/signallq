@@ -22,22 +22,24 @@ class AdsTelemetry
         fun registrarConsentimento(
             podeRequisitar: Boolean,
             atualizacaoFalhou: Boolean,
+            formularioFalhou: Boolean,
         ) =
             registrar(
                 stage = "ump",
                 outcome =
                     when {
                         atualizacaoFalhou -> "update_failed"
+                        formularioFalhou -> "form_failed"
                         podeRequisitar -> "available"
                         else -> "unavailable"
                     },
             )
 
-        fun registrarFlagsRemotas(flags: AdsFlags) =
+        fun registrarFlagsRemotas(resultado: ResultadoFlagsRemotas) =
             registrar(
                 stage = "remote_flags",
-                outcome = if (flags.masterEnabled) "enabled" else "disabled",
-                enabledSlots = AdSlot.entries.count { flags.habilitadoPara(it) },
+                outcome = resultado.origem.analyticsId,
+                enabledSlots = AdSlot.entries.count { resultado.flags.habilitadoPara(it) },
             )
 
         fun registrarElegibilidadeInvalida(

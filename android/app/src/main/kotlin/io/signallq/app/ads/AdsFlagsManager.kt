@@ -27,9 +27,9 @@ class AdsFlagsManager
 
         fun inicializar(scope: CoroutineScope) {
             scope.launch {
-                repository.buscarFlags().also {
-                    _flags.value = it
-                    telemetry.registrarFlagsRemotas(it)
+                repository.buscarFlags().also { resultado ->
+                    _flags.value = resultado.flags
+                    telemetry.registrarFlagsRemotas(resultado)
                 }
             }
         }

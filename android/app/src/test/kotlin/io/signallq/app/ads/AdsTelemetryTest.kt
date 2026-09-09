@@ -20,10 +20,17 @@ class AdsTelemetryTest {
 
     @Test
     fun `evento de UMP diferencia atualizacao falha de consentimento indisponivel`() {
-        telemetry.registrarConsentimento(podeRequisitar = false, atualizacaoFalhou = true)
+        telemetry.registrarConsentimento(podeRequisitar = false, atualizacaoFalhou = true, formularioFalhou = false)
 
         assertEquals("ump", capturarBundle().getString(AdsTelemetry.PARAM_STAGE))
         assertEquals("update_failed", capturarBundle().getString(AdsTelemetry.PARAM_OUTCOME))
+    }
+
+    @Test
+    fun `falha do formulario UMP nao e classificada como consentimento indisponivel`() {
+        telemetry.registrarConsentimento(podeRequisitar = false, atualizacaoFalhou = false, formularioFalhou = true)
+
+        assertEquals("form_failed", capturarBundle().getString(AdsTelemetry.PARAM_OUTCOME))
     }
 
     @Test
