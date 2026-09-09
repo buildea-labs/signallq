@@ -2,6 +2,7 @@ package io.signallq.app.ui.screen
 
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import io.signallq.app.core.network.EstadoConexao
 import io.signallq.app.core.network.wifi.EstadoScanWifi
 import io.signallq.app.core.network.wifi.SnapshotScanWifi
@@ -72,5 +73,53 @@ class SinalScreenOfflineBannerTest {
         composeRule.waitForIdle()
 
         composeRule.onNodeWithText("Você está offline").assertDoesNotExist()
+    }
+
+    @Test
+    fun `sem transporte nao afirma internet movel`() {
+        composeRule.setContent {
+            SignallQTheme {
+                SinalScreen(
+                    snapshotWifi = snapshotWifiVazio,
+                    connectedNetwork = null,
+                    estadoConexao = EstadoConexao.desconectado,
+                    conectado = false,
+                    temPermissaoLocalizacao = true,
+                    onRefresh = {},
+                    onVoltar = {},
+                )
+            }
+        }
+        composeRule.waitForIdle()
+
+        composeRule.onNodeWithText("Wi-Fi").performClick()
+        composeRule.waitForIdle()
+
+        composeRule.onNodeWithText("Você está sem conexão").assertExists()
+        composeRule.onNodeWithText("Você está usando a internet móvel").assertDoesNotExist()
+    }
+
+    @Test
+    fun `internet movel real e identificada como movel`() {
+        composeRule.setContent {
+            SignallQTheme {
+                SinalScreen(
+                    snapshotWifi = snapshotWifiVazio,
+                    connectedNetwork = null,
+                    estadoConexao = EstadoConexao.movel,
+                    conectado = true,
+                    temPermissaoLocalizacao = true,
+                    onRefresh = {},
+                    onVoltar = {},
+                )
+            }
+        }
+        composeRule.waitForIdle()
+
+        composeRule.onNodeWithText("Wi-Fi").performClick()
+        composeRule.waitForIdle()
+
+        composeRule.onNodeWithText("Você está usando a internet móvel").assertExists()
+        composeRule.onNodeWithText("Você está sem conexão").assertDoesNotExist()
     }
 }

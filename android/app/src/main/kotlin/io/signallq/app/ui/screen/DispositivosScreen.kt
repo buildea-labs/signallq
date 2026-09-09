@@ -113,7 +113,7 @@ fun DispositivosScreen(
                     .padding(padding),
         ) {
             if (!snapshotRede.conectado) {
-                SignallQOfflineBanner()
+                SignallQOfflineBanner(estadoConexao = snapshotRede.estadoConexao)
             }
             Box(
                 modifier =

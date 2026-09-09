@@ -3,6 +3,7 @@ package io.signallq.app.ui.component
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import io.signallq.app.core.network.EstadoConexao
 import io.signallq.app.ui.SignallQTheme
 import org.junit.Rule
 import org.junit.Test
@@ -11,16 +12,13 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * CTA "Diagnosticar problema" dentro do `SignallQOfflineBanner` (issue #1811) e sua navegação
- * padrão para o diálogo real de diagnóstico offline (issue #1818, `DiagnosticoOfflineDialog`).
+ * CTA contextual do `SignallQOfflineBanner` (issue #1811). O diagnóstico guiado é uma
+ * sondagem Wi-Fi: sem esse transporte, o banner só orienta a conectar-se e não fabrica uma
+ * falha de gateway.
  *
- * O teste sem callback externo abre o diálogo real, que dispara `DiagnosticoOfflineViewModel
- * .iniciar()` de verdade (achado de revisão do Caio na PR #1821) — não uma sondagem de rede real:
- * sob Robolectric, sem rede Wi-Fi ativa configurada, `DiagnosticoOfflineExecutorReal` encerra em
- * "sem rede Wi-Fi ativa" na primeira etapa (ver `capturarContextoRedeWifiPadrao` retornando
- * `null`), então nenhuma chamada de I/O real acontece. Este teste cobre só a navegação (o título
- * do diálogo aparece); `DiagnosticoOfflineDialogTest` cobre o conteúdo do diálogo isoladamente,
- * sem depender do ViewModel/Factory reais.
+ * O fluxo com Wi-Fi ativo delega à navegação externa quando ela existe. O diálogo real segue
+ * coberto isoladamente por `DiagnosticoOfflineDialogTest`, sem depender do transporte de um
+ * ambiente Robolectric.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
@@ -29,23 +27,39 @@ class SignallQOfflineBannerCtaTest {
     val composeRule = createComposeRule()
 
     @Test
-    fun `cta diagnosticar problema aparece no banner offline`() {
+    fun `sem wifi cta orienta como continuar`() {
         composeRule.setContent {
             SignallQTheme {
-                SignallQOfflineBanner()
+                SignallQOfflineBanner(estadoConexao = EstadoConexao.desconectado)
             }
         }
         composeRule.waitForIdle()
 
         composeRule.onNodeWithText("Você está offline").assertExists()
-        composeRule.onNodeWithText("Diagnosticar problema").assertExists()
+        composeRule.onNodeWithText("Como continuar").assertExists()
     }
 
     @Test
-    fun `tap no cta sem callback externo abre o dialogo real de diagnostico`() {
+    fun `tap sem wifi mostra orientacao e nao abre diagnostico wifi`() {
         composeRule.setContent {
             SignallQTheme {
-                SignallQOfflineBanner()
+                SignallQOfflineBanner(estadoConexao = EstadoConexao.desconectado)
+            }
+        }
+        composeRule.waitForIdle()
+
+        composeRule.onNodeWithText("Como continuar").performClick()
+        composeRule.waitForIdle()
+
+        composeRule.onNodeWithText("Conecte-se a uma rede Wi-Fi e tente diagnosticar novamente. Recursos locais continuam disponíveis.").assertExists()
+        composeRule.onNodeWithText("Diagnóstico guiado").assertDoesNotExist()
+    }
+
+    @Test
+    fun `tap com wifi sem internet abre diagnostico guiado existente`() {
+        composeRule.setContent {
+            SignallQTheme {
+                SignallQOfflineBanner(estadoConexao = EstadoConexao.wifi)
             }
         }
         composeRule.waitForIdle()
@@ -57,11 +71,14 @@ class SignallQOfflineBannerCtaTest {
     }
 
     @Test
-    fun `tap no cta com callback externo usa navegacao real em vez do dialogo padrao`() {
+    fun `tap com wifi abre diagnostico externo quando fornecido`() {
         var chamadas = 0
         composeRule.setContent {
             SignallQTheme {
-                SignallQOfflineBanner(onDiagnosticarProblema = { chamadas++ })
+                SignallQOfflineBanner(
+                    estadoConexao = EstadoConexao.wifi,
+                    onDiagnosticarProblema = { chamadas++ },
+                )
             }
         }
         composeRule.waitForIdle()

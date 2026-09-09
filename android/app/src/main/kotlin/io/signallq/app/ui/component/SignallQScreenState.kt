@@ -25,6 +25,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
+import io.signallq.app.core.network.EstadoConexao
 import io.signallq.app.ui.LkSpacing
 import io.signallq.app.ui.LocalLkTokens
 
@@ -120,21 +121,37 @@ private fun SignallQFullScreenState(
 fun SignallQOfflineBanner(
     modifier: Modifier = Modifier,
     message: String = "Sem conexão ativa. Recursos locais continuam disponíveis.",
-    // #1818 — o CTA abre o fluxo real de diagnóstico passo a passo (DiagnosticoOfflineDialog,
-    // que consome DiagnosticoOfflineViewModel/DiagnosticoOfflineExecutorReal), substituindo o
-    // antigo DiagnosticoOfflineStubDialog placeholder.
+    /**
+     * Transporte observado no momento da composição. O diagnóstico guiado mede gateway, DNS e
+     * rota da rede Wi-Fi; portanto, só pode ser aberto com [EstadoConexao.wifi], mesmo quando
+     * aquela rede ainda não valida acesso à internet.
+     */
+    estadoConexao: EstadoConexao = EstadoConexao.desconectado,
     onDiagnosticarProblema: (() -> Unit)? = null,
 ) {
     var mostrarDiagnostico by remember { mutableStateOf(false) }
+    var mostrarOrientacaoSemWifi by remember { mutableStateOf(false) }
+    val temWifiAtivo = estadoConexao == EstadoConexao.wifi
     SignallQBanner(
         title = "Você está offline",
-        message = message,
+        message =
+            if (mostrarOrientacaoSemWifi) {
+                "Conecte-se a uma rede Wi-Fi e tente diagnosticar novamente. Recursos locais continuam disponíveis."
+            } else {
+                message
+            },
         modifier = modifier,
         tone = SignallQFeedbackTone.Warning,
-        actionLabel = "Diagnosticar problema",
-        onAction = onDiagnosticarProblema ?: { mostrarDiagnostico = true },
+        actionLabel = if (temWifiAtivo) "Diagnosticar problema" else "Como continuar",
+        onAction = {
+            if (temWifiAtivo) {
+                onDiagnosticarProblema?.invoke() ?: run { mostrarDiagnostico = true }
+            } else {
+                mostrarOrientacaoSemWifi = true
+            }
+        },
     )
-    if (mostrarDiagnostico) {
+    if (temWifiAtivo && mostrarDiagnostico) {
         DiagnosticoOfflineDialog(onDismiss = { mostrarDiagnostico = false })
     }
 }

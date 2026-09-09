@@ -63,3 +63,32 @@ Davi implementa UI, navegação de estado e testes do ViewModel; Ramon define/va
 ### Riscos e não-objetivos
 
 O principal risco é disparar só o ping ou só uma reavaliação e rotulá-los como novo speedtest; a operação gamer deve aguardar uma execução nova identificada antes de concluir. Não mudamos os thresholds do `ModoGamerEngine`, o histórico como recurso de consulta, nem o contrato NDS/Worker; esta fatia apenas impede seu uso silencioso como veredito atual.
+
+## Offline sem transporte — cópia, CTA e falhas de speedtest
+
+### Problema e comportamento esperado
+
+No cenário sem SIM e sem Wi-Fi, a aba Sinal afirma que há “internet do chip”; o CTA genérico do banner inicia um diagnóstico que só é válido para Wi-Fi e encerra como falha; e exceções internas do speedtest (`download_failed`/`UnknownHostException`) chegam cruas às duas superfícies de Velocidade. O app deve dizer somente que não há conexão ativa, não executar sondagens Wi-Fi quando não existe transporte Wi-Fi e nunca mostrar exceção, hostname ou protocolo ao usuário.
+
+### Arquitetura atual e decisão
+
+- `SinalScreen` escolhe o estado vazio de Wi-Fi apenas por não haver Wi-Fi e fixa a cópia de rede móvel; ela não distingue `movel` de `desconectado`.
+- `SignallQOfflineBanner` abre por padrão `DiagnosticoOfflineDialog`; este usa `DiagnosticoOfflineExecutorReal`, cujo contrato é explicitamente Wi-Fi (gateway/DNS/rota/portal) e retorna `SEM_REDE_WIFI` como falha quando não há rede Wi-Fi.
+- `ExecutorSpeedtestCloudflare` publica `Throwable.message` em `SnapshotExecucaoSpeedtest.erroMensagem`. `SpeedTestScreen`, `VelocidadeScreen` e `estadoAnaliseGuiada` a consomem diretamente.
+
+Adicionar ao contrato de `:feature:speedtest` uma causa de falha fechada e própria para apresentação (ao menos sem conexão, DNS/hostname inacessível, timeout e falha genérica), mantendo o detalhe técnico somente em log/telemetria. O executor mapeia a exceção uma única vez; as três superfícies recebem a cópia por esse tipo, nunca por `erroMensagem`. Manter `erroMensagem` temporariamente como detalhe interno/compatível até migrar todos os consumidores e então impedir seu uso em UI.
+
+O banner recebe contexto explícito de transporte. Sem Wi-Fi ativo, o CTA não abre o diagnóstico Wi-Fi: exibe orientação curta para conectar-se a uma rede ou tentar de novo quando houver conexão. Com Wi-Fi ativo sem internet, preserva o diagnóstico local existente. A aba Sinal usa a mesma distinção: “internet móvel” somente em `EstadoConexao.movel`; em `desconectado`, estado neutro de sem conexão.
+
+### Impacto, compatibilidade e falhas
+
+- Módulos: `:feature:speedtest` (causa/mapeamento), `:app` (shell/UI do banner, Sinal, Velocidade e fluxo guiado); sem Worker, API remota, banco ou migração.
+- O `SnapshotExecucaoSpeedtest` é contrato entre feature e app; a extensão deve ser aditiva, com fallback seguro para snapshots antigos/test doubles sem causa tipada.
+- Não confundir ausência de transporte com Wi-Fi conectado sem internet: o primeiro não produz diagnóstico causal; o segundo mantém as sondagens determinísticas e seu nível de confiança.
+- Rollback: a causa desconhecida sempre exibe a cópia genérica; a remoção do diagnóstico Wi-Fi sem Wi-Fi é local e reversível.
+
+### Testes e riscos
+
+Cobrir unitariamente o mapeador de exceções (incluindo `UnknownHostException` embrulhada no prefixo `download_failed`), `estadoAnaliseGuiada` e as duas telas contra mensagem pública, sem texto técnico. Cobrir Compose para Sinal em móvel versus desconectado e CTA do banner em: sem transporte (não abre o diálogo), Wi-Fi sem internet (abre e executa o fluxo existente) e Wi-Fi válido. Rodar os testes focados de `:feature:speedtest` e `:app`, depois `test`, `ktlintCheck`, `detekt` e `assembleDebug`; validar em aparelho real sem SIM/Wi-Fi e em Wi-Fi conectado sem internet.
+
+Risco principal: inferir “offline” apenas pelo erro de DNS e esconder uma falha específica de Wi-Fi. A classificação deve usar o estado de conectividade no momento da tentativa e deixar DNS/hostname como causa pública distinta quando houver transporte. Não altera thresholds, motor de diagnóstico, persistência, Worker ou comportamento de rede móvel medida.

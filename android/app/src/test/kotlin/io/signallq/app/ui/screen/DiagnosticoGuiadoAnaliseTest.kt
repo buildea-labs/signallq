@@ -1,6 +1,7 @@
 package io.signallq.app.ui.screen
 
 import io.mockk.mockk
+import io.signallq.app.feature.speedtest.CausaFalhaSpeedtest
 import io.signallq.app.feature.speedtest.EstadoExecucaoSpeedtest
 import io.signallq.app.feature.speedtest.FaseSpeedtest
 import io.signallq.app.feature.speedtest.ResultadoSpeedtest
@@ -30,6 +31,7 @@ class DiagnosticoGuiadoAnaliseTest {
         estado: EstadoExecucaoSpeedtest,
         resultado: ResultadoSpeedtest? = null,
         erroMensagem: String? = null,
+        causaFalha: CausaFalhaSpeedtest? = null,
         fase: FaseSpeedtest = FaseSpeedtest.idle,
         progressoGlobal: Float = 0f,
     ) = SnapshotExecucaoSpeedtest(
@@ -37,6 +39,7 @@ class DiagnosticoGuiadoAnaliseTest {
         progressoPercentual = (progressoGlobal * 100).toInt(),
         resultado = resultado,
         erroMensagem = erroMensagem,
+        causaFalha = causaFalha,
         faseAtual = fase,
         progressoGlobal = progressoGlobal,
     )
@@ -86,9 +89,8 @@ class DiagnosticoGuiadoAnaliseTest {
         assertEquals(EstadoAnaliseGuiada.EmAndamento(0.5f, "Medindo a velocidade de recebimento"), estado)
     }
 
-    // Mutante: trocar `snapshot.erroMensagem ?: MENSAGEM_FALHA_GENERICA` por `snapshot.erroMensagem!!`.
-    // Rodado — falha com NPE. O executor publica `estado = erro` com `erroMensagem = null` em pelo
-    // menos um caminho (o reset de `cancelar()` zera a mensagem), então o `!!` é alcançável.
+    // Snapshot legado sem causa precisa continuar seguro: a UI não pode usar `erroMensagem` como
+    // substituto porque ela pode conter detalhes técnicos do executor.
     @Test
     fun `erro sem mensagem cai no texto generico`() {
         val estado = estadoAnaliseGuiada(snapshot(EstadoExecucaoSpeedtest.erro))
@@ -97,10 +99,23 @@ class DiagnosticoGuiadoAnaliseTest {
     }
 
     @Test
-    fun `erro com mensagem preserva o texto do executor`() {
-        val estado = estadoAnaliseGuiada(snapshot(EstadoExecucaoSpeedtest.erro, erroMensagem = "sem conexão"))
+    fun `erro usa causa tipada e nunca mensagem interna do executor`() {
+        val detalheInterno = "download_failed:UnknownHostException: speed.cloudflare.com"
+        val estado =
+            estadoAnaliseGuiada(
+                snapshot(
+                    EstadoExecucaoSpeedtest.erro,
+                    erroMensagem = detalheInterno,
+                    causaFalha = CausaFalhaSpeedtest.DNS_OU_HOSTNAME_INACESSIVEL,
+                ),
+            )
 
-        assertEquals(EstadoAnaliseGuiada.Falhou("sem conexão"), estado)
+        assertEquals(
+            EstadoAnaliseGuiada.Falhou(
+                "Não foi possível acessar o servidor do teste. Verifique sua conexão e tente novamente.",
+            ),
+            estado,
+        )
     }
 
     @Test

@@ -49,14 +49,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import io.signallq.app.R
 import io.signallq.app.core.diagnostico.DiagnosticStatus
 import io.signallq.app.feature.speedtest.EstadoExecucaoSpeedtest
 import io.signallq.app.feature.speedtest.FaseSpeedtest
@@ -148,7 +146,7 @@ fun VelocidadeScreen(
     ) { padding ->
         if (snapshot.estado == EstadoExecucaoSpeedtest.erro) {
             ErroContent(
-                mensagem = snapshot.erroMensagem,
+                mensagem = mensagemPublicaFalhaSpeedtest(snapshot.causaFalha),
                 onReiniciar = onReiniciar,
                 onCancelar = onCancelar,
                 modifier =
@@ -454,7 +452,7 @@ private fun PillsFase(faseAtual: FaseSpeedtest) {
 @Suppress("FunctionNaming")
 @Composable
 private fun ErroContent(
-    mensagem: String?,
+    mensagem: String,
     onReiniciar: () -> Unit,
     onCancelar: () -> Unit,
     modifier: Modifier = Modifier,
@@ -480,18 +478,8 @@ private fun ErroContent(
             textAlign = TextAlign.Center,
         )
         Spacer(Modifier.height(LkSpacing.sm))
-        val textoExibido =
-            when (mensagem) {
-                "erroModemInacessivel" -> stringResource(R.string.fibra_erro_modem_inacessivel)
-                "erroTimeout" -> stringResource(R.string.fibra_erro_timeout)
-                "erroRespostaModemInvalida" -> stringResource(R.string.fibra_erro_resposta_invalida)
-                "erroComunicacaoModem" -> stringResource(R.string.fibra_erro_comunicacao)
-                "semRede" -> stringResource(R.string.fibra_erro_sem_rede)
-                null -> "Verifique sua conexão e tente novamente."
-                else -> stringResource(R.string.fibra_erro_generico)
-            }
         Text(
-            text = textoExibido,
+            text = mensagem,
             style = MaterialTheme.typography.bodyMedium,
             color = c.textSecondary,
             textAlign = TextAlign.Center,
