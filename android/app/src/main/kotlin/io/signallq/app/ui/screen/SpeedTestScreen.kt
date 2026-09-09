@@ -408,11 +408,10 @@ private fun BlocoCirculoSpeedTest(
         )
     }
 
-    val erroMsg = snapshotSpeedtest.erroMensagem
-    if (snapshotSpeedtest.estado == EstadoExecucaoSpeedtest.erro && erroMsg != null) {
+    if (snapshotSpeedtest.estado == EstadoExecucaoSpeedtest.erro) {
         Spacer(Modifier.height(LkSpacing.md))
         Text(
-            text = erroMsg,
+            text = mensagemPublicaFalhaSpeedtest(snapshotSpeedtest.causaFalha),
             style = MaterialTheme.typography.titleSmall,
             color = c.error,
             textAlign = TextAlign.Center,

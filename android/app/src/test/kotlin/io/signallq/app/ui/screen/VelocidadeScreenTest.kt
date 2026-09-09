@@ -7,6 +7,7 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import io.signallq.app.feature.speedtest.CausaFalhaSpeedtest
 import io.signallq.app.feature.speedtest.DiagnosticoFasesSpeedtest
 import io.signallq.app.feature.speedtest.DiagnosticoQualidadeSpeedtest
 import io.signallq.app.feature.speedtest.EstadoExecucaoSpeedtest
@@ -50,12 +51,14 @@ class VelocidadeScreenTest {
         fase: FaseSpeedtest = FaseSpeedtest.idle,
         estado: EstadoExecucaoSpeedtest = EstadoExecucaoSpeedtest.executando,
         erroMensagem: String? = null,
+        causaFalha: CausaFalhaSpeedtest? = null,
         resultado: ResultadoSpeedtest? = null,
     ) = SnapshotExecucaoSpeedtest(
         estado = estado,
         progressoPercentual = 50,
         resultado = resultado,
         erroMensagem = erroMensagem,
+        causaFalha = causaFalha,
         faseAtual = fase,
     )
 
@@ -254,7 +257,12 @@ class VelocidadeScreenTest {
         composeRule.setContent {
             SignallQTheme {
                 VelocidadeScreen(
-                    snapshot = snapshot(estado = EstadoExecucaoSpeedtest.erro, erroMensagem = "semRede"),
+                    snapshot =
+                        snapshot(
+                            estado = EstadoExecucaoSpeedtest.erro,
+                            erroMensagem = "download_failed:UnknownHostException: speed.cloudflare.com",
+                            causaFalha = CausaFalhaSpeedtest.DNS_OU_HOSTNAME_INACESSIVEL,
+                        ),
                     localizacaoServidor = null,
                     ispInfo = null,
                     onCancelar = {},
@@ -265,6 +273,8 @@ class VelocidadeScreenTest {
 
         composeRule.onNodeWithText("Erro").assertIsDisplayed()
         composeRule.onNodeWithText("Não foi possível completar o teste").assertIsDisplayed()
+        composeRule.onNodeWithText("Não foi possível acessar o servidor do teste. Verifique sua conexão e tente novamente.").assertIsDisplayed()
+        composeRule.onNodeWithText("UnknownHostException", substring = true).assertDoesNotExist()
         composeRule.onNodeWithText("Testar novamente").assertIsDisplayed()
         composeRule.onNodeWithText("Cancelar").assertIsDisplayed()
     }

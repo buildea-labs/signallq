@@ -8,6 +8,7 @@ import androidx.compose.ui.test.performClick
 import io.signallq.app.ads.AdSlot
 import io.signallq.app.core.network.EstadoConexao
 import io.signallq.app.core.network.SnapshotRede
+import io.signallq.app.feature.speedtest.CausaFalhaSpeedtest
 import io.signallq.app.feature.speedtest.EstadoExecucaoSpeedtest
 import io.signallq.app.feature.speedtest.SnapshotExecucaoSpeedtest
 import io.signallq.app.ui.SignallQTheme
@@ -95,6 +96,35 @@ class SpeedTestScreenTest {
         cta.performClick()
 
         assertEquals("esperava exatamente 1 chamada, teve ${contador.get()}", 1, contador.get())
+    }
+
+    @Test
+    fun `erro de hostname mostra copia publica sem detalhe interno`() {
+        val detalheInterno = "download_failed:UnknownHostException: speed.cloudflare.com"
+        val snapshotComErro =
+            snapshotIdle.copy(
+                estado = EstadoExecucaoSpeedtest.erro,
+                erroMensagem = detalheInterno,
+                causaFalha = CausaFalhaSpeedtest.DNS_OU_HOSTNAME_INACESSIVEL,
+            )
+
+        composeRule.setContent {
+            SignallQTheme {
+                SpeedTestScreen(
+                    snapshotSpeedtest = snapshotComErro,
+                    snapshotRede = snapshotConectado,
+                    ispInfo = null,
+                    localizacaoServidor = null,
+                    onIniciarTeste = {},
+                    onCancelarTeste = {},
+                    onAbrirDnsBenchmark = {},
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("Não foi possível acessar o servidor do teste. Verifique sua conexão e tente novamente.").assertExists()
+        composeRule.onNodeWithText("UnknownHostException", substring = true).assertDoesNotExist()
+        composeRule.onNodeWithText("speed.cloudflare.com", substring = true).assertDoesNotExist()
     }
 
     // =========================================================================

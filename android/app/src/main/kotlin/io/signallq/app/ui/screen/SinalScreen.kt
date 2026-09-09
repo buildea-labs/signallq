@@ -228,7 +228,7 @@ fun SinalScreen(
                 .fillMaxSize()
                 .padding(padding),
         ) {
-            if (!conectado) SignallQOfflineBanner()
+            if (!conectado) SignallQOfflineBanner(estadoConexao = estadoConexao)
             if (conexaoTipo == ConexaoTipo.WIFI && !temPermissaoLocalizacao && !localizacaoSheetDismissed) {
                 LocPermissaoBanner(onClick = { showLocalizacaoSheet = true })
             }
@@ -253,7 +253,7 @@ fun SinalScreen(
                             onSalvarApelido = onSalvarApelido,
                         )
                     } else {
-                        WifiEmptyState()
+                        WifiEmptyState(estadoConexao)
                     }
                 }
                 1 -> {
@@ -267,7 +267,7 @@ fun SinalScreen(
                             wifiLinkSnapshot = wifiLinkSnapshot,
                         )
                     } else {
-                        WifiEmptyState()
+                        WifiEmptyState(estadoConexao)
                     }
                 }
                 else -> {
@@ -447,8 +447,9 @@ private fun SinalTopTabRow(
 // ─── Wi-Fi empty state (quando não está em Wi-Fi) ─────────────────────────────
 
 @Composable
-private fun WifiEmptyState() {
+private fun WifiEmptyState(estadoConexao: EstadoConexao) {
     val c = LocalLkTokens.current
+    val usandoInternetMovel = estadoConexao == EstadoConexao.movel
     Box(
         Modifier
             .fillMaxSize()
@@ -459,7 +460,7 @@ private fun WifiEmptyState() {
             Icon(Icons.Outlined.Wifi, null, tint = c.textTertiary, modifier = Modifier.size(48.dp))
             Spacer(Modifier.height(LkSpacing.lg))
             Text(
-                "Você está usando a internet do chip",
+                if (usandoInternetMovel) "Você está usando a internet móvel" else "Você está sem conexão",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.W600,
                 color = c.textPrimary,

@@ -2,6 +2,7 @@
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -16,6 +17,9 @@ import okhttp3.Protocol
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import timber.log.Timber
+import java.io.InterruptedIOException
+import java.net.SocketTimeoutException
+import java.net.UnknownHostException
 import java.util.Collections
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
@@ -428,7 +432,12 @@ class ExecutorSpeedtestCloudflare(
                     EstadoExecucaoSpeedtest.erro,
                     100,
                     null,
-                    t.message ?: "erroSpeedtest",
+                    erroMensagem = null,
+                    causaFalha =
+                        mapearCausaFalha(
+                            erro = t,
+                            possuiTransporte = possuiTransporte(connectionTypeProvider?.invoke() ?: connectionType),
+                        ),
                 )
             } finally {
                 emExecucao.set(false)
@@ -1137,6 +1146,7 @@ class ExecutorSpeedtestCloudflare(
         progressoPercentual: Int,
         resultado: ResultadoSpeedtest?,
         erroMensagem: String?,
+        causaFalha: CausaFalhaSpeedtest? = null,
     ) {
         val progresso = min(100, max(0, progressoPercentual))
         val vel = velocidadeAtualInterna
@@ -1164,8 +1174,39 @@ class ExecutorSpeedtestCloudflare(
                 bytesConsumidos = bytesConsumidosTotal.get(),
                 progressoGlobal = progresso / 100f,
                 pontosAoVivo = pontosAoVivoInternos.toList(),
+                causaFalha = causaFalha,
             )
     }
+
+    private fun possuiTransporte(connectionType: String?): Boolean =
+        connectionType != null && connectionType != "desconectado"
+
+    /**
+     * Converte a cadeia de exceções apenas no limite que publica o snapshot. O detalhe bruto
+     * não atravessa o contrato de UI; ele já foi registrado por [Timber.e] no chamador.
+     */
+    internal fun mapearCausaFalha(
+        erro: Throwable,
+        possuiTransporte: Boolean,
+    ): CausaFalhaSpeedtest =
+        when {
+            !possuiTransporte -> CausaFalhaSpeedtest.SEM_CONEXAO
+            erro.temCausa<UnknownHostException>() ||
+                erro.temDescricaoDeCausa("UnknownHostException") -> CausaFalhaSpeedtest.DNS_OU_HOSTNAME_INACESSIVEL
+            erro.temCausa<SocketTimeoutException>() ||
+                erro.temCausa<InterruptedIOException>() ||
+                erro.temCausa<TimeoutCancellationException>() ||
+                erro.temDescricaoDeCausa("SocketTimeoutException") ||
+                erro.temDescricaoDeCausa("TimeoutCancellationException") -> CausaFalhaSpeedtest.TIMEOUT
+            else -> CausaFalhaSpeedtest.FALHA_GENERICA
+        }
+
+    private inline fun <reified T : Throwable> Throwable.temCausa(): Boolean =
+        generateSequence(this) { it.cause }.any { it is T }
+
+    /** Prefixos legados de [executarFaseTransferencia] serializam o tipo da causa no texto. */
+    private fun Throwable.temDescricaoDeCausa(tipo: String): Boolean =
+        generateSequence(this) { it.cause }.any { it.message?.contains(tipo) == true }
 
     private fun throughputVazio(encerradaPor: String): ThroughputPhase =
         ThroughputPhase(

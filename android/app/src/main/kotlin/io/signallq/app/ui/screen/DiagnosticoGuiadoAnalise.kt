@@ -1,6 +1,7 @@
 package io.signallq.app.ui.screen
 
 import androidx.compose.runtime.Stable
+import io.signallq.app.feature.speedtest.CausaFalhaSpeedtest
 import io.signallq.app.feature.speedtest.EstadoExecucaoSpeedtest
 import io.signallq.app.feature.speedtest.FaseSpeedtest
 import io.signallq.app.feature.speedtest.SnapshotExecucaoSpeedtest
@@ -83,7 +84,7 @@ fun estadoAnaliseGuiada(snapshot: SnapshotExecucaoSpeedtest): EstadoAnaliseGuiad
             )
         snapshot.estado == EstadoExecucaoSpeedtest.erro ->
             EstadoAnaliseGuiada.Falhou(
-                mensagem = snapshot.erroMensagem ?: MENSAGEM_FALHA_GENERICA,
+                mensagem = mensagemPublicaFalhaSpeedtest(snapshot.causaFalha),
             )
         else -> EstadoAnaliseGuiada.NaoIniciada
     }
@@ -104,6 +105,19 @@ fun etapaEmLinguagemHumana(fase: FaseSpeedtest): String =
     }
 
 const val MENSAGEM_FALHA_GENERICA = "Não consegui concluir a análise agora."
+
+/**
+ * Cópia segura para erros do speedtest. `erroMensagem` é detalhe interno do executor e nunca
+ * deve alcançar uma superfície de produto; a causa nula mantém snapshots antigos seguros.
+ */
+internal fun mensagemPublicaFalhaSpeedtest(causa: CausaFalhaSpeedtest?): String =
+    when (causa) {
+        CausaFalhaSpeedtest.SEM_CONEXAO -> "Sem conexão. Conecte-se a uma rede e tente novamente."
+        CausaFalhaSpeedtest.DNS_OU_HOSTNAME_INACESSIVEL ->
+            "Não foi possível acessar o servidor do teste. Verifique sua conexão e tente novamente."
+        CausaFalhaSpeedtest.TIMEOUT -> "O teste demorou mais que o esperado. Tente novamente."
+        CausaFalhaSpeedtest.FALHA_GENERICA, null -> MENSAGEM_FALHA_GENERICA
+    }
 
 /**
  * O que a tela guiada precisa para conduzir a rota `Analise`.
