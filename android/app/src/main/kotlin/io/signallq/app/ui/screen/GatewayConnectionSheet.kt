@@ -52,6 +52,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import io.signallq.app.core.network.contracts.gateway.GatewayConnectionResultado
 import io.signallq.app.core.network.contracts.gateway.GatewayConnectionService
+import io.signallq.app.core.network.contracts.gateway.GatewayCredentialRequirement
 import io.signallq.app.ui.LkRadius
 import io.signallq.app.ui.LkSpacing
 import io.signallq.app.ui.LkTokens
@@ -87,6 +88,7 @@ internal const val MENSAGEM_GATEWAY_INDISPONIVEL =
 
 private const val TIMEOUT_ALCANCABILIDADE_MS = 2000
 private val PORTAS_ADMIN_ROTEADOR = listOf(80, 443)
+internal const val TP_LINK_INTERNAL_USERNAME = "admin"
 
 /**
  * Alcancabilidade real do gateway (2b-i To-Be) — connect TCP com timeout curto
@@ -131,6 +133,7 @@ private suspend fun alcancavelViaSocket(ip: String): Boolean =
 @Composable
 fun GatewayConnectionSheet(
     ipInicial: String?,
+    credentialRequirement: GatewayCredentialRequirement = GatewayCredentialRequirement.USERNAME_AND_PASSWORD,
     usuarioInicial: String = "",
     senhaInicial: String = "",
     lembrarSenhaInicial: Boolean = false,
@@ -149,6 +152,7 @@ fun GatewayConnectionSheet(
     ) {
         GatewayConnectionSheetContent(
             ipInicial = ipInicial,
+            credentialRequirement = credentialRequirement,
             usuarioInicial = usuarioInicial,
             senhaInicial = senhaInicial,
             lembrarSenhaInicial = lembrarSenhaInicial,
@@ -166,6 +170,7 @@ fun GatewayConnectionSheet(
 @Composable
 internal fun GatewayConnectionSheetContent(
     ipInicial: String?,
+    credentialRequirement: GatewayCredentialRequirement = GatewayCredentialRequirement.USERNAME_AND_PASSWORD,
     usuarioInicial: String,
     senhaInicial: String,
     lembrarSenhaInicial: Boolean,
@@ -179,7 +184,13 @@ internal fun GatewayConnectionSheetContent(
     verificarAlcancabilidade: suspend (String) -> Boolean = ::alcancavelViaSocket,
 ) {
     var ipInput by remember { mutableStateOf(ipInicial.orEmpty()) }
-    var usuarioInput by remember { mutableStateOf(usuarioInicial) }
+    // O Archer C6 fixa `admin` no protocolo. A pessoa não o informa nem o vê,
+    // mas o driver continua recebendo o valor necessário para o handshake.
+    var usuarioInput by remember(credentialRequirement) {
+        mutableStateOf(
+            if (credentialRequirement == GatewayCredentialRequirement.PASSWORD_ONLY) TP_LINK_INTERNAL_USERNAME else usuarioInicial,
+        )
+    }
     var senhaInput by remember { mutableStateOf(senhaInicial) }
     var mostrarSenha by remember { mutableStateOf(false) }
     var lembrarSenha by remember { mutableStateOf(lembrarSenhaInicial || manterConectadoInicial) }
@@ -269,16 +280,18 @@ internal fun GatewayConnectionSheetContent(
             shape = RoundedCornerShape(LkRadius.input),
         )
 
-        OutlinedTextField(
-            value = usuarioInput,
-            onValueChange = { usuarioInput = it },
-            label = { Text("Usuário") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            enabled = !conectando,
-            colors = fieldColors,
-            shape = RoundedCornerShape(LkRadius.input),
-        )
+        if (credentialRequirement == GatewayCredentialRequirement.USERNAME_AND_PASSWORD) {
+            OutlinedTextField(
+                value = usuarioInput,
+                onValueChange = { usuarioInput = it },
+                label = { Text("Usuário") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                enabled = !conectando,
+                colors = fieldColors,
+                shape = RoundedCornerShape(LkRadius.input),
+            )
+        }
 
         OutlinedTextField(
             value = senhaInput,
@@ -307,7 +320,12 @@ internal fun GatewayConnectionSheetContent(
             modifier = Modifier.testTag("gateway_link_guia_credenciais"),
         ) {
             Text(
-                text = "Não sabe o usuário e a senha?",
+                text =
+                    if (credentialRequirement == GatewayCredentialRequirement.PASSWORD_ONLY) {
+                        "Não sabe a senha?"
+                    } else {
+                        "Não sabe o usuário e a senha?"
+                    },
                 style = MaterialTheme.typography.bodyMedium,
                 color = c.primary,
             )
@@ -326,7 +344,12 @@ internal fun GatewayConnectionSheetContent(
 
         ToggleRow(
             titulo = "Lembrar senha",
-            subtitulo = "Salvar usuário e senha neste aparelho",
+            subtitulo =
+                if (credentialRequirement == GatewayCredentialRequirement.PASSWORD_ONLY) {
+                    "Salvar a senha neste aparelho"
+                } else {
+                    "Salvar usuário e senha neste aparelho"
+                },
             checked = lembrarSenha,
             // "Manter conectado" implica lembrar senha — nao da pra reconectar
             // sozinho sem credencial salva, entao trava o toggle nesse caso.

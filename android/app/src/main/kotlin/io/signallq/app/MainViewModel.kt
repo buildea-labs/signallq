@@ -1538,8 +1538,24 @@ class MainViewModel
             lembrarSenha: Boolean,
             manterConectado: Boolean,
             bssidAtual: String?,
+            driverIdConfirmado: String? = null,
         ) {
             viewModelScope.launch {
+                // O C6 só chega aqui com driver confirmado depois da leitura
+                // autenticada. Não toca no perfil global Nokia, inclusive host:
+                // os dois aparelhos podem coexistir na mesma topologia.
+                if (usaPerfilGatewayIsolado(driverIdConfirmado)) {
+                    if (lembrarSenha) {
+                        preferenciasAppRepository.salvarCredenciaisGatewayPerfil(
+                            driverId = DRIVER_ID_TP_LINK_ARCHER_C6,
+                            host = ip,
+                            username = usuario,
+                            password = senha,
+                            bssidVinculado = if (manterConectado) bssidAtual else null,
+                        )
+                    }
+                    return@launch
+                }
                 preferenciasAppRepository.definirModemHost(ip.ifBlank { null })
                 if (lembrarSenha) {
                     preferenciasAppRepository.definirModemUsername(usuario)

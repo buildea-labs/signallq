@@ -163,6 +163,10 @@ class PreferenciasAppRepository(
                 credenciaisModem.salvarBssidVinculado(bssidLegado)
                 context.dataStore.edit { it.remove(chaveGatewaySessionBssidLegado) }
             }
+            // A origem antiga tinha só um conjunto global. Ela é preservada como
+            // `legacy` até uma leitura autenticada confirmar qual driver/host o
+            // utiliza; não inferimos isso pelo IP para não cruzar Nokia e TP-Link.
+            credenciaisModem.migrarPerfilLegadoSeNecessario(prefs[chaveModemHost])
         }
     }
 
@@ -387,6 +391,39 @@ class PreferenciasAppRepository(
     suspend fun definirGatewaySessionBssid(bssid: String?) {
         withContext(ioDispatcher) { credenciaisModem.salvarBssidVinculado(bssid) }
     }
+
+    /** Lê exclusivamente a credencial do driver e host confirmados. */
+    suspend fun lerCredenciaisGatewayPerfil(
+        driverId: String,
+        host: String,
+    ): CredenciaisGatewayPerfil? =
+        withContext(ioDispatcher) { credenciaisModem.lerPerfil(driverId, host) }
+
+    /**
+     * Persiste um perfil cifrado sem tocar no legado nem nos perfis de outros
+     * equipamentos. O BSSID é opcional e só serve para a autoconexão local.
+     */
+    suspend fun salvarCredenciaisGatewayPerfil(
+        driverId: String,
+        host: String,
+        username: String,
+        password: String,
+        bssidVinculado: String?,
+    ) {
+        withContext(ioDispatcher) {
+            credenciaisModem.salvarPerfil(driverId, host, username, password, bssidVinculado)
+        }
+    }
+
+    /**
+     * Promove o perfil global somente após o caller obter confirmação
+     * autenticada do driver. O store não deduz driver por endereço IP.
+     */
+    suspend fun promoverCredenciaisGatewayLegadas(
+        driverId: String,
+        host: String,
+    ): CredenciaisGatewayPerfil? =
+        withContext(ioDispatcher) { credenciaisModem.promoverPerfilLegadoSeNecessario(driverId, host) }
 
     suspend fun definirTemaSelecionado(tema: String) {
         withContext(ioDispatcher) { context.dataStore.edit { it[chaveTemaSelecionado] = tema } }
@@ -698,6 +735,7 @@ class PreferenciasAppRepository(
             credenciaisModem.salvarUsername(CredenciaisModemStore.DEFAULT_USERNAME)
             credenciaisModem.salvarPassword(CredenciaisModemStore.DEFAULT_PASSWORD)
             credenciaisModem.salvarBssidVinculado(null)
+            credenciaisModem.limparPerfis()
         }
     }
 }

@@ -23,6 +23,8 @@ data class DeviceDriverProfile(
     val canonicalGatewayIps: List<String> = emptyList(),
     val deviceType: DeviceType,
     val supportLevel: SupportLevel,
+    /** Campos que a pessoa informa na UI administrativa deste firmware. */
+    val credentialRequirement: GatewayCredentialRequirement = GatewayCredentialRequirement.USERNAME_AND_PASSWORD,
     /**
      * Declara se este driver expoe capabilities de fibra. So tem efeito real
      * quando [deviceType] == [DeviceType.ONT_GPON] — [EquipmentClassifier]
@@ -90,6 +92,7 @@ object DeviceDriverCatalog {
                 canonicalGatewayIps = listOf("192.168.0.1"),
                 deviceType = DeviceType.ROUTER,
                 supportLevel = SupportLevel.LAB_VALIDATED,
+                credentialRequirement = GatewayCredentialRequirement.PASSWORD_ONLY,
                 fibraCapable = false,
                 displayModel = "Archer C6",
             ),

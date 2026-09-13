@@ -39,6 +39,53 @@ Nomes de modelos podem expor detalhe operacional ou mudar. O Worker usa allowlis
 
 Não muda motor determinístico, severidade, recomendação, persistência de histórico nem a exigência de resposta remota no Assist.
 
+## TP-Link Archer C6/A6 — acesso LAN e leitura real
+
+### Problema e comportamento esperado
+
+O catálogo classifica o Archer C6/A6 como `LAB_VALIDATED`, mas o único `GatewayConnectionService` de produção retorna `Indisponivel`; a única leitura real é a da ONT Nokia. O Archer C6 conectado deve aceitar somente a senha que a sua UI administrativa pede (o usuário de protocolo é internamente `admin`), autenticar de fato e produzir um `LocalNetworkDeviceSnapshot` normalizado de roteador — WAN, LAN, rádios Wi-Fi e clientes, sem fibra. A ONT Nokia continua acessível e legível pelo seu fluxo atual; nenhuma credencial do C6 pode ser aplicada à ONT, ou vice-versa.
+
+### Arquitetura atual relevante
+
+- `:core:network` já é a fronteira dos contratos de gateway, catálogo/fingerprint e `LocalNetworkDeviceSnapshot`; este último foi desenhado para receber TP-Link, mas hoje só `NokiaLocalDeviceMapper` o preenche.
+- `:feature:fibra` contém o cliente, sessão e parser específicos da Nokia. Ele não é uma casa semântica para o protocolo de roteador TP-Link.
+- A UI chama `GatewayConnectionService`, mas `AppShell` injeta o default indisponível. O formulário exige `Usuário`, embora o firmware `tplink-stok-luci` use `admin` fixo.
+- `CredenciaisModemStore` cifra usuário, senha e BSSID, mas mantém apenas um perfil global. Na topologia observada há C6 (`192.168.0.1`) atrás da Nokia (`192.168.1.x`), portanto um único perfil pode sobrescrever o outro.
+
+### Decisão
+
+1. Criar `:feature:router` para o driver TP-Link, sem mover nem reescrever o driver Nokia. O módulo depende de `:core:network` e expõe uma fachada pequena de acesso/leitura; `:app` só orquestra drivers e consome os contratos normalizados.
+2. Implementar `TpLinkStokLuciClient` e `TpLinkArcherMapper` nesse módulo. O cliente reproduz exclusivamente o handshake confirmado no field-map (`keys → auth → login`, RSA PKCS#1 v1.5, AES-CBC/PKCS7, cookie `sysauth` e `stok`) e limita a primeira fatia a operações de leitura. O mapper lê `status?form=all`, mais as leituras necessárias de Wi-Fi/OneMesh, e gera `LocalNetworkDeviceSnapshot` com `DeviceType.ROUTER`, `fiber = null`, capabilities reais e warnings tipados para campos parciais.
+3. Estender o contrato de acesso em `:core:network` para separar a exigência de credencial da tentativa de login: `PASSWORD_ONLY` (rótulo TP-Link, usuário interno `admin`) e `USERNAME_AND_PASSWORD` (Nokia/desconhecido). A resolução é uma sondagem sem credencial, limitada a IP privado/local e às assinaturas conhecidas; modelo só é promovido a C6/A6 após a leitura autenticada de `get_deviceInfo`/OneMesh. Equipamento desconhecido não recebe senha automaticamente.
+4. `:app` injeta um despachante real no lugar do `GatewayConnectionServiceIndisponivelPadrao`: TP-Link reconhecido usa o driver novo; Nokia preserva o caminho existente de `ExecutorFibra`; erro de fingerprint retorna `Indisponivel`/falha amigável sem tentativa de senha. A UI mostra só “Senha” quando o perfil resolvido for TP-Link e não persiste/exibe `admin` como dado digitado.
+5. Trocar o armazenamento global por perfis cifrados, indexados por `driverId + host` e vinculados opcionalmente ao BSSID. Migrar o perfil legado uma única vez como `legacy`; após primeira identificação bem-sucedida, reclassificá-lo para o driver/host correspondente. Conservar o perfil Nokia durante a adição do C6. Sessões HTTP ficam apenas em memória e são invalidadas em troca de BSSID, desconexão, erro de autenticação e encerramento do processo.
+
+### Contratos e fluxo
+
+`UI → resolução não autenticada → requisito de login → driver selecionado → sessão efêmera → leitura normalizada → LocalNetworkDeviceSnapshot → UI/filtro seguro`.
+
+O snapshot bruto não ganha senha, `stok`, `sysauth`, chave/IV AES, payload criptografado nem `psk_key`; esses valores não entram em logs, analytics, IA, banco ou mensagens de erro. Para IA/analytics permanece obrigatório `LocalDeviceSafeFilter`.
+
+O resultado de acesso mantém `Sucesso`, `Falha` e `Indisponivel` para consumidores atuais, mas a implementação deve ter causas internas fechadas (host inválido, não suportado, credencial inválida, sessão expirada, timeout, resposta inválida) traduzidas uma vez para cópia segura. `Sucesso` só ocorre depois de login confirmado e de uma leitura autenticada mínima; nunca por socket aberto ou por reconhecimento do IP.
+
+### Compatibilidade, falhas e rollback
+
+- Nokia não passa pelo crypto TP-Link e continua usando `NokiaModemClient`/`ExecutorFibra`; o despachante escolhe por fingerprint, nunca pelo IP canônico isoladamente.
+- Firmware TP-Link que responde à família mas não confirma C6/A6 fica `PARSER_IMPORTED`/não suportado para login automático nesta fatia; não recebe o selo de validado por semelhança.
+- Timeout, portal cativo, 401/login rejeitado, `stok` expirado, cookie ausente e JSON/AES inválido encerram a sessão e deixam os dados anteriores intactos, com mensagem amigável e nova tentativa manual possível.
+- Rollback é retirar o binding do despachante novo: Nokia e o formulário legado continuam operando; perfis cifrados adicionais permanecem inertes e não são apagados automaticamente.
+
+### Testes e validação
+
+- Unidade hermética (fixtures/MockWebServer): handshake completo, `admin` interno sem campo de UI, cifra/decifra, URL/assinatura, cookie+stok, credencial incorreta, token expirado, timeout e resposta malformada sem vazar segredo.
+- Mapper: Archer C6 e alias A6 v2, WAN/LAN, 2,4/5 GHz, OneMesh/clientes, campos ausentes, exclusão explícita de `psk_key`, `fiber = null` e capabilities corretas.
+- Contrato/app: seleção TP-Link/Nokia/desconhecido, formulário password-only, perfis C6 e Nokia coexistentes, migração do perfil legado, BSSID divergente, `Sucesso` apenas após leitura e regressão dos fluxos Nokia.
+- Em hardware: com o C6 conectado, validar login com somente a senha, leitura real de modelo e ao menos WAN/LAN/Wi-Fi; repetir leitura da Nokia na mesma rede para comprovar que os dois perfis não cruzaram. Breno cobre Wi-Fi real, troca de rede, app em background e revisão de logs/armazenamento.
+
+### Riscos e não-objetivos
+
+O firmware stok-luci não é um padrão estável entre modelos; o suporte validado desta fatia é C6/A6 v2 observado, não toda a família TP-Link/Mercusys. Não haverá alteração de configurações, reboot, leitura/exposição de senha Wi-Fi, descoberta ativa ampla, envio de dados brutos ao backend nem promoção de outros modelos a `LAB_VALIDATED`.
+
 ## Modo gamer — validade da medição e reteste
 
 ### Problema e decisão
