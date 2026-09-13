@@ -73,6 +73,7 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.signallq.app.ads.AdSlot
@@ -842,6 +843,23 @@ private fun corDoTom(
     }
 
 @Composable
+internal fun HistoricoConclusaoTexto(
+    texto: String,
+    cor: Color,
+    modifier: Modifier = Modifier,
+) {
+    Text(
+        text = texto,
+        style = MaterialTheme.typography.bodySmall,
+        color = cor,
+        maxLines = 2,
+        softWrap = true,
+        overflow = TextOverflow.Ellipsis,
+        modifier = modifier,
+    )
+}
+
+@Composable
 private fun HistoricoCard(
     medicao: MedicaoEntity,
     selectionMode: Boolean = false,
@@ -938,12 +956,7 @@ private fun HistoricoCard(
                 )
             }
             Spacer(Modifier.height(LkSpacing.xs))
-            Text(
-                text = conclusao.conclusao,
-                style = MaterialTheme.typography.bodySmall,
-                color = corConclusao,
-                maxLines = 1,
-            )
+            HistoricoConclusaoTexto(texto = conclusao.conclusao, cor = corConclusao)
             Spacer(Modifier.height(LkSpacing.md))
             Row(
                 modifier = Modifier.fillMaxWidth(),
