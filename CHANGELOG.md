@@ -14,6 +14,20 @@ O formato é baseado em [Keep a Changelog](https://keepachangelog.com/) e este p
 
 ---
 
+## [1.0.8] — 2026-09-13
+
+### Adicionado
+
+- Suporte ao roteador TP-Link Archer C6 e aviso de indisponibilidade de serviços externos.
+
+### Alterado
+
+- Velocímetro e carregamento do Assist mais fluidos durante a análise.
+
+### Corrigido
+
+- Texto das conclusões no Histórico não é mais cortado em uma única linha.
+
 ## [1.0.6] — 2026-09-07
 
 ### Corrigido
