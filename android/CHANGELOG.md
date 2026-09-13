@@ -9,6 +9,18 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/).
 
 ---
 
+## [1.0.8] — 2026-09-13
+
+### Adicionado
+- Suporte ao roteador TP-Link Archer C6, com solicitação apenas das credenciais que o equipamento exige.
+- Aviso de indisponibilidade de serviços externos, sem transformar a ocorrência em diagnóstico local.
+
+### Alterado
+- Velocímetro e carregamento do Assist mais fluidos durante a análise.
+
+### Corrigido
+- Conclusões no Histórico passam a quebrar em até duas linhas, evitando texto cortado na lista.
+
 ## [1.0.6] — 2026-09-07
 
 ### Corrigido
