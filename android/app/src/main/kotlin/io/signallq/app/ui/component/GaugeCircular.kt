@@ -3,6 +3,7 @@
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Box
@@ -28,6 +29,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.signallq.app.ui.LocalLkTokens
 
+private const val GAUGE_ANIMATION_DURATION_MILLIS = 220
+
 @Composable
 fun GaugeCircular(
     progressoGlobal: Float,
@@ -41,9 +44,26 @@ fun GaugeCircular(
     val c = LocalLkTokens.current
     val density = LocalDensity.current
 
+    // A coleta continua sendo a fonte de verdade. Esta interpolação existe apenas para que o
+    // ponteiro e o número acompanhem amostras consecutivas sem saltos perceptíveis. Valor
+    // ausente, inválido ou zero não é animado: some imediatamente para não manter na tela uma
+    // velocidade velha após cancelamento, falha ou troca de fase.
+    val velocidadeAlvo = normalizarVelocidadeDoGauge(velocidadeMbps)
+    val velocidadeAnimada by animateFloatAsState(
+        targetValue = velocidadeAlvo,
+        animationSpec =
+            if (velocidadeAlvo == 0f) {
+                snap()
+            } else {
+                tween(durationMillis = GAUGE_ANIMATION_DURATION_MILLIS, easing = FastOutSlowInEasing)
+            },
+        label = "gaugeSpeed",
+    )
+    val velocidadeExibida = velocidadeVisualDoGauge(velocidadeAlvo, velocidadeAnimada)
+
     val progressoAnimado by animateFloatAsState(
         targetValue = progressoGlobal.coerceIn(0f, 1f),
-        animationSpec = tween(durationMillis = 500, easing = FastOutSlowInEasing),
+        animationSpec = tween(durationMillis = GAUGE_ANIMATION_DURATION_MILLIS, easing = FastOutSlowInEasing),
         label = "gaugeProgress",
     )
     val corAnimada by animateColorAsState(
@@ -105,7 +125,7 @@ fun GaugeCircular(
         // Centro: número + unidade + rótulo da fase (ordem alinhada ao protótipo Speed.jsx)
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
-                text = formatarVelocidade(velocidadeMbps),
+                text = formatarVelocidade(velocidadeExibida),
                 // MD3 exception: hero display metric for speed gauge — intentionally exceeds displayLarge (57sp)
                 fontSize = 72.sp,
                 fontWeight = FontWeight.Bold,
@@ -115,7 +135,7 @@ fun GaugeCircular(
             )
             Spacer(Modifier.height(2.dp))
             Text(
-                text = unidadeDisplay(velocidadeMbps, unidade),
+                text = unidadeDisplay(velocidadeExibida, unidade),
                 fontSize = MaterialTheme.typography.bodySmall.fontSize,
                 color = c.textTertiary,
                 letterSpacing = 0.5.sp,
@@ -142,6 +162,14 @@ private fun formatarVelocidade(mbps: Float): String =
         mbps >= 100f -> "%.0f".format(mbps)
         else -> "%.1f".format(mbps)
     }
+
+internal fun normalizarVelocidadeDoGauge(mbps: Float): Float =
+    mbps.takeIf { it.isFinite() && it > 0f } ?: 0f
+
+internal fun velocidadeVisualDoGauge(
+    velocidadeAlvo: Float,
+    velocidadeAnimada: Float,
+): Float = if (velocidadeAlvo == 0f) 0f else velocidadeAnimada
 
 private fun unidadeDisplay(
     mbps: Float,

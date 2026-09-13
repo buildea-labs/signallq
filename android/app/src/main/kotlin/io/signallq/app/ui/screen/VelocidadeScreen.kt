@@ -37,12 +37,9 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.withFrameMillis
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -71,7 +68,6 @@ import io.signallq.app.ui.LocalLkTokens
 import io.signallq.app.ui.component.GaugeCircular
 import io.signallq.app.ui.component.corConteudo
 import io.signallq.app.ui.component.icone
-import kotlinx.coroutines.isActive
 import androidx.compose.animation.core.tween as tweenSpec
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -190,21 +186,9 @@ fun VelocidadeScreen(
                         .fillMaxWidth(),
                 contentAlignment = Alignment.Center,
             ) {
-                // Suavização do número: 0.25 * target + 0.75 * rendered por frame (~60fps)
-                var renderedMbps by remember { mutableFloatStateOf(0f) }
-                val snapshotState = rememberUpdatedState(snapshot)
-                LaunchedEffect(Unit) {
-                    while (isActive) {
-                        withFrameMillis {
-                            val target = snapshotState.value.velocidadeAtualMbps.toFloat()
-                            renderedMbps = 0.25f * target + 0.75f * renderedMbps
-                        }
-                    }
-                }
-
                 val velocidadeExibida =
                     when (fase) {
-                        FaseSpeedtest.download, FaseSpeedtest.upload -> renderedMbps
+                        FaseSpeedtest.download, FaseSpeedtest.upload -> snapshot.velocidadeAtualMbps.toFloat()
                         else -> 0f
                     }
 
