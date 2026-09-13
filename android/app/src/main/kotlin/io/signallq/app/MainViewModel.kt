@@ -99,6 +99,8 @@ import io.signallq.app.monitoramento.MonitoramentoScheduler
 import io.signallq.app.network.IspInfoCache
 import io.signallq.app.notificacao.SignallQNotificationHelper
 import io.signallq.app.review.ReviewPromptPolicy
+import io.signallq.app.servicestatus.ServiceStatusRepository
+import io.signallq.app.servicestatus.StatusServicosUiState
 import io.signallq.app.speedtest.SpeedtestPersistenceCoordinator
 import io.signallq.app.ui.BancoOperadoras
 import io.signallq.app.ui.ConnectionNodeType
@@ -207,7 +209,10 @@ class MainViewModel
          *  para decidir a fonte do proprio relatorio -- nunca pode divergir dentro da mesma
          *  sessao (as duas decisoes leem a mesma flag, do mesmo provider). */
         private val featureFlagProvider: FeatureFlagProvider,
+        private val serviceStatusRepository: ServiceStatusRepository,
     ) : AndroidViewModel(application) {
+        val statusServicosUiState: StateFlow<StatusServicosUiState> = serviceStatusRepository.uiState
+
         private companion object {
             const val LOG_TAG = "SignallQSpeedtestSuite"
             const val DNS_CACHE_TTL_MS = 15 * 60 * 1_000L
@@ -1584,6 +1589,17 @@ class MainViewModel
                     MonitoramentoScheduler.cancelar(getApplication())
                 }
             }
+        }
+
+        fun atualizarStatusServicos() {
+            viewModelScope.launch { serviceStatusRepository.atualizar() }
+        }
+
+        fun definirSeguimentoServico(
+            serviceId: String,
+            ativo: Boolean,
+        ) {
+            serviceStatusRepository.definirSeguimento(serviceId, ativo)
         }
 
         fun definirNotificacaoLatenciaAtiva(ativa: Boolean) {

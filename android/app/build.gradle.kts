@@ -123,6 +123,13 @@ android {
             "GAME_LATENCY_PROBE_URL",
             "\"https://signallq-game-latency-probe.giammattey-luiz.workers.dev/probe\"",
         )
+        // Catálogo público de disponibilidade, operado pelo Linka. Não é segredo e fica
+        // isolado do endpoint de diagnóstico: um incidente externo nunca vira score local.
+        buildConfigField(
+            "String",
+            "SERVICE_STATUS_API_URL",
+            "\"https://linka-assist-relay.buildealabs.workers.dev/v1/service-status\"",
+        )
     }
 
     signingConfigs {

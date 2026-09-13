@@ -13,6 +13,7 @@ import io.signallq.app.R
 
 object SignallQNotificationHelper {
     private const val CANAL_ID = "linka_monitoramento"
+    private const val CANAL_ID_STATUS_SERVICOS = "signallq_status_servicos"
     private const val PREFS_NAME = "linka_notif_cooldown"
     private const val KEY_CONTAGEM_DIA = "contagem_dia"
     private const val KEY_DATA_CONTAGEM = "data_contagem"
@@ -43,6 +44,13 @@ object SignallQNotificationHelper {
             ).apply { description = "Alertas sobre a qualidade da sua conexão" }
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         manager.createNotificationChannel(canal)
+        manager.createNotificationChannel(
+            NotificationChannel(
+                CANAL_ID_STATUS_SERVICOS,
+                "Status de sites e aplicativos",
+                NotificationManager.IMPORTANCE_DEFAULT,
+            ).apply { description = "Alertas dos serviços que você escolheu acompanhar" },
+        )
     }
 
     fun notificarLatenciaAlta(
@@ -102,18 +110,34 @@ object SignallQNotificationHelper {
         )
     }
 
+    fun notificarServicoIndisponivel(
+        context: Context,
+        serviceId: String,
+        serviceName: String,
+        summary: String,
+    ) {
+        disparar(
+            context = context,
+            id = 10_000 + (serviceId.hashCode() and 0x7fff),
+            titulo = "$serviceName apresenta instabilidade",
+            corpo = summary,
+            canalId = CANAL_ID_STATUS_SERVICOS,
+        )
+    }
+
     private fun disparar(
         context: Context,
         id: Int,
         titulo: String,
         corpo: String,
+        canalId: String = CANAL_ID,
     ) {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val agora = System.currentTimeMillis()
 
         // verificar cooldown por tipo
         val ultimoDisparo = prefs.getLong("ultimo_$id", 0L)
-        val cooldown = cooldownMs[id] ?: return
+        val cooldown = cooldownMs[id] ?: 4 * 60 * 60 * 1000L
         if (agora - ultimoDisparo < cooldown) return
 
         // verificar teto diário
@@ -132,7 +156,7 @@ object SignallQNotificationHelper {
 
         val notificacao =
             NotificationCompat
-                .Builder(context, CANAL_ID)
+                .Builder(context, canalId)
                 .setSmallIcon(R.drawable.ic_notification_signallq)
                 .setContentTitle(titulo)
                 .setContentText(corpo)

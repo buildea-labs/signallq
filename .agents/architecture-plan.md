@@ -1,5 +1,9 @@
 # Architecture Plan — trabalho corrente
 
+## Status de sites e aplicativos — consumidor da API Linka
+
+O SignallQ consome somente o contrato público de leitura `v1/service-status` já operado pelo Linka (catálogo e incidentes). A escolha de cada serviço e a revisão já notificada ficam locais; `WorkManager` consulta o feed em rede disponível e emite uma notificação Android apenas para incidentes novos ou revisados. O estado externo não alimenta score, finding ou recomendação do diagnóstico da conexão. Falha da API mantém escolhas e mostra atualização indisponível, nunca “operando normalmente”. Não há escrita na API Linka, token push, segredo ou mudança de infraestrutura nesta fatia.
+
 > Use somente quando o gate arquitetural do `AGENTS.md` for acionado. Camillo mantém este artefato curto e proporcional à mudança.
 
 ## Problema

@@ -282,6 +282,7 @@ class MainActivity : ComponentActivity() {
 
             // --- Flows individuais com distinctUntilChanged no ViewModel ---
             val monitoramentoAtivo = viewModel.monitoramentoAtivo.collectAsStateWithLifecycle().value
+            val statusServicosUiState = viewModel.statusServicosUiState.collectAsStateWithLifecycle().value
 
             // --- Outros flows de estado ---
             val speedtestPendenteModoMovel =
@@ -583,6 +584,9 @@ class MainActivity : ComponentActivity() {
                                 onDefinirNotificacaoDnsAtiva = { viewModel.definirNotificacaoDnsAtiva(it) },
                                 onDefinirNotificacaoRssiAtiva = { viewModel.definirNotificacaoRssiAtiva(it) },
                                 onDefinirNotificacaoSemInternetAtiva = { viewModel.definirNotificacaoSemInternetAtiva(it) },
+                                statusServicos = statusServicosUiState,
+                                onAtualizarStatusServicos = { viewModel.atualizarStatusServicos() },
+                                onDefinirSeguimentoServico = { serviceId, ativo -> viewModel.definirSeguimentoServico(serviceId, ativo) },
                                 onSalvarPerfil = { nome, fotoUri -> viewModel.salvarPerfil(nome, fotoUri) },
                                 onSalvarLimiteAlerta = { limite -> viewModel.salvarLimiteAlerta(limite) },
                                 movelSnapshot = movelSnapshot,
