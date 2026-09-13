@@ -19,6 +19,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -30,6 +31,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import io.signallq.app.monitoramento.MonitoramentoScheduler
 import io.signallq.app.monitoramento.OemKillInfo
+import io.signallq.app.servicestatus.StatusServicosUiState
 import io.signallq.app.ui.LkSpacing
 import io.signallq.app.ui.LkTokens
 import io.signallq.app.ui.component.ConfirmacaoDialog
@@ -58,10 +60,15 @@ internal fun MonitoramentoSheet(
     onDefinirNotificacaoDnsAtiva: (Boolean) -> Unit,
     onDefinirNotificacaoRssiAtiva: (Boolean) -> Unit,
     onDefinirNotificacaoSemInternetAtiva: (Boolean) -> Unit,
+    statusServicos: StatusServicosUiState,
+    onAtualizarStatusServicos: () -> Unit,
+    onDefinirSeguimentoServico: (String, Boolean) -> Unit,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var showConfirmAnalise by remember { mutableStateOf(false) }
     var showConfirmMonitoramento by remember { mutableStateOf(false) }
+
+    androidx.compose.runtime.LaunchedEffect(Unit) { onAtualizarStatusServicos() }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -170,6 +177,38 @@ internal fun MonitoramentoSheet(
                     onCheckedChange = onDefinirNotificacaoRssiAtiva,
                 )
             }
+            LkSheetDivider()
+            Text(
+                text = "Sites e aplicativos",
+                style = MaterialTheme.typography.titleMedium,
+                color = c.textPrimary,
+                fontWeight = FontWeight.W700,
+            )
+            Text(
+                text =
+                    if (statusServicos.atualizacaoIndisponivel) {
+                        "Não foi possível atualizar o status agora. Seus alertas continuam salvos."
+                    } else {
+                        "Escolha quais serviços você quer acompanhar. O alerta reflete o status externo, não a sua conexão."
+                    },
+                style = MaterialTheme.typography.bodyMedium,
+                color = c.textSecondary,
+            )
+            statusServicos.servicos.forEach { service ->
+                if (service.elegivelParaAlerta && service.monitoramentoAtivo) {
+                    LkSheetDivider()
+                    ToggleItem(
+                        c = c,
+                        icon = Icons.Outlined.Language,
+                        label = service.nome,
+                        subtitle = service.categoria,
+                        checked = service.id in statusServicos.seguindo,
+                        onCheckedChange = { onDefinirSeguimentoServico(service.id, it) },
+                    )
+                }
+            }
+            if (statusServicos.carregando) Text("Atualizando serviços…", color = c.textSecondary)
+            TextButton(onClick = onAtualizarStatusServicos) { Text("Atualizar status") }
             if (monitoramentoAtivo && OemKillInfo.fabricanteRiscoAlto) {
                 LkSheetDivider()
                 LkInfoCallout(

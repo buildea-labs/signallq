@@ -78,6 +78,7 @@ import io.signallq.app.feature.router.TpLinkReadResult
 import io.signallq.app.feature.speedtest.EstadoExecucaoSpeedtest
 import io.signallq.app.feature.speedtest.modoAutomaticoPara
 import io.signallq.app.modogamer.resolverPadraoModoGamer
+import io.signallq.app.servicestatus.StatusServicosUiState
 import io.signallq.app.ui.GatewayInfo
 import io.signallq.app.ui.HistoryPoint
 import io.signallq.app.ui.IspInfo
@@ -210,6 +211,9 @@ fun AppShell(
     onDefinirNotificacaoDnsAtiva: (Boolean) -> Unit,
     onDefinirNotificacaoRssiAtiva: (Boolean) -> Unit,
     onDefinirNotificacaoSemInternetAtiva: (Boolean) -> Unit,
+    statusServicos: StatusServicosUiState = StatusServicosUiState(),
+    onAtualizarStatusServicos: () -> Unit = {},
+    onDefinirSeguimentoServico: (String, Boolean) -> Unit = { _, _ -> },
     onSalvarPerfil: (nome: String, fotoUri: String?) -> Unit,
     onSalvarLimiteAlerta: (Int) -> Unit,
     movelSnapshot: MovelSnapshot?,
@@ -1480,6 +1484,9 @@ fun AppShell(
                 onDefinirNotificacaoDnsAtiva = onDefinirNotificacaoDnsAtiva,
                 onDefinirNotificacaoRssiAtiva = onDefinirNotificacaoRssiAtiva,
                 onDefinirNotificacaoSemInternetAtiva = onDefinirNotificacaoSemInternetAtiva,
+                statusServicos = statusServicos,
+                onAtualizarStatusServicos = onAtualizarStatusServicos,
+                onDefinirSeguimentoServico = onDefinirSeguimentoServico,
             )
         }
 
