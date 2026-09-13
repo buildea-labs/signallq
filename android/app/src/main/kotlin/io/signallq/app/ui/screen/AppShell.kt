@@ -49,6 +49,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import io.signallq.app.BuildConfig
+import io.signallq.app.DRIVER_ID_TP_LINK_ARCHER_C6
 import io.signallq.app.R
 import io.signallq.app.bssidElegivelParaAutoconexao
 import io.signallq.app.core.database.MedicaoEntity
@@ -62,13 +63,18 @@ import io.signallq.app.core.network.DiagnosticoPlanoIniciado
 import io.signallq.app.core.network.EstadoConexao
 import io.signallq.app.core.network.SnapshotRede
 import io.signallq.app.core.network.contracts.gateway.GatewayConnectionResultado
-import io.signallq.app.core.network.contracts.gateway.GatewayConnectionServiceIndisponivelPadrao
+import io.signallq.app.core.network.contracts.gateway.GatewayConnectionService
+import io.signallq.app.core.network.contracts.gateway.GatewayCredentialRequirement
 import io.signallq.app.core.network.contracts.localdevice.LocalNetworkDeviceSnapshot
 import io.signallq.app.core.telephony.MovelSimSnapshot
 import io.signallq.app.core.telephony.MovelSnapshot
 import io.signallq.app.feature.devices.ehClienteFinal
 import io.signallq.app.feature.dns.SnapshotBenchmarkDns
 import io.signallq.app.feature.fibra.SnapshotFibra
+import io.signallq.app.feature.router.TpLinkArcherC6Driver
+import io.signallq.app.feature.router.TpLinkFailure
+import io.signallq.app.feature.router.TpLinkProbeResult
+import io.signallq.app.feature.router.TpLinkReadResult
 import io.signallq.app.feature.speedtest.EstadoExecucaoSpeedtest
 import io.signallq.app.feature.speedtest.modoAutomaticoPara
 import io.signallq.app.modogamer.resolverPadraoModoGamer
@@ -78,8 +84,10 @@ import io.signallq.app.ui.IspInfo
 import io.signallq.app.ui.LocalLkTokens
 import io.signallq.app.ui.resumoBandasWifi
 import io.signallq.app.ui.state.UiState
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 private typealias Overlay = AppShellOverlay
 
@@ -158,7 +166,8 @@ fun AppShell(
         lembrarSenha: Boolean,
         manterConectado: Boolean,
         bssidAtual: String?,
-    ) -> Unit = { _, _, _, _, _, _ -> },
+        driverIdConfirmado: String?,
+    ) -> Unit = { _, _, _, _, _, _, _ -> },
     onDefinirTemaSelecionado: (String) -> Unit,
     onDefinirAnaliseAvancada: (Boolean) -> Unit,
     nomeUsuario: String,
@@ -349,7 +358,94 @@ fun AppShell(
     // network) e o unico default aceitavel ate la: nunca retorna Sucesso, so Indisponivel — nao
     // aceita nem tenta validar credencial nenhuma. Continua existindo so para a Sheet/autoconexao
     // funcionarem sem null-check espalhado; a integracao real (fora deste escopo) e a #547.
-    val gatewayConnectionServiceIndisponivel = GatewayConnectionServiceIndisponivelPadrao
+    var tpLinkSnapshot by remember { mutableStateOf<LocalNetworkDeviceSnapshot?>(null) }
+    val bssidAtual = snapshotRede.wifiLinkSnapshot?.bssid
+    // Só é preenchido depois da leitura autenticada mínima. A sondagem sem senha
+    // escolhe a UI, mas não é evidência suficiente para escolher armazenamento.
+    var driverIdGatewayConfirmado by remember { mutableStateOf<String?>(null) }
+    var tpLinkHostSessao by remember { mutableStateOf<String?>(null) }
+    var tpLinkSenhaSessao by remember { mutableStateOf<String?>(null) }
+    var tpLinkBssidSessao by remember { mutableStateOf<String?>(null) }
+    var requisitoCredencialGateway by remember { mutableStateOf(GatewayCredentialRequirement.USERNAME_AND_PASSWORD) }
+    LaunchedEffect(gatewayIpDetectado) {
+        requisitoCredencialGateway =
+            if (gatewayIpDetectado != null &&
+                withContext(Dispatchers.IO) { TpLinkArcherC6Driver.probe(gatewayIpDetectado) == TpLinkProbeResult.STOK_LUCI_PASSWORD_ONLY }
+            ) {
+                GatewayCredentialRequirement.PASSWORD_ONLY
+            } else {
+                GatewayCredentialRequirement.USERNAME_AND_PASSWORD
+            }
+    }
+    val gatewayConnectionService =
+        remember(bssidAtual) {
+            GatewayConnectionService { ip, _, senha ->
+                withContext(Dispatchers.IO) {
+                    driverIdGatewayConfirmado = null
+                    if (TpLinkArcherC6Driver.probe(ip) != TpLinkProbeResult.STOK_LUCI_PASSWORD_ONLY) {
+                        GatewayConnectionResultado.Indisponivel
+                    } else {
+                        when (val result = TpLinkArcherC6Driver(ip).loginAndRead(senha)) {
+                            is TpLinkReadResult.Success -> {
+                                tpLinkSnapshot = result.snapshot
+                                driverIdGatewayConfirmado = DRIVER_ID_TP_LINK_ARCHER_C6
+                                tpLinkHostSessao = ip
+                                tpLinkSenhaSessao = senha
+                                tpLinkBssidSessao = bssidAtual
+                                GatewayConnectionResultado.Sucesso
+                            }
+                            is TpLinkReadResult.Failure ->
+                                GatewayConnectionResultado.Falha(
+                                    when (result.reason) {
+                                        TpLinkFailure.INVALID_CREDENTIALS -> "A senha do roteador não confere."
+                                        TpLinkFailure.UNSUPPORTED_MODEL -> "Este roteador TP-Link ainda não é compatível."
+                                        TpLinkFailure.SESSION_EXPIRED -> "A sessão do roteador expirou. Tente novamente."
+                                        TpLinkFailure.COMMUNICATION -> "Não consegui falar com o roteador agora."
+                                        TpLinkFailure.INVALID_RESPONSE -> "O roteador respondeu de um jeito que não reconheci."
+                                    },
+                                )
+                        }
+                    }
+                }
+            }
+        }
+    // A leitura autenticada do Archer usa o mesmo contrato normalizado que a
+    // Nokia; a UI não precisa conhecer fabricante para mostrar o resultado.
+    val equipamentoLocal = tpLinkSnapshot ?: localDevice
+
+    fun invalidarSessaoTpLink() {
+        tpLinkSnapshot = null
+        driverIdGatewayConfirmado = null
+        tpLinkHostSessao = null
+        tpLinkSenhaSessao = null
+        tpLinkBssidSessao = null
+    }
+
+    LaunchedEffect(bssidAtual, snapshotRede.conectado, tpLinkBssidSessao) {
+        if (tpLinkSnapshot != null && (!snapshotRede.conectado || bssidAtual != tpLinkBssidSessao)) {
+            invalidarSessaoTpLink()
+        }
+    }
+
+    val atualizarTpLink: () -> Unit = {
+        val hostC6 = tpLinkHostSessao
+        val senhaC6 = tpLinkSenhaSessao
+        if (tpLinkSnapshot != null && !hostC6.isNullOrBlank() && senhaC6 != null) {
+            snackbarScope.launch {
+                when (val resultado = gatewayConnectionService.conectar(hostC6, "admin", senhaC6)) {
+                    GatewayConnectionResultado.Sucesso -> Unit
+                    GatewayConnectionResultado.Indisponivel -> {
+                        invalidarSessaoTpLink()
+                        snackbarHostState.showSnackbar("Não consegui falar com o roteador agora.")
+                    }
+                    is GatewayConnectionResultado.Falha -> {
+                        invalidarSessaoTpLink()
+                        snackbarHostState.showSnackbar(resultado.mensagemUsuario)
+                    }
+                }
+            }
+        }
+    }
 
     // GH#527 — sessao "manter conectado" do gateway, fonte unica compartilhada pelos dois
     // entry points (Home e Ajustes). Elegivel quando o toggle esta ativo E o BSSID atual bate
@@ -358,18 +454,27 @@ fun AppShell(
     // implementacao real conectada aqui (gatewayConnectionServiceIndisponivel sempre retorna
     // Indisponivel), gatewaySessaoValida permanece sempre false — o no do gateway volta a abrir
     // a sheet manual em vez de assumir uma sessao que nunca foi autenticada de verdade.
-    val bssidAtual = snapshotRede.wifiLinkSnapshot?.bssid
     val elegivelParaAutoconexao =
         bssidElegivelParaAutoconexao(modemPermanecerConectado, gatewaySessionBssid, bssidAtual)
     var gatewaySessaoValida by remember { mutableStateOf(false) }
     LaunchedEffect(elegivelParaAutoconexao, modemHost, modemUsername, modemPassword) {
         gatewaySessaoValida =
             if (elegivelParaAutoconexao && !modemHost.isNullOrBlank()) {
-                val resultado =
-                    runCatching {
-                        gatewayConnectionServiceIndisponivel.conectar(modemHost, modemUsername, modemPassword)
-                    }.getOrNull()
-                resultado is GatewayConnectionResultado.Sucesso
+                if (withContext(Dispatchers.IO) {
+                        TpLinkArcherC6Driver.probe(modemHost) == TpLinkProbeResult.STOK_LUCI_PASSWORD_ONLY
+                    }
+                ) {
+                    val resultado =
+                        runCatching {
+                            gatewayConnectionService.conectar(modemHost, modemUsername, modemPassword)
+                        }.getOrNull()
+                    resultado is GatewayConnectionResultado.Sucesso
+                } else {
+                    // O caminho legado continua sendo dono da Nokia. Não simulamos
+                    // sucesso: o ExecutorFibra atualizará o estado real da leitura.
+                    onReconectarFibra(modemHost, modemUsername, modemPassword)
+                    false
+                }
             } else {
                 false
             }
@@ -518,8 +623,16 @@ fun AppShell(
         lembrarSenha: Boolean,
         manterConectado: Boolean,
     ) -> Unit = { ip, usuario, senha, lembrarSenha, manterConectado ->
-        onRegistrarConexaoGateway(ip, usuario, senha, lembrarSenha, manterConectado, bssidAtual)
-        onReconectarFibra(ip, usuario, senha)
+        onRegistrarConexaoGateway(
+            ip,
+            usuario,
+            senha,
+            lembrarSenha,
+            manterConectado,
+            bssidAtual,
+            driverIdGatewayConfirmado,
+        )
+        if (tpLinkSnapshot == null) onReconectarFibra(ip, usuario, senha)
         overlayStack.remove(Overlay.EquipamentoConectar)
         if (Overlay.EquipamentoInternet !in overlayStack) overlayStack.add(Overlay.EquipamentoInternet)
     }
@@ -566,8 +679,20 @@ fun AppShell(
         lembrarSenha: Boolean,
         manterConectado: Boolean,
     ) -> Unit = { ip, usuario, senha, lembrarSenha, manterConectado ->
-        onRegistrarConexaoGateway(ip, usuario, senha, lembrarSenha, manterConectado, bssidAtual)
-        onAbrirGatewayDetalhe()
+        onRegistrarConexaoGateway(
+            ip,
+            usuario,
+            senha,
+            lembrarSenha,
+            manterConectado,
+            bssidAtual,
+            driverIdGatewayConfirmado,
+        )
+        if (tpLinkSnapshot == null) {
+            onAbrirGatewayDetalhe()
+        } else if (Overlay.EquipamentoInternet !in overlayStack) {
+            overlayStack.add(Overlay.EquipamentoInternet)
+        }
     }
 
     var showForaDoWifiDialog by remember { mutableStateOf(false) }
@@ -748,7 +873,7 @@ fun AppShell(
                                         snapshotWifi = snapshotWifi,
                                         temPermissaoLocalizacao = temPermissaoLocalizacao,
                                         ispName = if (snapshotRede.estadoConexao == EstadoConexao.movel) operadoraMovel else ispInfoData?.isp,
-                                        equipmentName = localDevice?.modelo,
+                                        equipmentName = equipamentoLocal?.modelo,
                                         deviceName = deviceName,
                                     ),
                                 onAbrirVideos = {
@@ -865,7 +990,7 @@ fun AppShell(
             onAbrirGerenciarDados = { showGerenciarDadosSheet = true },
             resultadoSpeedtest = snapshotSpeedtest.resultado,
             localizacaoServidor = localizacaoServidorStr,
-            localDevice = localDevice,
+            localDevice = equipamentoLocal,
             onGerarLaudo = onAbrirLaudoOverlay,
             temPermissaoLocalizacao = temPermissaoLocalizacao,
             localizacaoBloqueadaPermanentemente = localizacaoBloqueadaPermanentemente,
@@ -1033,13 +1158,15 @@ fun AppShell(
         ) {
             EquipamentoInternetScreen(
                 snapshotFibra = snapshotFibra,
-                localDevice = localDevice,
+                localDevice = equipamentoLocal,
                 natStatus = natStatus,
                 modemHost = modemHost,
                 modemUsername = modemUsername,
                 modemPassword = modemPassword,
                 onVoltar = { overlayStack.remove(Overlay.Fibra) },
-                onRetentar = { onReconectarFibra(modemHost ?: "", modemUsername, modemPassword) },
+                onRetentar = {
+                    if (tpLinkSnapshot != null) atualizarTpLink() else onReconectarFibra(modemHost ?: "", modemUsername, modemPassword)
+                },
                 onAbrirAjustes = onAbrirCredenciaisEquipamento,
                 onReiniciarEquipamento = onReiniciarEquipamento,
                 onVerDispositivos = onAbrirDispositivosOverlay,
@@ -1085,7 +1212,8 @@ fun AppShell(
         ) {
             EquipamentoConectarScreen(
                 enderecoDetectado = gatewayIpDetectado,
-                conectar = gatewayConnectionServiceIndisponivel,
+                conectar = gatewayConnectionService,
+                credentialRequirement = requisitoCredencialGateway,
                 onVoltar = { overlayStack.remove(Overlay.EquipamentoConectar) },
                 onAbrirMenu = onAbrirMenuDaRaiz,
                 onConectado = onGatewayConectadoDoEquipamento,
@@ -1103,13 +1231,15 @@ fun AppShell(
         ) {
             EquipamentoInternetScreen(
                 snapshotFibra = snapshotFibra,
-                localDevice = localDevice,
+                localDevice = equipamentoLocal,
                 natStatus = natStatus,
                 modemHost = modemHost,
                 modemUsername = modemUsername,
                 modemPassword = modemPassword,
                 onVoltar = { overlayStack.remove(Overlay.EquipamentoInternet) },
-                onRetentar = { onReconectarFibra(modemHost ?: "", modemUsername, modemPassword) },
+                onRetentar = {
+                    if (tpLinkSnapshot != null) atualizarTpLink() else onReconectarFibra(modemHost ?: "", modemUsername, modemPassword)
+                },
                 onAbrirAjustes = onAbrirCredenciaisEquipamento,
                 onReiniciarEquipamento = onReiniciarEquipamento,
                 onVerDispositivos = onAbrirDispositivosOverlay,
@@ -1257,7 +1387,7 @@ fun AppShell(
                         onSalvarConfiguracaoModem = onSalvarConfiguracaoModem,
                         onConectarFibra = { host, user, pass -> onReconectarFibra(host, user, pass) },
                         gatewaySessaoValida = gatewaySessaoValida,
-                        conectarGateway = gatewayConnectionServiceIndisponivel,
+                        conectarGateway = gatewayConnectionService,
                         onGatewayConectado = onGatewayConectado,
                         bandasWifi = bandasWifiGateway,
                         dispositivosNaRede = clientesNaRedeGateway,
@@ -1359,15 +1489,24 @@ fun AppShell(
         if (showEquipamentoCredenciaisSheet) {
             GatewayConnectionSheet(
                 ipInicial = modemHost,
+                credentialRequirement = requisitoCredencialGateway,
                 usuarioInicial = modemUsername,
                 senhaInicial = modemPassword,
                 lembrarSenhaInicial = modemUsername.isNotBlank() || modemPassword.isNotBlank(),
                 manterConectadoInicial = modemPermanecerConectado,
                 onDismissRequest = { showEquipamentoCredenciaisSheet = false },
-                conectar = gatewayConnectionServiceIndisponivel,
+                conectar = gatewayConnectionService,
                 onConectado = { ip, usuario, senha, lembrarSenha, manterConectado ->
-                    onRegistrarConexaoGateway(ip, usuario, senha, lembrarSenha, manterConectado, bssidAtual)
-                    onReconectarFibra(ip, usuario, senha)
+                    onRegistrarConexaoGateway(
+                        ip,
+                        usuario,
+                        senha,
+                        lembrarSenha,
+                        manterConectado,
+                        bssidAtual,
+                        driverIdGatewayConfirmado,
+                    )
+                    if (tpLinkSnapshot == null) onReconectarFibra(ip, usuario, senha)
                 },
             )
         }

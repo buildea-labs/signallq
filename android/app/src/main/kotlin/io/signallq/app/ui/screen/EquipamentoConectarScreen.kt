@@ -45,6 +45,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import io.signallq.app.core.network.contracts.gateway.GatewayConnectionService
+import io.signallq.app.core.network.contracts.gateway.GatewayCredentialRequirement
 import io.signallq.app.ui.LkRadius
 import io.signallq.app.ui.LkSpacing
 import io.signallq.app.ui.LkTokens
@@ -65,6 +66,7 @@ import io.signallq.app.ui.component.LkSectionOverline
 @Composable
 fun EquipamentoConectarScreen(
     enderecoDetectado: String?,
+    credentialRequirement: GatewayCredentialRequirement = GatewayCredentialRequirement.USERNAME_AND_PASSWORD,
     conectar: GatewayConnectionService,
     onVoltar: () -> Unit,
     onAbrirMenu: () -> Unit,
@@ -109,6 +111,7 @@ fun EquipamentoConectarScreen(
     if (mostrarFormularioConexao) {
         GatewayConnectionSheet(
             ipInicial = enderecoDetectado,
+            credentialRequirement = credentialRequirement,
             onDismissRequest = { mostrarFormularioConexao = false },
             conectar = conectar,
             onConectado = onConectado,

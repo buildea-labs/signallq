@@ -1,16 +1,19 @@
 package io.signallq.app.ui.screen
 
 import androidx.compose.material3.SwitchColors
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import io.signallq.app.core.network.contracts.gateway.GatewayConnectionResultado
 import io.signallq.app.core.network.contracts.gateway.GatewayConnectionService
+import io.signallq.app.core.network.contracts.gateway.GatewayCredentialRequirement
 import io.signallq.app.ui.LocalLkTokens
 import io.signallq.app.ui.SignallQTheme
 import kotlinx.coroutines.CompletableDeferred
@@ -40,6 +43,7 @@ class GatewayConnectionSheetTest {
 
     private fun renderContent(
         ipInicial: String? = "192.168.1.1",
+        credentialRequirement: GatewayCredentialRequirement = GatewayCredentialRequirement.USERNAME_AND_PASSWORD,
         usuarioInicial: String = "",
         senhaInicial: String = "",
         lembrarSenhaInicial: Boolean = false,
@@ -55,6 +59,7 @@ class GatewayConnectionSheetTest {
             SignallQTheme {
                 GatewayConnectionSheetContent(
                     ipInicial = ipInicial,
+                    credentialRequirement = credentialRequirement,
                     usuarioInicial = usuarioInicial,
                     senhaInicial = senhaInicial,
                     lembrarSenhaInicial = lembrarSenhaInicial,
@@ -73,6 +78,26 @@ class GatewayConnectionSheetTest {
         renderContent(ipInicial = "192.168.15.1")
 
         composeRule.onNodeWithText("192.168.15.1").assertIsDisplayed()
+    }
+
+    @Test
+    fun `Archer C6 pede somente senha e usa admin interno no protocolo`() {
+        var usuarioEnviado: String? = null
+        renderContent(
+            credentialRequirement = GatewayCredentialRequirement.PASSWORD_ONLY,
+            conectar =
+                GatewayConnectionService { _, usuario, _ ->
+                    usuarioEnviado = usuario
+                    GatewayConnectionResultado.Sucesso
+                },
+        )
+
+        composeRule.onAllNodesWithText("Usuário").assertCountEquals(0)
+        composeRule.onNodeWithText("Não sabe a senha?").assertIsDisplayed()
+        composeRule.onNodeWithTag("gateway_connect_button").performClick()
+        composeRule.waitForIdle()
+
+        assertEquals(TP_LINK_INTERNAL_USERNAME, usuarioEnviado)
     }
 
     @Test

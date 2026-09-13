@@ -542,8 +542,16 @@ class MainActivity : ComponentActivity() {
                                 onSalvarConfiguracaoModem = { host, user, pass, perm ->
                                     viewModel.salvarConfiguracaoModem(host, user, pass, perm)
                                 },
-                                onRegistrarConexaoGateway = { ip, usuario, senha, lembrarSenha, manterConectado, bssidAtual ->
-                                    viewModel.registrarConexaoGateway(ip, usuario, senha, lembrarSenha, manterConectado, bssidAtual)
+                                onRegistrarConexaoGateway = { ip, usuario, senha, lembrarSenha, manterConectado, bssidAtual, driverIdConfirmado ->
+                                    viewModel.registrarConexaoGateway(
+                                        ip,
+                                        usuario,
+                                        senha,
+                                        lembrarSenha,
+                                        manterConectado,
+                                        bssidAtual,
+                                        driverIdConfirmado,
+                                    )
                                     analyticsTracker.registrarFeatureUsada("fibra")
                                 },
                                 temaSelecionado = temaSelecionado,

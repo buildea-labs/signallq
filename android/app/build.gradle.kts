@@ -358,6 +358,7 @@ dependencies {
     implementation(project(":featureSpeedtest"))
     implementation(project(":featureDiagnostico"))
     implementation(project(":featureFibra"))
+    implementation(project(":featureRouter"))
     implementation(project(":featureHistory"))
     implementation(project(":featureSettings"))
     // Dominio de causa-raiz extraido de :featureDiagnostico (issue #1157 Fase 1a) — DiagnosticReport/

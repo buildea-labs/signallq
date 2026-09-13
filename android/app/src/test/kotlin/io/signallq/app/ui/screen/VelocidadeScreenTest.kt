@@ -358,7 +358,6 @@ class VelocidadeScreenTest {
 
     @Test
     fun `cancelar pede confirmacao antes de encerrar o teste`() {
-        composeRule.mainClock.autoAdvance = false
         var cancelou = false
         composeRule.setContent {
             SignallQTheme {
@@ -373,25 +372,17 @@ class VelocidadeScreenTest {
         }
 
         composeRule.onNodeWithText("Cancelar").performClick()
-        // Loop de animacao continuo (gauge) mantem `autoAdvance = false` necessario durante
-        // setContent — apos a interacao, um frame manual e' o que faz a recomposicao do dialog
-        // de confirmacao acontecer antes da asserção (mesmo padrão de `AppShellMedicaoGuiadaTest`).
-        composeRule.mainClock.advanceTimeByFrame()
-        composeRule.waitForIdle()
         // O toque em "Cancelar" so abre a confirmacao — onCancelar ainda nao foi chamado. Um
         // resultado enganoso jamais deve ser produzido por um unico toque acidental.
         assertEquals(false, cancelou)
         composeRule.onNodeWithText("Interromper o teste?").assertIsDisplayed()
 
         composeRule.onNodeWithText("Interromper").performClick()
-        composeRule.mainClock.advanceTimeByFrame()
-        composeRule.waitForIdle()
         assertEquals(true, cancelou)
     }
 
     @Test
     fun `continuar testando fecha a confirmacao sem cancelar`() {
-        composeRule.mainClock.autoAdvance = false
         var cancelou = false
         composeRule.setContent {
             SignallQTheme {
@@ -406,11 +397,7 @@ class VelocidadeScreenTest {
         }
 
         composeRule.onNodeWithText("Cancelar").performClick()
-        composeRule.mainClock.advanceTimeByFrame()
-        composeRule.waitForIdle()
         composeRule.onNodeWithText("Continuar testando").performClick()
-        composeRule.mainClock.advanceTimeByFrame()
-        composeRule.waitForIdle()
 
         assertEquals(false, cancelou)
         composeRule.onNodeWithText("Interromper o teste?").assertDoesNotExist()

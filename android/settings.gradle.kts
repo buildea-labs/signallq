@@ -32,6 +32,7 @@ include(
     ":featureSpeedtest",
     ":featureDiagnostico",
     ":featureFibra",
+    ":featureRouter",
     ":featureHistory",
     ":featureSettings",
     // Modulos novos nascem hierarquicos (":core:foo", nao ":coreFoo"), conforme
@@ -68,5 +69,6 @@ project(":featureDns").projectDir         = File("feature/dns")
 project(":featureSpeedtest").projectDir   = File("feature/speedtest")
 project(":featureDiagnostico").projectDir = File("feature/diagnostico")
 project(":featureFibra").projectDir       = File("feature/fibra")
+project(":featureRouter").projectDir      = File("feature/router")
 project(":featureHistory").projectDir     = File("feature/history")
 project(":featureSettings").projectDir    = File("feature/settings")
