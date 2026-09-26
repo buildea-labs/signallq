@@ -167,6 +167,23 @@ data class AppShellSignallQState(
 )
 
 /**
+ * Estado do badge "ao vivo" de conectividade da Home (Architecture Plan "Status de
+ * conectividade ao vivo na Home", seções 5/6) — sondagem foreground via
+ * `StatusConectividadeAoVivoCoordinator` (`:app`), nunca persistida no histórico
+ * (decisão 4.3). `statusAoVivo == null` é o estado "carregando" (sem 1ª leitura ainda,
+ * ou acabou de reiniciar ao voltar pra Home/foreground — regra "sem staleness").
+ */
+@Stable
+data class AppShellConectividadeAoVivoState(
+    val statusAoVivo: Inicio2StatusAoVivo? = null,
+    // Evidência bruta -- só para a sheet de explicação por estágio (seção 5, "detalhes
+    // técnicos"), nunca para a trilha/Hero.
+    val ultimoDiagnostico: io.signallq.app.core.network.contracts.connectivity.ConnectivityDiagnosis? = null,
+    val onIniciar: () -> Unit = {},
+    val onParar: () -> Unit = {},
+)
+
+/**
  * Agrupa o estado de monetizacao nativa (issue #555): flags remotas por tela + gate
  * de consentimento UMP. Os gates chegam separados ao carregador para que telemetria não
  * confunda build desligado, UMP indisponível e flag remota desligada.

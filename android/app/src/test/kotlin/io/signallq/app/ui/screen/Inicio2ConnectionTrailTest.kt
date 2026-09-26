@@ -13,8 +13,10 @@ import io.signallq.app.core.network.contracts.wifi.SegurancaWifi
 import io.signallq.app.core.network.wifi.EstadoScanWifi
 import io.signallq.app.core.network.wifi.SnapshotScanWifi
 import io.signallq.app.ui.SignallQTheme
+import io.signallq.app.ui.component.SignallQFeedbackTone
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -103,6 +105,98 @@ class Inicio2ConnectionTrailTest {
         }
 
         composeRule.onNodeWithText("Equipamento principal").assertIsDisplayed()
+    }
+
+    @Test
+    fun `sem statusAoVivo nenhum no ganha tom`() {
+        val state = Inicio2ConnectionTrailMapper.map(redeConectada(), scanMesh(), temPermissaoLocalizacao = true)
+
+        assertTrue(state.nodes.all { it.tom == null })
+    }
+
+    @Test
+    fun `statusAoVivo aplica tom a Equipamento e Wi-Fi para o estagio WIFI`() {
+        val status =
+            Inicio2StatusAoVivo(
+                porEstagio = mapOf("Equipamento" to SignallQFeedbackTone.Error, "Wi-Fi" to SignallQFeedbackTone.Error),
+                geral = SignallQFeedbackTone.Error,
+                causaPrincipal = io.signallq.app.core.diagnostico.EstagioRede.WIFI,
+            )
+        val state =
+            Inicio2ConnectionTrailMapper.map(
+                redeConectada(),
+                scanMesh(),
+                temPermissaoLocalizacao = true,
+                statusAoVivo = status,
+            )
+
+        assertEquals(SignallQFeedbackTone.Error, state.nodes.first { it.id == "Equipamento" }.tom)
+        assertEquals(SignallQFeedbackTone.Error, state.nodes.first { it.id == "Wi-Fi" }.tom)
+    }
+
+    @Test
+    fun `statusAoVivo aplica tom a Internet para o estagio PROVEDOR`() {
+        val status =
+            Inicio2StatusAoVivo(
+                porEstagio = mapOf("Internet" to SignallQFeedbackTone.Warning),
+                geral = SignallQFeedbackTone.Warning,
+                causaPrincipal = io.signallq.app.core.diagnostico.EstagioRede.PROVEDOR,
+            )
+        val state =
+            Inicio2ConnectionTrailMapper.map(
+                redeConectada(),
+                scanMesh(),
+                temPermissaoLocalizacao = true,
+                statusAoVivo = status,
+            )
+
+        assertEquals(SignallQFeedbackTone.Warning, state.nodes.first { it.id == "Internet" }.tom)
+    }
+
+    @Test
+    fun `Mesh e Este aparelho nunca ganham badge mesmo com statusAoVivo presente`() {
+        val status =
+            Inicio2StatusAoVivo(
+                porEstagio =
+                    mapOf(
+                        "Equipamento" to SignallQFeedbackTone.Success,
+                        "Wi-Fi" to SignallQFeedbackTone.Success,
+                        "Internet" to SignallQFeedbackTone.Success,
+                    ),
+                geral = SignallQFeedbackTone.Success,
+                causaPrincipal = null,
+            )
+        val state =
+            Inicio2ConnectionTrailMapper.map(
+                snapshotRede = redeConectada(),
+                snapshotWifi = scanMesh(),
+                temPermissaoLocalizacao = true,
+                temConfirmacaoRoteadorCentral = true,
+                statusAoVivo = status,
+            )
+
+        assertTrue(state.nodes.any { it.id == "Mesh" })
+        assertNull(state.nodes.first { it.id == "Mesh" }.tom)
+        assertNull(state.nodes.first { it.id == "Este aparelho" }.tom)
+    }
+
+    @Test
+    fun `Internet fora do modo Wi-Fi nunca ganha badge mesmo com statusAoVivo presente`() {
+        val status =
+            Inicio2StatusAoVivo(
+                porEstagio = mapOf("Internet" to SignallQFeedbackTone.Error),
+                geral = SignallQFeedbackTone.Error,
+                causaPrincipal = io.signallq.app.core.diagnostico.EstagioRede.PROVEDOR,
+            )
+        val state =
+            Inicio2ConnectionTrailMapper.map(
+                snapshotRede = rede(EstadoConexao.movel),
+                snapshotWifi = scanMesh(),
+                temPermissaoLocalizacao = true,
+                statusAoVivo = status,
+            )
+
+        assertNull(state.nodes.first { it.id == "Internet" }.tom)
     }
 
     private fun map(estado: EstadoConexao) =
