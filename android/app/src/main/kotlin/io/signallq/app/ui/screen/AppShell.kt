@@ -48,6 +48,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import io.signallq.app.BuildConfig
 import io.signallq.app.DRIVER_ID_TP_LINK_ARCHER_C6
 import io.signallq.app.R
@@ -86,6 +89,7 @@ import io.signallq.app.ui.LocalLkTokens
 import io.signallq.app.ui.resumoBandasWifi
 import io.signallq.app.ui.state.UiState
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -123,6 +127,10 @@ fun AppShell(
     wifi: AppShellWifiState,
     diagnostico: AppShellDiagnosticoState,
     signallQ: AppShellSignallQState,
+    // Architecture Plan "Status de conectividade ao vivo na Home" -- badge Wi-Fi/Provedor da
+    // trilha + Hero (seções 5/6). Default vazio preserva os call sites/testes que ainda não
+    // passam esse estado (equivalente a "nunca houve leitura").
+    conectividadeAoVivo: AppShellConectividadeAoVivoState = AppShellConectividadeAoVivoState(),
     ads: AppShellAdsState = AppShellAdsState(),
     // GH#1480 (Epico #1347, F4) — gate de navegacao dos 9 modulos feature do Consumer.
     featureFlags: AppShellFeatureFlagsState = AppShellFeatureFlagsState(),
@@ -295,6 +303,11 @@ fun AppShell(
     val operadoraMovel = signallQ.operadoraMovel
     val onVerificarGemma = signallQ.onVerificarGemma
 
+    val statusConectividadeAoVivo = conectividadeAoVivo.statusAoVivo
+    val ultimoDiagnosticoConectividade = conectividadeAoVivo.ultimoDiagnostico
+    val onIniciarStatusConectividadeAoVivo = conectividadeAoVivo.onIniciar
+    val onPararStatusConectividadeAoVivo = conectividadeAoVivo.onParar
+
     val resolveOperadoraIdentidadeLocal = operadoraResolvers.identidadeLocal
     val resolveOperadoraIdentidadeRemota = operadoraResolvers.identidadeRemota
 
@@ -312,6 +325,27 @@ fun AppShell(
     val isIspInfoLoading = publicIp is UiState.Loading
     // A jornada única inicia em Início e restaura raiz/pilhas por processo.
     val navigator = rememberAppShellNavigator()
+
+    // Architecture Plan "Status de conectividade ao vivo na Home", seção 6: inicia quando
+    // Home está selecionada E o app está em foreground; para quando qualquer uma das duas
+    // deixa de valer. `repeatOnLifecycle(RESUMED)` cobre "foreground" (mesmo proxy que
+    // `MonitorRede.iniciar()/encerrar()` usa via `MainActivity.onStart()/onStop()`, mas aqui
+    // via Lifecycle direto porque a condição extra "Home selecionada" só existe em Compose,
+    // dentro do navigator). Sair da Home (troca de raiz) e ir a background cancelam o mesmo
+    // bloco -- `finally` chama `onPararStatusConectividadeAoVivo()` nos dois casos, sem
+    // duplicar a lógica de start/stop.
+    val lifecycleOwnerConectividade = LocalLifecycleOwner.current
+    LaunchedEffect(navigator.selectedRoot, lifecycleOwnerConectividade) {
+        if (navigator.selectedRoot != AppShellRoot.Home) return@LaunchedEffect
+        lifecycleOwnerConectividade.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            onIniciarStatusConectividadeAoVivo()
+            try {
+                awaitCancellation()
+            } finally {
+                onPararStatusConectividadeAoVivo()
+            }
+        }
+    }
     // GH#1737 (épico #1647) — o modo não é mais escolhido pela pessoa (MedicaoTipoSheet/
     // ModeSelector removidos): é decidido automaticamente pelo tipo de rede a cada disparo,
     // recomputado a cada recomposição (sem `remember` — não há mais valor "selecionado" para
@@ -879,10 +913,13 @@ fun AppShell(
                                         ispName = if (snapshotRede.estadoConexao == EstadoConexao.movel) operadoraMovel else ispInfoData?.isp,
                                         equipmentName = equipamentoLocal?.modelo,
                                         deviceName = deviceName,
+                                        statusAoVivo = statusConectividadeAoVivo,
                                     ),
                                 onAbrirVideos = {
                                     onAbrirDiagnosticoGuiado(EntradaAssist.VideoOuChamada, null, null)
                                 },
+                                statusAoVivo = statusConectividadeAoVivo,
+                                diagnosticoBruto = ultimoDiagnosticoConectividade,
                             )
                         // NAV-E: raiz 1 — Velocidade (SpeedTestScreen como raiz fixa)
                         AppShellRoot.Speed ->

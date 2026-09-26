@@ -151,7 +151,7 @@ fun SignallQChoiceChip(
     )
 }
 
-enum class SignallQBadgeTone { Neutral, Success, Warning, Error }
+enum class SignallQBadgeTone { Neutral, Success, Warning, Error, Incerto }
 
 @Composable
 fun SignallQBadge(
@@ -166,6 +166,7 @@ fun SignallQBadge(
             SignallQBadgeTone.Success -> c.successContainer to c.onSuccessContainer
             SignallQBadgeTone.Warning -> c.warningContainer to c.onWarningContainer
             SignallQBadgeTone.Error -> c.errorContainer to c.onErrorContainer
+            SignallQBadgeTone.Incerto -> c.surfaceContainerHigh to c.onSurfaceVariant
         }
     androidx.compose.material3.Surface(
         modifier = modifier.semantics(mergeDescendants = true) {},

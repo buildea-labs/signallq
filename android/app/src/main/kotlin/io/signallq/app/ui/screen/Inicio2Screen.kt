@@ -17,7 +17,11 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.ChevronRight
+import androidx.compose.material.icons.outlined.ErrorOutline
+import androidx.compose.material.icons.outlined.HelpOutline
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.WarningAmber
 import androidx.compose.material.icons.outlined.Wifi
 import androidx.compose.material3.Icon
@@ -41,6 +45,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import io.signallq.app.core.diagnostico.EstagioRede
+import io.signallq.app.core.network.contracts.connectivity.ConnectivityDiagnosis
 import io.signallq.app.ui.LkSpacing
 import io.signallq.app.ui.LocalLkTokens
 import io.signallq.app.ui.SignallQTheme
@@ -57,8 +63,14 @@ internal fun Inicio2Screen(
     onAlternarTema: () -> Unit = {},
     connectionTrail: Inicio2ConnectionTrailState? = null,
     onAbrirVideos: () -> Unit = {},
+    // Architecture Plan "Status de conectividade ao vivo na Home", seções 4.4/5/6 — vem do
+    // StatusConectividadeAoVivoCoordinator via AppShell, null antes da 1ª leitura ou quando
+    // não em Wi-Fi (decisão 4.5, sem alteração de escopo pra móvel/ethernet).
+    statusAoVivo: Inicio2StatusAoVivo? = null,
+    diagnosticoBruto: ConnectivityDiagnosis? = null,
 ) {
     val c = LocalLkTokens.current
+    var estagioSelecionado by remember { mutableStateOf<String?>(null) }
     var geracaoSolicitada by remember { mutableStateOf<Long?>(null) }
     val iniciarDiagnostico = {
         if (geracaoSolicitada == null) {
@@ -97,7 +109,10 @@ internal fun Inicio2Screen(
                     modifier = Modifier.padding(horizontal = LkSpacing.lg),
                     verticalArrangement = Arrangement.spacedBy(LkSpacing.sm),
                 ) {
-                    Inicio2ConnectionTrail(state = it)
+                    Inicio2ConnectionTrail(
+                        state = it,
+                        onEstagioClick = { nodeId -> estagioSelecionado = nodeId },
+                    )
                 }
             }
             Inicio2Hero(
@@ -105,6 +120,7 @@ internal fun Inicio2Screen(
                 loading = uiState.analise is Inicio2Analise.Carregando || geracaoSolicitada != null,
                 mostrarConexao = connectionTrail == null,
                 onIniciarDiagnostico = iniciarDiagnostico,
+                statusAoVivo = statusAoVivo,
             )
             Column(
                 modifier = Modifier.padding(horizontal = LkSpacing.lg),
@@ -119,7 +135,33 @@ internal fun Inicio2Screen(
             }
         }
     }
+
+    val nodeSelecionado = connectionTrail?.nodes?.firstOrNull { it.id == estagioSelecionado }
+    val estagioDoNodeSelecionado =
+        when (estagioSelecionado) {
+            "Equipamento", "Wi-Fi" -> EstagioRede.WIFI
+            "Internet" -> EstagioRede.PROVEDOR
+            else -> null
+        }
+    if (nodeSelecionado != null && nodeSelecionado.tom != null && estagioDoNodeSelecionado != null) {
+        Inicio2EstagioDetalheSheet(
+            label = nodeSelecionado.label,
+            estagio = estagioDoNodeSelecionado,
+            tom = nodeSelecionado.tom,
+            diagnostico = diagnosticoBruto,
+            onDismiss = { estagioSelecionado = null },
+        )
+    }
 }
+
+/** Título/mensagem/tom/glifo do círculo central do Hero -- `glifo == null` preserva o "!" de
+ *  texto legado (caminho não tocado por esta fatia: Carregando/Interrompida/fora do Wi-Fi). */
+private data class Inicio2HeroCopy(
+    val titulo: String,
+    val mensagem: String,
+    val tone: SignallQFeedbackTone,
+    val glifo: androidx.compose.ui.graphics.vector.ImageVector? = null,
+)
 
 @Composable
 private fun Inicio2Hero(
@@ -127,36 +169,36 @@ private fun Inicio2Hero(
     loading: Boolean,
     mostrarConexao: Boolean,
     onIniciarDiagnostico: () -> Unit,
+    statusAoVivo: Inicio2StatusAoVivo? = null,
 ) {
     val c = LocalLkTokens.current
-    val (titulo, mensagem, tone) =
-        when (val analise = uiState.analise) {
-            is Inicio2Analise.StatusEmTempoReal ->
-                Triple(
-                    tituloConexao(analise.veredito),
-                    analise.motivo,
-                    analise.veredito.feedbackTone(),
-                )
-            Inicio2Analise.SemAnalise ->
-                Triple(
-                    "Internet lenta",
-                    "Vídeos em HD e chamadas podem travar agora.",
+    // Decisão 4.4 do Architecture Plan: Hero deriva do status ambiente só quando NÃO há
+    // diagnóstico pesado em andamento (Carregando/Interrompida continuam com o tratamento
+    // atual, dedicado ao fluxo "Analisar minha conexão") e só em Wi-Fi -- mobile/ethernet
+    // continuam 100% com MonitorConexaoLeveUseCase (decisão 4.5, não-objetivo desta fatia).
+    val podeUsarStatusAmbiente =
+        uiState.conexao == Inicio2Conexao.Wifi &&
+            (uiState.analise is Inicio2Analise.StatusEmTempoReal || uiState.analise is Inicio2Analise.SemAnalise)
+    // detekt (DestructuringDeclarationWithTooManyEntries) limita a 3 componentes -- Inicio2HeroCopy
+    // tem 4 campos, então o `when` é atribuído a uma variável e os campos lidos por nome.
+    val heroCopy =
+        when {
+            podeUsarStatusAmbiente && statusAoVivo != null -> copyStatusAmbiente(statusAoVivo)
+            // Antes da 1ª leitura do coordenador, já em Wi-Fi (linha "Neutro" da tabela de
+            // copy, decisão 4.4) -- ainda não é staleness porque nunca houve leitura anterior.
+            podeUsarStatusAmbiente ->
+                Inicio2HeroCopy(
+                    "Verificando sua rede",
+                    "Conferindo Wi-Fi e provedor agora.",
                     SignallQFeedbackTone.Neutral,
+                    Icons.Outlined.Info,
                 )
-
-            Inicio2Analise.Carregando ->
-                Triple(
-                    "Analisando sua conexão",
-                    "Estamos reunindo evidências da rede.",
-                    SignallQFeedbackTone.Neutral,
-                )
-            is Inicio2Analise.Interrompida ->
-                Triple(
-                    "Análise interrompida",
-                    analise.mensagem,
-                    SignallQFeedbackTone.Error,
-                )
+            else -> copyLegado(uiState.analise)
         }
+    val titulo = heroCopy.titulo
+    val mensagem = heroCopy.mensagem
+    val tone = heroCopy.tone
+    val glifo = heroCopy.glifo
     val (connectionLabel, connectionIcon) =
         when (uiState.conexao) {
             Inicio2Conexao.Wifi -> "Wi-Fi conectado" to Icons.Outlined.Wifi
@@ -185,7 +227,11 @@ private fun Inicio2Hero(
                     .border(8.dp, cor.copy(alpha = 0.22f), CircleShape),
             contentAlignment = Alignment.Center,
         ) {
-            Text("!", color = cor, fontSize = 52.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+            if (glifo != null) {
+                Icon(glifo, contentDescription = null, tint = cor, modifier = Modifier.size(48.dp))
+            } else {
+                Text("!", color = cor, fontSize = 52.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+            }
         }
         Text(
             text = titulo,
@@ -248,6 +294,119 @@ private fun SignallQFeedbackTone.cor(c: io.signallq.app.ui.LkTokens): Color =
         SignallQFeedbackTone.Warning -> c.warning
         SignallQFeedbackTone.Error -> c.error
         SignallQFeedbackTone.Neutral -> c.primary
+        SignallQFeedbackTone.Incerto -> c.onSurfaceVariant
+    }
+
+/** Copy legado do círculo central (caminho não tocado por esta fatia: Carregando/Interrompida/
+ *  SemAnalise-Wi-Fi-antes-do-coordenador/fora do Wi-Fi) -- extraído do corpo de [Inicio2Hero]
+ *  só para reduzir a complexidade ciclomática do Composable, sem mudar comportamento. */
+private fun copyLegado(analise: Inicio2Analise): Inicio2HeroCopy =
+    when (analise) {
+        is Inicio2Analise.StatusEmTempoReal ->
+            Inicio2HeroCopy(
+                tituloConexao(analise.veredito),
+                analise.motivo,
+                analise.veredito.feedbackTone(),
+            )
+        Inicio2Analise.SemAnalise ->
+            Inicio2HeroCopy(
+                "Internet lenta",
+                "Vídeos em HD e chamadas podem travar agora.",
+                SignallQFeedbackTone.Neutral,
+            )
+        Inicio2Analise.Carregando ->
+            Inicio2HeroCopy(
+                "Analisando sua conexão",
+                "Estamos reunindo evidências da rede.",
+                SignallQFeedbackTone.Neutral,
+            )
+        is Inicio2Analise.Interrompida ->
+            Inicio2HeroCopy(
+                "Análise interrompida",
+                analise.mensagem,
+                SignallQFeedbackTone.Error,
+            )
+    }
+
+/**
+ * Copy definitivo do círculo central quando o Hero deriva do status ambiente (Architecture
+ * Plan, decisão 4.4, seção 4.4 -- tabela de Cora). `causaPrincipal == null` só é alcançável
+ * defensivamente aqui: pelo desenho de `ClassificadorConectividadeAoVivo`, Warning/Error
+ * sempre têm exatamente um estágio no pior tom (o outro fica Sucesso/Neutro) -- os únicos
+ * empates reais (INTERNET_AVAILABLE, incerto()) caem nos ramos Success/Incerto, que não
+ * consultam `causaPrincipal`.
+ */
+private fun copyStatusAmbiente(status: Inicio2StatusAoVivo): Inicio2HeroCopy =
+    when (status.geral) {
+        SignallQFeedbackTone.Success ->
+            Inicio2HeroCopy(
+                "Conexão estável",
+                "Wi-Fi e provedor funcionando bem agora.",
+                SignallQFeedbackTone.Success,
+                Icons.Outlined.CheckCircle,
+            )
+        SignallQFeedbackTone.Warning ->
+            when (status.causaPrincipal) {
+                EstagioRede.WIFI ->
+                    Inicio2HeroCopy(
+                        "Wi-Fi pode estar instável",
+                        "O sinal do seu Wi-Fi está oscilando; vídeos e chamadas podem engasgar.",
+                        SignallQFeedbackTone.Warning,
+                        Icons.Outlined.WarningAmber,
+                    )
+                EstagioRede.PROVEDOR ->
+                    Inicio2HeroCopy(
+                        "Provedor com lentidão",
+                        "Sua internet externa está mais lenta que o normal.",
+                        SignallQFeedbackTone.Warning,
+                        Icons.Outlined.WarningAmber,
+                    )
+                null ->
+                    Inicio2HeroCopy(
+                        "Sua conexão pode estar instável",
+                        "Alguma parte da sua rede está com lentidão.",
+                        SignallQFeedbackTone.Warning,
+                        Icons.Outlined.WarningAmber,
+                    )
+            }
+        SignallQFeedbackTone.Error ->
+            when (status.causaPrincipal) {
+                EstagioRede.WIFI ->
+                    Inicio2HeroCopy(
+                        "Problema no seu Wi-Fi",
+                        "Não conseguimos falar com seu roteador. Aproxime-se dele ou reinicie o Wi-Fi.",
+                        SignallQFeedbackTone.Error,
+                        Icons.Outlined.ErrorOutline,
+                    )
+                EstagioRede.PROVEDOR ->
+                    Inicio2HeroCopy(
+                        "Problema no provedor",
+                        "Seu Wi-Fi está bem, mas a internet externa não está respondendo.",
+                        SignallQFeedbackTone.Error,
+                        Icons.Outlined.ErrorOutline,
+                    )
+                null ->
+                    Inicio2HeroCopy(
+                        "Encontramos um problema na sua conexão",
+                        "Alguma parte da sua rede não está respondendo.",
+                        SignallQFeedbackTone.Error,
+                        Icons.Outlined.ErrorOutline,
+                    )
+            }
+        SignallQFeedbackTone.Incerto ->
+            Inicio2HeroCopy(
+                "Não conseguimos confirmar sua conexão",
+                "Vamos continuar checando; toque em \"Analisar\" para um diagnóstico completo.",
+                SignallQFeedbackTone.Incerto,
+                Icons.Outlined.HelpOutline,
+            )
+        SignallQFeedbackTone.Neutral ->
+            Inicio2HeroCopy(
+                "Verificando sua rede",
+                "Conferindo Wi-Fi e provedor agora.",
+                SignallQFeedbackTone.Neutral,
+                Icons.Outlined.Info,
+            )
     }
 
 internal fun String.feedbackTone(): SignallQFeedbackTone =

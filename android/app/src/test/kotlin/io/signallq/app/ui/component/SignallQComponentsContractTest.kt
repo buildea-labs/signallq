@@ -13,6 +13,7 @@ class SignallQComponentsContractTest {
         assertEquals("Sucesso", SignallQFeedbackTone.Success.accessibleLabel())
         assertEquals("Atenção", SignallQFeedbackTone.Warning.accessibleLabel())
         assertEquals("Erro", SignallQFeedbackTone.Error.accessibleLabel())
+        assertEquals("Incerto", SignallQFeedbackTone.Incerto.accessibleLabel())
     }
 
     @Test

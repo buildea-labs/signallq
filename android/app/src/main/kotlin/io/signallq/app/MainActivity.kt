@@ -72,6 +72,14 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var operadoraDirectoryResolver: io.signallq.app.ui.OperadoraDirectoryResolver
 
+    // Architecture Plan "Status de conectividade ao vivo na Home" -- injetado aqui pelo
+    // mesmo motivo do resolver acima (Composables leaf deste app não usam hiltViewModel()).
+    // Ciclo de vida (iniciar/parar) é comandado pelo AppShell via LaunchedEffect ligado a
+    // Home+foreground, nunca por onStart()/onStop() da Activity (que não sabe qual raiz do
+    // navigator está selecionada).
+    @Inject
+    lateinit var statusConectividadeAoVivoCoordinator: io.signallq.app.conectividade.StatusConectividadeAoVivoCoordinator
+
     private val viewModel: MainViewModel by viewModels()
 
     // ViewModels por feature — extraidos do MainViewModel (Passo 6 do plano de migracao).
@@ -317,6 +325,10 @@ class MainActivity : ComponentActivity() {
             val adsFlags by adsFlagsManager.flags.collectAsStateWithLifecycle()
             // GH#1480 (Epico #1347, F4) -- gate de navegacao dos 9 modulos feature do Consumer.
             val featureFlagsState by viewModel.featureFlagsState.collectAsStateWithLifecycle()
+            // Architecture Plan "Status de conectividade ao vivo na Home" -- badge Wi-Fi/
+            // Provedor da trilha + Hero. Início/parada do polling são comandados pelo AppShell.
+            val statusConectividadeAoVivo by statusConectividadeAoVivoCoordinator.status.collectAsStateWithLifecycle()
+            val ultimoDiagnosticoConectividade by statusConectividadeAoVivoCoordinator.ultimoDiagnostico.collectAsStateWithLifecycle()
 
             val gatewayIpDetectado = gateways.firstOrNull()?.ip
             val darkTheme =
@@ -488,6 +500,13 @@ class MainActivity : ComponentActivity() {
                                             simsAtivos.firstOrNull { it.isDefaultData }?.operadora
                                                 ?: simsAtivos.firstOrNull()?.operadora,
                                         onVerificarGemma = { viewModel.verificarDisponibilidadeGemma() },
+                                    ),
+                                conectividadeAoVivo =
+                                    io.signallq.app.ui.screen.AppShellConectividadeAoVivoState(
+                                        statusAoVivo = statusConectividadeAoVivo,
+                                        ultimoDiagnostico = ultimoDiagnosticoConectividade,
+                                        onIniciar = { statusConectividadeAoVivoCoordinator.iniciar() },
+                                        onParar = { statusConectividadeAoVivoCoordinator.parar() },
                                     ),
                                 ads =
                                     io.signallq.app.ui.screen.AppShellAdsState(

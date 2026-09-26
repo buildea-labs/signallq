@@ -35,6 +35,7 @@ import io.signallq.app.core.network.DispatcherProvider
 import io.signallq.app.core.network.MonitorRede
 import io.signallq.app.core.network.NetworkCapabilitiesProvider
 import io.signallq.app.core.network.connectivity.ConnectivityDiagnosisRunner
+import io.signallq.app.core.network.connectivity.ConnectivityDiagnosisSource
 import io.signallq.app.core.network.wifi.ScannerRedesWifi
 import io.signallq.app.core.permissions.CorePermissionsModulo
 import io.signallq.app.core.permissions.GerenciadorPermissoesRede
@@ -402,6 +403,15 @@ object AppModule {
         runner: ConnectivityDiagnosisRunner,
         historyDao: ConnectivityDiagnosisHistoryDao,
     ): ConnectivityDiagnosisRepository = ConnectivityDiagnosisRepositoryImpl(runner, historyDao)
+
+    // Architecture Plan "Status de conectividade ao vivo na Home" -- StatusConectividadeAoVivoCoordinator
+    // injeta a interface diretamente (decisão 4.3: nunca via ConnectivityDiagnosisRepository, que
+    // persistiria o polling ambiente no histórico). Nenhum consumidor pedia a interface isolada
+    // até agora -- ConnectivityDiagnosisRepositoryImpl recebia o ConnectivityDiagnosisRunner
+    // concreto direto (upcast implícito no site de chamada acima), sem exigir este binding.
+    @Provides
+    @Singleton
+    fun provideConnectivityDiagnosisSource(runner: ConnectivityDiagnosisRunner): ConnectivityDiagnosisSource = runner
 
     @Provides
     @Singleton

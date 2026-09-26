@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.ErrorOutline
+import androidx.compose.material.icons.outlined.HelpOutline
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.WarningAmber
 import androidx.compose.material3.Icon
@@ -32,7 +33,11 @@ import io.signallq.app.ui.LocalLkTokens
 
 private const val SKELETON_LAST_LINE_FRACTION = 0.68f
 
-enum class SignallQFeedbackTone { Neutral, Success, Warning, Error }
+// Incerto (2026-09-26, Architecture Plan "Status de conectividade ao vivo na Home") -- 5o
+// estado de primeira classe: evidencia insuficiente para confirmar sucesso ou apontar uma
+// causa (Wi-Fi vs. provedor). Nunca forcar um dos 4 tons anteriores quando a confianca da
+// sondagem for baixa (AGENTS.md, secao 8) -- ver ClassificadorConectividadeAoVivo em :core:diagnostico.
+enum class SignallQFeedbackTone { Neutral, Success, Warning, Error, Incerto }
 
 @Composable
 fun SignallQBanner(
@@ -50,6 +55,9 @@ fun SignallQBanner(
             SignallQFeedbackTone.Success -> Triple(c.successContainer, c.onSuccessContainer, Icons.Outlined.CheckCircle)
             SignallQFeedbackTone.Warning -> Triple(c.warningContainer, c.onWarningContainer, Icons.Outlined.WarningAmber)
             SignallQFeedbackTone.Error -> Triple(c.errorContainer, c.onErrorContainer, Icons.Outlined.ErrorOutline)
+            // Sem token semantico dedicado a "incerto" em LkTokens -- usa o mesmo par
+            // neutro/surface do estado Neutral (nao inventa um 5o par de cores so pra isso).
+            SignallQFeedbackTone.Incerto -> Triple(c.surfaceContainerHigh, c.onSurface, Icons.Outlined.HelpOutline)
         }
     Surface(
         modifier = modifier.fillMaxWidth(),
@@ -80,6 +88,7 @@ internal fun SignallQFeedbackTone.accessibleLabel(): String =
         SignallQFeedbackTone.Success -> "Sucesso"
         SignallQFeedbackTone.Warning -> "Atenção"
         SignallQFeedbackTone.Error -> "Erro"
+        SignallQFeedbackTone.Incerto -> "Incerto"
     }
 
 @Composable
@@ -142,12 +151,13 @@ fun SignallQResultBlock(
     }
 }
 
-private fun SignallQFeedbackTone.toBadgeTone() =
+internal fun SignallQFeedbackTone.toBadgeTone() =
     when (this) {
         SignallQFeedbackTone.Neutral -> SignallQBadgeTone.Neutral
         SignallQFeedbackTone.Success -> SignallQBadgeTone.Success
         SignallQFeedbackTone.Warning -> SignallQBadgeTone.Warning
         SignallQFeedbackTone.Error -> SignallQBadgeTone.Error
+        SignallQFeedbackTone.Incerto -> SignallQBadgeTone.Incerto
     }
 
 @Composable

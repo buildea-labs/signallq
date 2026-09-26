@@ -1,182 +1,365 @@
 # Architecture Plan — trabalho corrente
 
-## Status de sites e aplicativos — consumidor da API Linka
+## Status de conectividade ao vivo na Home (badge de estágio Wi-Fi/Provedor + Hero coerente)
 
-O SignallQ consome somente o contrato público de leitura `v1/service-status` já operado pelo Linka (catálogo e incidentes). A escolha de cada serviço e a revisão já notificada ficam locais; `WorkManager` consulta o feed em rede disponível e emite uma notificação Android apenas para incidentes novos ou revisados. O estado externo não alimenta score, finding ou recomendação do diagnóstico da conexão. Falha da API mantém escolhas e mostra atualização indisponível, nunca “operando normalmente”. Não há escrita na API Linka, token push, segredo ou mudança de infraestrutura nesta fatia.
+Decidido por Luiz. Gate arquitetural confirmado: cruza `:app` (Home/Hero/trilha), `:core:diagnostico`
+e reusa um motor já existente em `:core:network`. Ver seção 9 para o veredito.
 
-> Use somente quando o gate arquitetural do `AGENTS.md` for acionado. Camillo mantém este artefato curto e proporcional à mudança.
+> Use somente quando o gate arquitetural do `AGENTS.md` for acionado. Camillo mantém este artefato
+> curto e proporcional à mudança.
 
-(demais entradas históricas deste arquivo preservadas — ver git log; esta revisão substitui o topo do arquivo pela fatia corrente)
+(demais entradas históricas deste arquivo preservadas — ver git log; esta revisão substitui o topo
+do arquivo pela fatia corrente)
 
 ---
 
-# Confiabilidade estatística do diagnóstico de rede — amostragem, perda de pacotes e proveniência
+### 1. Problema e comportamento esperado
 
-## 1. Inventário do motor atual
+Na Home (`Inicio2Screen.kt`), sem o usuário rodar nenhum teste ativo, mostrar se a rede tem
+problema e, quando tem, se é no Wi-Fi (rede interna) ou no provedor (rede externa) — via badge
+sobreposto a cada ícone da trilha (`Inicio2ConnectionTrail.kt`) e um círculo central do Hero que
+fala a mesma linguagem visual, nunca contradizendo a trilha. Toque num ícone com problema abre uma
+sheet explicando aquele estágio. Regras não negociáveis (do brief de Luiz): sonda só em primeiro
+plano (sem `MonitoramentoWorker`/opt-in), "causa incerta" é estado de primeira classe (nunca força
+Wi-Fi/Provedor sem evidência), badge sempre visível (inclusive "tudo ok"), sem staleness (é ao
+vivo — só existe "carregando" antes da primeira leitura), fonte única de verdade (Hero deriva da
+trilha, nunca dois vereditos independentes), vocabulário único baseado em `SignallQFeedbackTone`
+mais um 5º estado "Incerto" (símbolo "?").
 
-Algoritmo de amostragem (fonte única, correta, não duplicar):
-- `android/feature/speedtest/src/main/kotlin/io/signallq/app/feature/speedtest/AnalisadorAmostragemPing.kt` — `AnalisadorAmostragemPing.analisar()`. Já calcula corretamente: descarte da 1ª amostra (warm-up), mediana, jitter por deltas sucessivos, filtro de outlier (`> 3x` mediana) só para a latência-base, **e já preserva `p95Ms`, `maxMs` e `picos` calculados sobre todas as amostras válidas, antes do filtro** (comentário do próprio arquivo cita GH#1211 item 3 como o problema que isso resolveu). `ResultadoAmostragemPing` (linhas 14–24) já tem os 8 campos que a Fase de investigação pediu para confirmar.
-- Reusado por dois consumidores, sem duplicação: `ExecutorSpeedtestCloudflare.coletarAmostrasLatencia()` (linha 594) e `PingExecutor.executar()` (linha 128, usado pela tela Ping e pelo refinamento do Modo Gamer).
-- `PingExecutor.PingResultado` (linhas 38–51) **já propaga `maxMs`/`p95Ms`/`picos` para fora** — não há perda de dado nesse caminho.
+### 2. Arquitetura atual relevante (achados de código, não do brief)
 
-Config de amostragem: `ExecutorSpeedtestCloudflare.SpeedtestConfig` (linha 1257) — `pingCount = 15` (fast) / `25` (complete), definido em `fromModo()` (linhas 1271–1302). Com o descarte da 1ª amostra em `AnalisadorAmostragemPing`, a janela efetiva é **14** (fast) / **24** (complete) — confirmado.
+**Trilha e Hero hoje.** `Inicio2ConnectionTrailMapper.map()` (`Inicio2ConnectionTrail.kt`) é puro,
+sem badge — ícones fixos por `node.id` (`Public`/`Router`/`Hub`/`Wifi`/`Smartphone`), cor única
+`textSecondary`, itens não clicáveis. `Inicio2Hero` (`Inicio2Screen.kt:124-216`) tem glifo fixo
+`"!"` e tom vindo de `uiState.analise.veredito.feedbackTone()` — que só existe quando `analise` é
+`StatusEmTempoReal`, produzido por `MonitorConexaoLeveUseCase.calcularStatus()`
+(`core/diagnostico/MonitorConexaoLeveUseCase.kt`), que só olha RSSI/tipo de transporte — **não sabe
+nada sobre gateway, DNS ou rota externa**, isto é, não tem evidência nenhuma de "provedor".
+Composição acontece em `AppShell.kt:857-886`: `MainViewModel`/`AppShell` já expõem `snapshotRede` e
+`snapshotWifi` como estado observável; a trilha e o Hero são recompostos a partir deles.
 
-Perda de pacotes existe hoje em **duas camadas distintas e não sincronizadas** (achado central desta investigação):
-1. **`Provenance`** (`EvidenceProvenance.kt`) — enum genérico `medida`/`estimada`/`indisponivel`, desenhado para todas as dimensões do `ScoreEngine`.
-2. **`packetLossSource: String?`** (`InternetDiagnosticInput.kt` linha 49, `ResultadoSpeedtest.kt` linha 22, `MedicaoEntity.kt`) — vocabulário legado de string livre: `"estimated"`, `"naoMedido"`, `"unknown"`, `"modem"` (medição direta, nunca produzida hoje).
+**`MonitoramentoWorker` (background, opt-in, NÃO TOCAR).** `medirLatenciaHttp()`/
+`medirDnsResolveTime()`/`medirRssiWifi()` são métodos privados de uma `CoroutineWorker` com
+histerese e notificações, condicionada a `PreferenciasAppRepository.monitoramentoAtivoFlow`
+(default `false`). Continua servindo só o monitoramento em background — este plano não lê, não
+estende e não duplica essa lógica.
 
-Classificadores/engines de perda de pacotes, cada um com sua própria regra:
-- `MetricClassifier.classificarPerdaPacotes()` (`MetricClassifier.kt:124-130`) — genérico, thresholds 0% / 0,5% / 2% / >2%, **sem qualquer noção de proveniência ou tamanho de amostra**. Consumido por `ScoreEvidenceBuilder.estabilidade()` (linha 50) e por `ModoGamerEngine` (linha 168, dimensão "Falhas estimadas na conexão").
-- `GameReadinessClassifier.perdaFaixa()` (`GameReadinessClassifier.kt:364-374`) — Ruim só se `fonte != "estimated"` (`medida`) **e** `perda >= 1.0`; senão qualquer `perda > 0.0` já é Atenção.
-- `UsageProfileClassifier.perdaDimensao()` (`UsageProfileClassifier.kt:448-478`) — mesmo padrão: Comprometido só com `provenance == medida && perda >= 1.0`.
-- `ScoreEvidenceBuilder.perdaPacotesStatus()` (`ScoreEvidenceBuilder.kt:179-197`) — thresholds 1%/3%, provenance `estimada` quando `fonte == "estimated"`, `medida` para qualquer outro valor não nulo/não-`naoMedido`/não-`unknown`.
-- `ScoreEngine.aplicarTetos()` (`ScoreEngine.kt:167-200`) — teto 45 quando `perda.provenance == Provenance.medida && nota <= NOTA_CRITICO` (perda real ≥3%).
-- `SpeedtestQualityClassifier.classificarQualidade()` (`SpeedtestQualityClassifier.kt:39-68`) — **quarto** conjunto de thresholds (0,5%/1%/2%/3%/5%, por perfil de uso), **sem checar `packetLossSource`/`Provenance` em nenhum ponto** — produz `vereditoStreaming`/`vereditoGamer`/`vereditoVideoChamada`/`gargaloPrimario`, que são persistidos em `MedicaoEntity` e exibidos em `ResultadoVelocidadeScreen`, `HistoricoScreen`, `HomeMedicaoAdapter` e enviados ao `signallq-admin-worker` via `AdminIngestPayloads`.
-- `RecomendacaoPraticaEngine.recomendarPerdaDePacotes()` (linhas 495-521) — thresholds 1%/3%, já rotula corretamente "(estimada)" quando `fonte == "estimated"`.
+**Achado central — já existe o motor certo, não construído para isto ainda usado.**
+`android/core/network/.../connectivity/`: `ConnectivityDiagnosisEngine` + `ConnectivityStatusResolver`
++ `ConnectivityDiagnosisRunner` (GH#1512) já fazem exatamente a distinção Wi-Fi-interno vs.
+provedor-externo que o brief pede, com proveniência declarada:
 
-Contrato NDS já tem vocabulário fechado mais rico que o local: `NdsProvenance` (`NdsDiagnosticsRequest.kt:105-113`) = `MEASURED`/`ESTIMATED`/`DERIVED`/`CACHED`/`UNKNOWN` (ADR-018, issue #1842). `toNdsPacketLossSource()` (`NdsDiagnosticsRequestMapper.kt:339-345`) mapeia `"modem"→MEASURED`, `"estimated"→ESTIMATED`, `"unknown"→UNKNOWN`, qualquer outro valor (inclusive `null`/`"naoMedido"`) → `null` (omitido do JSON).
+- sondagem sequencial (só avança se a etapa anterior confirmou sucesso): **gateway** (TCP connect
+  portas 53/80/443, timeout 1,2s, amarrado à `Network` do Wi-Fi via `AndroidNetworkProbeBinding`,
+  nunca à rede default do sistema) → **DNS** → **rota externa** (IP puro 1.1.1.1/8.8.8.8/9.9.9.9 +
+  hostname, timeout 1,5s cada, em paralelo);
+- `ConnectivityStatus` (`INTERNET_AVAILABLE`, `GATEWAY_UNREACHABLE`, `NO_LOCAL_ADDRESS`,
+  `DNS_FAILURE`, `EXTERNAL_ROUTE_FAILURE`, `WIFI_WITHOUT_INTERNET`, `PARTIAL_CONNECTIVITY`,
+  `CAPTIVE_PORTAL`, `INCONCLUSIVE`, `WIFI_DISCONNECTED`) já separa camada local (gateway) de camada
+  externa (DNS/rota) — mapeia quase 1:1 para "Wi-Fi" vs. "Provedor";
+- `NivelConfianca` (ALTA/MEDIA/BAIXA) já existe por decisão de design (nunca trata etapa não
+  alcançada/timeout de teto global como evidência forte) — é o material bruto para o 5º estado
+  "Incerto" que Luiz pediu, sem inventar um enum de confiança novo;
+- custo por sondagem é TCP connect de poucos bytes (SYN), não GET com payload — bem mais barato que
+  o GET de 0 bytes ao Cloudflare do `MonitoramentoWorker`, adequado a polling frequente;
+- já é `@Singleton` via DI (`AppModule.kt:395-404`, `ConnectivityDiagnosisRunner`/
+  `ConnectivityDiagnosisSource`), já testado (`ConnectivityDiagnosisEngineTest`,
+  `ConnectivityStatusResolverTest`), já consumido em produção por
+  `ConnectivityDiagnosisRepositoryImpl` (`:feature:speedtest/.../connectivity/`) e por
+  `DiagnosticoOfflineViewModel` (fluxo guiado, opt-in, só quando já offline — CTA do
+  `SignallQOfflineBanner`, não wired à Home, não é polling contínuo).
 
-Persistência: `MedicaoEntity` (`android/core/database/.../MedicaoEntity.kt`) guarda `perdaPercentual`, `packetLossSource`, `jitterMs`, `latencyMs`, `bufferbloatMs`, vereditos — **não guarda `p95Ms`/`maxMs`/`picos`/`timeouts`/`amostrasValidas`**. `ResultadoSpeedtest` também não tem esses campos no nível raiz (só dentro de `DiagnosticoFasesSpeedtest.latenciaAmostrasTotais/latenciaAmostrasValidas/latenciaTimeouts`, que sobrevivem só até a UI de detalhe de fases, não até o histórico).
+**Motor local × ADR-017.** ADR-017 substitui o motor pesado (`InternetDiagnosticEngine`/
+`MetricClassifier`/`ScoreEngine`) pelo NDS remoto — não se aplica aqui. `MonitorConexaoLeveUseCase`
+já é o precedente de um classificador leve, **sempre local, sem NDS**, convivendo com o motor
+pesado; este plano estende esse mesmo precedente, não o motor que a ADR-017 está descontinuando.
 
-## 2. Problemas estatísticos encontrados
+**Vocabulário visual.** `SignallQFeedbackTone` (`ui/component/SignallQFeedbackTone.kt`) e
+`SignallQBadgeTone` (`ui/component/SignallQControls.kt`) são enums de 4 valores
+(Neutral/Success/Warning/Error) com ícones canônicos (`Info`/`CheckCircle`/`WarningAmber`/
+`ErrorOutline`) e uma função de conversão entre eles já existente (`toBadgeTone()`). Uso confinado a
+`:app` (6 arquivos, todos em `ui/component`, `ui/screen/Inicio2Screen.kt` e testes de contrato) —
+raio de impacto pequeno e local ao adicionar um 5º valor.
 
-1. **Resolução amostral inconsistente com os thresholds usados.** Fast: 14 amostras efetivas → 1 timeout = 7,14%. Complete: 24 → 4,17%. Ambos já estouram os cortes de 0,5%/1%/2%/3% usados por 4 dos 5 classificadores no primeiro timeout, sem qualquer noção de confiança.
-2. **`p95Ms`/`maxMs`/`picos` são calculados corretamente por `AnalisadorAmostragemPing` mas descartados no caminho do speedtest.** Confirmado em `ExecutorSpeedtestCloudflare.executarFaseLatencia()` (linhas 567-574): `LatencyPhase` (linha 1226) só recebe `latenciaMs`/`jitterMs`/`perdaPercentual`/`totalAmostras`/`amostrasValidas`/`timeouts` — `p95Ms`, `maxMs` e `picos` morrem ali. **No caminho do `PingExecutor` (tela Ping / Modo Gamer), esses 3 campos SOBREVIVEM** até `PingResultado` — não é um problema geral do motor, é um problema específico do mapeamento em `ExecutorSpeedtestCloudflare`.
-3. **`Provenance.medida` para perda de pacotes é hoje inatingível em produção.** Nenhum local do código produz `packetLossSource = "modem"` ou qualquer valor que caia no `else -> Provenance.medida` dos 3 classificadores que dependem disso. `ExecutorSpeedtestCloudflare` hard-codeia `packetLossSource = "estimated"` sempre (linha 1093). Resultado: os tetos/Comprometido/Ruim "só com medição real" descritos no kdoc de `GameReadinessClassifier`, `UsageProfileClassifier` e `ScoreEngine.aplicarTetos` **nunca disparam com dado real de speedtest hoje** — é código morto disfarçado de proteção. Isso é bom (não superreage) mas também ruim (nunca escala mesmo diante de perda recorrente/consistente), e não é isso que os kdocs dizem que acontece.
-4. **`SpeedtestQualityClassifier` é o único dos 5 consumidores sem nenhuma proteção de confiança.** É também o que persiste dado (vereditos) e alimenta a tela de resultado e o histórico — ou seja, é o de MAIOR exposição ao usuário e o que hoje reage pior a 1 timeout isolado.
-5. **`ScoreEvidenceBuilder.estabilidade()` degrada a proveniência de latência/jitter (que SÃO medidos de verdade) para `estimada` só porque `packetLossSource == "estimated"`** (linha 54) — mistura confiança de uma dimensão (perda) com a confiança de outras (latência, jitter, bufferbloat) que não têm o mesmo problema de resolução.
-6. **Quatro vocabulários paralelos para a mesma proveniência**: `Provenance` (enum Kotlin local), `packetLossSource: String?` (string livre legada), `NdsProvenance` (enum remoto), e o texto solto `"(estimada)"` usado em 3 lugares de UI/copy. Não há hoje uma fonte única — o comentário do próprio `EvidenceProvenance.kt` já reconhece isso como "generaliza para TODAS as dimensões (...) o modelo que a Fase 1 introduziu apenas para perda de pacotes".
+### 3. Módulos afetados
 
-## 3. Consumers impactados
+- `:app` — `Inicio2ConnectionTrail.kt` (badge + clicável + sheet), `Inicio2Screen.kt` (Hero glifo/
+  tom), `SignallQFeedbackTone.kt`/`SignallQControls.kt` (5º valor "Incerto" + ícone "?"),
+  `AppShell.kt`/`MainViewModel.kt` (novo coordenador de polling foreground, novo `StateFlow` de
+  estado ao vivo).
+- `:core:diagnostico` — novo classificador puro (estágio → tom), ao lado de
+  `MonitorConexaoLeveUseCase`.
+- `:core:network` — **nenhuma mudança de contrato.** Só reuso de `ConnectivityDiagnosisSource`/
+  `ConnectivityDiagnosisEngine`/`ConnectivityStatus`/`NivelConfianca`, já públicos.
+- `:core:database`/`ConnectivityDiagnosisHistoryDao` — **não tocar** (ver decisão 4.3).
 
-- `:feature:speedtest` — `AnalisadorAmostragemPing`, `ExecutorSpeedtestCloudflare` (config, `LatencyPhase`, `construirResultado`), `ResultadoSpeedtest`, `DiagnosticoFasesSpeedtest`, `SpeedtestQualityClassifier`, `PingExecutor` (não muda, já correto).
-- `:core:diagnostico` — `DiagnosticInput`/`InternetDiagnosticInput`, `EvidenceProvenance`, `MetricClassifier`, `UsageProfileClassifier`, `GameReadinessClassifier`, `ModoGamerEngine`, `ScoreEvidenceBuilder`, `ScoreEngine`.
-- `:core:database` — `MedicaoEntity`, migration nova (aditiva) se decidirmos persistir p95/max/picos/confiança.
-- `:core:nds` — `NdsDiagnosticsRequest`/`NdsProvenance`, `NdsDiagnosticsRequestMapper.toNdsPacketLossSource`.
-- `:feature:diagnostico` — `RecomendacaoPraticaEngine.recomendarPerdaDePacotes`, `AiModels`/`AiDiagnosisRepository` (packetLossSource repassado à IA), `RemoteDiagnosticReportMapper`.
-- `:app` — `MainViewModel` (linhas 853/2635/2646), `SpeedtestPersistenceCoordinator`, `ResultadoVelocidadeScreen`, `LaudoScreen`, `HistoricoScreen`, `ResultadoPdfGenerator`, `ModoGamerMedicaoAdapter`, `HomeMedicaoAdapter`, `MonitoramentoWorker`.
-- `docs_ai/CONTRATOS/openapi/` — nenhum arquivo documenta hoje `packetLossSource`/`NdsProvenance` apesar de existir desde a ADR-018 (dívida de documentação pré-existente, não criada por esta mudança, mas que deve ser fechada junto se o contrato mudar).
+### 4. Decisão proposta e alternativas rejeitadas
 
-## 4. Thresholds que permanecem iguais
+**4.1 Sonda: reusar `ConnectivityDiagnosisEngine`/`ConnectivityDiagnosisSource`, não extrair
+`MonitoramentoWorker`.**
+Alternativa do brief inicial (extrair `medirLatenciaHttp`/`medirDnsResolveTime`/`medirRssiWifi` do
+Worker para um use case novo) é **rejeitada**: duplicaria, com heurística mais pobre (limiar único
+de latência/DNS, sem separar gateway de rota externa, sem proveniência), um motor que já existe,
+já testado, já mais barato e que já responde exatamente à pergunta "Wi-Fi ou provedor". Extrair do
+Worker só faria sentido se nenhum motor equivalente existisse — não é o caso aqui (regra do
+inventário/verificar-modulo: preferir a menor mudança, não recriar).
 
-- Tabela ANATEL/genérica de latência (0/100/150/200ms), jitter (0/5/10/20ms), RSSI, RSRP/RSRQ/SINR, bufferbloat (0/5/30/100ms) — nenhum motivo técnico ou estatístico para mudar; a skill `regras-diagnostico-rede` continua fonte canônica.
-- Os PERCENTUAIS de corte por si só (0,5%/1%/2%/3%/5%) não precisam mudar — o problema não é "o valor do threshold está errado", é "o percentual medido com poucas amostras não pode ser comparado ao threshold como se fosse confiável". Trocar os números não resolve nada sozinho.
-- `AnalisadorAmostragemPing`: mediana como latência principal, warm-up discard, filtro de outlier 3x para a latência-base — preservados integralmente (restrição do Luiz).
-- `MetricClassifier.classificarBufferbloat()` como única fonte de bufferbloat — preservado.
-
-## 5. Thresholds que realmente precisam mudar
-
-Nenhum valor numérico de threshold de negócio muda. O que muda é:
-- `SpeedtestConfig.pingCount` (fast): `15` → `20` (19 efetivos) para dar janela inicial mais próxima de ~20 amostras úteis, reduzindo a resolução mínima de 7,14% para 5,26% por timeout isolado — ainda insuficiente sozinho, por isso item 7 abaixo.
-- `SpeedtestConfig.pingCount` (complete): mantém `25` (24 efetivos) — já está acima de ~20, não precisa de baseline maior, só ganha a mesma janela de confirmação quando os gatilhos disparam.
-- Os "tetos"/gates hoje escritos como `provenance == Provenance.medida` em `GameReadinessClassifier.perdaFaixa`, `UsageProfileClassifier.perdaDimensao` e `ScoreEngine.aplicarTetos` passam a checar uma nova condição de **confiança amostral** (seção 6), não mais proveniência — porque proveniência `medida` para perda via HTTP timeout é, por natureza, inatingível (nunca vai virar captura real de pacote) e não deveria ter sido a condição de gate.
-
-## 6. Modelo proposto de `EvidenciaPerdaPacotes`
-
-Não introduz um novo enum de proveniência nem mexe no `Provenance` genérico (usado por RSSI, fibra, velocidade etc. — mudar o enum compartilhado teria raio de impacto maior que o necessário). Em vez disso, acrescenta um eixo ortogonal de **confiança amostral**, específico de perda de pacotes (onde o problema de resolução realmente existe — latência/jitter não sofrem do mesmo jeito porque não são binários por amostra).
+**4.2 Onde vive o classificador de estágio: `:core:diagnostico`, ao lado de
+`MonitorConexaoLeveUseCase`.**
+Alternativa rejeitada: colocar a regra de mapeamento tom-por-estágio dentro de `:app` (junto do
+`Inicio2ConnectionTrailMapper`, que é só apresentação). Rejeitada porque a régua "que `ConnectivityStatus`
++ `NivelConfianca` viram qual tom" é uma regra de negócio de diagnóstico (mesma categoria de
+`MonitorConexaoLeveUseCase`), deve ser testável isoladamente sem Compose, e `:core:diagnostico` já
+depende de `:coreNetwork` (`build.gradle.kts` linha 53) — sem inversão de dependência nova.
+Novo tipo puro proposto:
 
 ```kotlin
-// io.signallq.app.feature.speedtest (ou io.signallq.app.core.diagnostico, ver decisão abaixo)
+// io.signallq.app.core.diagnostico
+enum class EstagioRede { WIFI, PROVEDOR }
 
-enum class ConfiancaAmostral {
-    /** Amostra suficiente para tratar o percentual como confiável: 0 timeouts,
-     *  ou timeouts recorrentes/consecutivos confirmados após a janela de confirmação. */
-    SUFICIENTE,
-    /** Percentual real, mas calculado sobre poucos timeouts (tipicamente 1, isolado,
-     *  não confirmado) — não deve ser tratado como perda "crítica" nem elevar
-     *  classificação a Ruim/Comprometido sozinho. NUNCA vira 0 — o valor medido
-     *  é reportado como está, só com a confiança declarada. */
-    INSUFICIENTE,
+data class StatusEstagio(
+    val estagio: EstagioRede,
+    val tom: TomDiagnostico, // ver 4.4 — não é o SignallQFeedbackTone do :app
+)
+
+object ClassificadorConectividadeAoVivo {
+    fun classificar(diagnostico: ConnectivityDiagnosis): List<StatusEstagio>
 }
+```
 
-data class EvidenciaPerdaPacotes(
-    val perdaPercentual: Double,        // fato — nunca forçado a 0
-    val timeoutsTotais: Int,
-    val timeoutsConsecutivosMax: Int,
-    val amostrasEfetivas: Int,          // pós warm-up, soma baseline + confirmação se houve
-    val confirmacaoExecutada: Boolean,  // se a janela de confirmação rodou
-    val confianca: ConfiancaAmostral,
+`:core:diagnostico` não deve conhecer `SignallQFeedbackTone` (tipo de `:app`) — devolve um enum
+próprio equivalente (`TomDiagnostico { NEUTRO, SUCESSO, ATENCAO, ERRO, INCERTO }`), e o mapper de
+`:app` (`Inicio2ConnectionTrailMapper`) faz a tradução final para `SignallQFeedbackTone`. Evita
+`:core:diagnostico` (módulo de regra pura) depender de um componente de UI de `:app`.
+
+**4.3 Não persistir o polling ambiente no `ConnectivityDiagnosisHistoryDao`.**
+`ConnectivityDiagnosisRepositoryImpl.diagnosticar()` grava toda chamada no histórico Room — correto
+para eventos discretos (1 diagnóstico por speedtest), errado para um loop de poucos segundos
+enquanto a Home estiver visível (inundaria a tabela com ruído ambiente, sem valor de histórico
+real). Decisão: o coordenador da Home chama `ConnectivityDiagnosisSource` (a interface, já
+`@Singleton` via `ConnectivityDiagnosisRunner`) **diretamente**, não o `ConnectivityDiagnosisRepository`
+de `:feature:speedtest`. Nenhuma mudança de schema, nenhuma migration.
+
+**4.4 Hero deriva da trilha; não guarda um segundo veredito — texto incluído (decisão de Cora,
+2026-09-26).**
+`statusGeral` do Hero = pior caso entre os `StatusEstagio` correntes (ERRO > ATENCAO > INCERTO >
+SUCESSO > NEUTRO/carregando) — função pura, um único lugar. Escopo do que muda no Hero: **glifo, tom
+E texto (título/mensagem)** do círculo passam a vir do classificador ambiente em vez de
+`veredito.feedbackTone()`/`"!"` fixo/`MonitorConexaoLeveUseCase`, e **só quando não há diagnóstico
+pesado em andamento** (`uiState.analise` é `SemAnalise` ou `StatusEmTempoReal` — nunca
+`Carregando`/`Interrompida`, que continuam com o tratamento atual, dedicado ao fluxo "Analisar minha
+conexão") **e só em Wi-Fi com `Inicio2StatusAoVivo` já disponível** (mobile/ethernet e os primeiros
+segundos antes da 1ª leitura continuam 100% com `MonitorConexaoLeveUseCase`, sem alteração — decisão
+4.5 não muda). Cora rejeitou a alternativa "duas fontes + tabela de precedência" (RSSI alto não é
+evidência sobre o provedor — manteria uma segunda fonte de verdade disfarçada, reabrindo o risco que
+esta arquitetura existe para fechar).
+
+Copy definitivo (usar exatamente estes textos; jargão técnico como "DNS"/"gateway"/"rota externa"
+fica reservado para a sheet por estágio, não para o Hero):
+
+| Tom | Causa (`causaPrincipal`) | Título | Mensagem |
+|---|---|---|---|
+| Sucesso | — | Conexão estável | Wi-Fi e provedor funcionando bem agora. |
+| Atenção | Wi-Fi | Wi-Fi pode estar instável | O sinal do seu Wi-Fi está oscilando; vídeos e chamadas podem engasgar. |
+| Atenção | Provedor | Provedor com lentidão | Sua internet externa está mais lenta que o normal. |
+| Erro | Wi-Fi | Problema no seu Wi-Fi | Não conseguimos falar com seu roteador. Aproxime-se dele ou reinicie o Wi-Fi. |
+| Erro | Provedor | Problema no provedor | Seu Wi-Fi está bem, mas a internet externa não está respondendo. |
+| Incerto | null | Não conseguimos confirmar sua conexão | Vamos continuar checando; toque em "Analisar" para um diagnóstico completo. |
+| Neutro (antes da 1ª leitura, já em Wi-Fi) | — | Verificando sua rede | Conferindo Wi-Fi e provedor agora. |
+
+Fora de escopo desta decisão (refinamento futuro, não bloqueia Davi): copy dedicado para
+`CAPTIVE_PORTAL` — hoje cai em Erro/Atenção Wi-Fi genérico.
+
+**4.5 Trilha Wi-Fi-only para a distinção Wi-Fi/Provedor — mobile/ethernet não ganham essa
+granularidade agora.**
+`ConnectivityDiagnosisEngine` só sonda quando `wifiConnected = true` (por desenho, GH#1512). A
+trilha em modo móvel/ethernet (`mapSemWifi`) não tem hoje um nó "Provedor" separado de "Internet" —
+manter assim. Não-objetivo desta fatia: sondar gateway/DNS/rota externa em dados móveis. O nó
+"Internet" em modo não-Wi-Fi continua refletindo só conectado/desconectado (como hoje).
+
+### 5. Contrato entre sonda/classificador e UI
+
+```kotlin
+// io.signallq.app.ui.screen (novo tipo, ao lado de Inicio2ConnectionTrailState)
+data class Inicio2StatusAoVivo(
+    val porEstagio: Map<String, SignallQFeedbackTone>, // chave = Inicio2TrailNode.id ("Wi-Fi", "Internet", ...)
+    val geral: SignallQFeedbackTone,                    // pior caso, já resolvido
+    val causaPrincipal: EstagioRede?, // decisão de Cora: fonte única também para o texto do Hero.
+    // Propagado do mesmo List<StatusEstagio> que ClassificadorConectividadeAoVivo já produz — não é
+    // sondagem nova. null quando o pior tom não tem estágio único atribuível (ex.: geral == Incerto,
+    // ou dois estágios empatados no mesmo tom pior) — nunca inventar causa combinada; tratar como
+    // Incerto/null.
 )
 ```
 
-`AnalisadorAmostragemPing.analisar()` ganha uma função irmã (ou um segundo método) que recebe o resultado bruto + `timeoutsConsecutivosMax` (novo cálculo simples sobre a lista bruta) e devolve `EvidenciaPerdaPacotes` — sem duplicar mediana/jitter/p95, só compondo em cima do que já existe.
+- `Inicio2ConnectionTrailMapper.map(...)` ganha parâmetro opcional `statusAoVivo:
+  Inicio2StatusAoVivo? = null`; quando presente, cada `Inicio2TrailNode` carrega o tom
+  correspondente (novo campo `tom: SignallQFeedbackTone` no data class, default `Neutral` para não
+  quebrar os dois `@Preview` existentes que constroem `Inicio2TrailNode` sem esse campo).
+  `null`/ausência de entrada no mapa para um `node.id` = estágio não avaliado (ex.: Mesh, Este
+  aparelho) → sem badge, comportamento atual preservado.
+- `Inicio2Hero` recebe o mesmo `SignallQFeedbackTone` + `causaPrincipal` (via `uiState` ou parâmetro
+  novo) para tom, glifo e texto (título/mensagem via tabela de copy da decisão 4.4).
+- Toque no ícone da trilha (novo `onEstagioClick: (String) -> Unit`) abre uma sheet (conteúdo/copy é
+  decisão de Cora/Davi, não desta arquitetura) — este plano só define que a sheet recebe o
+  `node.id` + tom + (quando disponível) o `ConnectivityDiagnosis` bruto para montar a explicação
+  humana, sem duplicar regra de classificação na sheet.
+- Área de toque de cada item da trilha (ícone + rótulo) deve ter no mínimo 48dp (padrão Material —
+  hoje o `Box` do ícone é 32dp/`LkSpacing.xxl`; usar `Modifier.minimumInteractiveComponentSize()` ou
+  padding equivalente; a `Row` com `SpaceBetween`/`weight(1f)` comporta isso sem redesenho —
+  confirmado por Breno, 2026-09-26). `contentDescription` no elemento clicável (não no ícone
+  isolado, com `mergeDescendants`/`clearAndSetSemantics` para TalkBack anunciar como um único
+  elemento), padrão: `"{rótulo do nó}: {tone.accessibleLabel()}. Toque para ver detalhes."` — estender
+  `SignallQFeedbackTone.accessibleLabel()` com "Incerto". O ícone do 5º valor "Incerto" deve ser um
+  ícone vetorial (`Icons.Outlined.QuestionMark`/`HelpOutline`), não um glifo de texto "?" solto, para
+  manter consistência com os demais tons (todos usam ícone vetorial, nunca só cor).
 
-`p95Ms`/`maxMs`/`picos` **não precisam de um modelo novo** — já existem em `ResultadoAmostragemPing`. O trabalho aqui é só parar de descartá-los em `LatencyPhase` (item 8).
+### 6. Fluxo de dados
 
-## 7. Estratégia de amostragem adaptativa
+```
+Home visível + app foreground
+        ↓ (novo coordenador — MainViewModel ou state holder dedicado em :app)
+loop: aguarda conclusão da sondagem anterior → ConnectivityDiagnosisSource.diagnosticar()
+      → espera 5s (recomendação de Breno, 2026-09-26 — faixa aceitável 4-6s) → repete
+        ↓
+ConnectivityDiagnosis (ConnectivityStatus + NivelConfianca)
+        ↓
+ClassificadorConectividadeAoVivo.classificar() [:core:diagnostico, puro, testável]
+        ↓
+StatusEstagio (WIFI, PROVEDOR) → tradução para SignallQFeedbackTone [:app]
+        ↓
+Inicio2StatusAoVivo → Inicio2ConnectionTrailMapper (badges) + Inicio2Hero (círculo, pior caso)
+```
 
-Janela inicial (baseline), pós warm-up:
-- **Fast**: 20 probes brutos → 19 efetivos (era 15/14).
-- **Complete**: 25 probes brutos → 24 efetivos (sem mudança — já é ≥20).
+Início/parada do loop: inicia quando `AppShellRoot.Home` está selecionada E o processo está em
+foreground; para quando qualquer uma das duas condições deixa de valer. Antes da primeira resposta,
+`Inicio2StatusAoVivo` é `null` (estado "carregando" — sem badge ou badge neutro de carregamento,
+decisão visual de Davi/Cora). Ao voltar a foreground/à Home, reseta para `null` (carregando) até a
+próxima leitura — nunca reexibe o último valor como se fosse atual (regra "sem staleness").
 
-Janela de confirmação (+20 probes brutos, mesma regra warm-up não se aplica de novo — é uma continuação da mesma coleta, não uma nova rodada com novo descarte de 1ª amostra), disparada **uma única vez** (sem loop iterativo, para não estourar o orçamento de tempo do teste) quando QUALQUER um destes sinais aparece no resultado do baseline:
-1. `timeouts >= 1` (gatilho dominante — com N=19/24, 1 timeout isolado já é >5%/>4%, sempre acima de pelo menos um threshold de negócio);
-2. `picos > 0` (spike detectado — `p95Ms` ou `maxMs` distante da mediana, já calculado por `AnalisadorAmostragemPing`);
-3. `MetricClassifier.classificarJitter(jitterMs) in [regular, ruim]`;
-4. resultado da perda dentro de ±30% relativo de qualquer corte de negócio (0,5%/1%/2%/3%) mesmo sem timeout novo entrando na fórmula — cobre o caso de janelas maiores no futuro onde a % não é dominada por 1 timeout isolado.
+### 7. Falhas, timeout e fallback
 
-Por que 20 e não outro número: é o valor pedido explicitamente pelo Luiz como "amostra estatisticamente mais séria" sem virar um segundo speedtest; dobrar o baseline (19→39 efetivos fast, 24→44 complete) leva a resolução mínima de 1 timeout para ~2,6%/~2,3% — ainda "real", mas já compatível com a ideia de "não é mais um evento isolado dominando o resultado".
+- Etapas já tipadas (`ProbeResult.Success/Failure/Timeout/NotExecuted/Unavailable`) — o classificador
+  nunca trata timeout como sucesso (regra dura do `AGENTS.md` §8) nem inventa dado ausente.
+- Teto do próprio engine: 8s globais (`GLOBAL_TIMEOUT_MS_DEFAULT`); coordenador da Home não precisa
+  de teto adicional — só evita rodadas sobrepostas (aguarda a rodada terminar antes de agendar a
+  próxima, nunca fixed-rate).
+- Exceção inesperada de `diagnosticar()` (fora do modelo `ProbeResult`) → capturada pelo coordenador,
+  vira `Inicio2StatusAoVivo` com todos os estágios `Incerto`, nunca derruba a Home.
+- `NivelConfianca.BAIXA` em qualquer resolução (`ConnectivityStatusResolution.confidence`) força o(s)
+  estágio(s) afetado(s) a `Incerto`, mesmo que o `ConnectivityStatus` resolvido sugira uma causa —
+  é a implementação direta da regra "nunca apresentar causa raiz sem evidência suficiente".
+- `WIFI_DISCONNECTED`/transporte não-Wi-Fi: sem badge de estágio Wi-Fi/Provedor (ver 4.5) — trilha
+  cai no modo atual sem essa granularidade.
 
-Diferença fast vs complete: fast preserva orçamento de tempo curto como prioridade de produto — só paga o custo da confirmação quando a rede já deu sinal de problema (o caso comum, rede saudável, não passa pelos 4 gatilhos e não paga o custo extra). Complete já tem baseline maior por natureza (medição mais completa é a proposta de produto do próprio modo), então a confirmação é mais sobre consistência que sobre tamanho mínimo.
+### 8. Compatibilidade
 
-Custo em pior caso: confirmação só dispara com rede já degradada (por definição dos gatilhos) — 20 probes extras a até 4s de timeout cada é um pior caso teórico de +80s que não é realista (mesma rede que já timou uma vez tende a timar rápido nas seguintes, não no timeout máximo de 4s cada), mas deve ser declarado como risco de UX (seção 9) e considerado no critério de aceite de Breno (teste em rede real degradada).
+- `MonitoramentoWorker`, histerese, notificações e preferências de monitoramento: **zero mudança**.
+- `ConnectivityDiagnosisRepositoryImpl`/`ConnectivityDiagnosisHistoryDao`/consumo por
+  `:feature:speedtest`: **zero mudança** (decisão 4.3 evita qualquer efeito colateral cruzado).
+- `MonitorConexaoLeveUseCase`: continua sendo a fonte do título/mensagem textual do Hero; não é
+  removido nem substituído nesta fatia.
+- `SignallQFeedbackTone`/`SignallQBadgeTone`: adicionar `Incerto` é aditivo, mas **quebra
+  exaustividade de `when`** em todo call site existente (6 arquivos, listados na investigação) —
+  compilador força a atualização, não há risco de esquecer um branch silenciosamente.
+- `Inicio2TrailNode`: adicionar campo `tom` com default preserva os 2 `@Preview` existentes em
+  `Inicio2Screen.kt` sem alteração.
 
-## 8. Impacto em persistência/contratos
+### 9. Gate Camillo: decisão
 
-**Mudança 100% aditiva — nenhuma coluna removida, nenhum contrato quebrado.**
-
-- `MedicaoEntity`: nova migration `Nx → Nx+1` adicionando colunas nullable `latenciaP95Ms REAL`, `latenciaMaxMs REAL`, `latenciaPicos INTEGER`, `perdaConfianca TEXT` (valores `"suficiente"`/`"insuficiente"`, nullable — registros antigos ficam `null`, nunca inferidos retroativamente). Seguir o padrão já usado nas migrations 13→14/15→16 (`Migration13Para14Test`/`Migration15Para16Test` como modelo de teste).
-- `ResultadoSpeedtest`/`DiagnosticoFasesSpeedtest`: adicionar os mesmos campos (default `null`/`0` para não quebrar quem já constrói o data class por posição — checar todos os call sites listados na seção 3, todos são código do próprio monorepo, não há consumidor externo desse tipo).
-- `LatencyPhase` (`ExecutorSpeedtestCloudflare.kt:1226`): passa a propagar `p95Ms`/`maxMs`/`picos`/`EvidenciaPerdaPacotes` (ou os campos soltos) em vez de descartá-los — mudança confinada a um `private data class` do próprio arquivo, raio de impacto mínimo.
-- **Contrato NDS**: `NdsProvenance` já tem vocabulário suficiente (`MEASURED`/`ESTIMATED`/`DERIVED`/`CACHED`/`UNKNOWN`) — **não precisa mudar o enum**. Decisão: `toNdsPacketLossSource()` ganha uma regra nova — quando `confianca == SUFICIENTE` e há timeouts recorrentes/consecutivos confirmados, ainda mapeia para `ESTIMATED` (continua sendo estimativa por timeout HTTP, nunca captura real de pacote — não é honesto chamar de `MEASURED`); a informação de confiança em si **não** precisa ir para o payload remoto nesta fase — o valor filtrado (`perdaPercentual` só reportado quando `confianca == SUFICIENTE`, omitido/tratado como indisponível quando `INSUFICIENTE`) já basta para a IA nunca receber confiança maior que a real. Isso responde a restrição do brief: **decisão explícita = enriquecer localmente primeiro, contrato remoto não precisa evoluir nesta fase.** Se o produto quiser no futuro mostrar "confiança" explicitamente na resposta da IA, aí sim vira uma ADR nova.
-- `packetLossSource` (string legada) não é removida nem renomeada — continua existindo para compatibilidade com `RecomendacaoPraticaEngine`, PDF, `LaudoScreen`, telas atuais. A nova `ConfiancaAmostral` é um campo adicional, não um substituto.
-- Registros legados (sem `perdaConfianca`, `latenciaP95Ms` etc.): tratados como `confianca = INSUFICIENTE` por default apenas na exibição/reclassificação de Histórico antigo — não se recalcula silenciosamente o passado, não se finge que havia janela de confirmação que não rodou.
-
-## 9. Gate Camillo: decisão
-
-**Aprovado, com condições.** A mudança é sistêmica (cruza `:feature:speedtest`, `:core:diagnostico`, `:core:database`, `:core:nds`, `:app`) e o gate se aplica — mas o escopo real é menor do que o pedido inicial sugeria, porque:
-- `p95Ms`/`maxMs`/`picos` **já existem** no motor (`AnalisadorAmostragemPing`) — o trabalho é parar de descartá-los em `ExecutorSpeedtestCloudflare`, não criar cálculo novo.
-- O vocabulário de proveniência remota (`NdsProvenance`) **já é suficiente** — não precisa de mudança de contrato NDS nesta fase.
-- Não se cria um segundo motor de diagnóstico nem um segundo bufferbloat — `MetricClassifier.classificarBufferbloat()` intocado.
+**Aprovado.** Cruza `:app`, `:core:diagnostico` e reusa contrato público de `:core:network` — gate
+do §5 se aplica (item 1: múltiplos módulos com mudança de responsabilidade; item 7 tangencial: não é
+o motor central de diagnóstico do ADR-017, mas é uma extensão do "motor leve" que convive com ele).
+Escopo real é menor do que "criar sonda nova": a maior parte do trabalho é **wiring** de um motor já
+maduro (`ConnectivityDiagnosisEngine`, GH#1512) que ninguém tinha ainda ligado à Home, mais um
+classificador leve e pequeno, mais extensão de um enum de 4 para 5 valores.
 
 Condições:
-1. Nenhum dos 5 consumidores de perda de pacotes muda de arquivo/dono sem necessidade — `MetricClassifier` continua genérico; a checagem de confiança entra nos 3 pontos que já tinham a intenção de checar proveniência (`GameReadinessClassifier`, `UsageProfileClassifier`, `ScoreEngine.aplicarTetos`) e no único que não tinha nenhuma proteção (`SpeedtestQualityClassifier`), que precisa ganhar acesso à `EvidenciaPerdaPacotes`/`confianca` — hoje só recebe `Double` cru, isso é uma mudança de assinatura de função pública dentro do módulo, não de um contrato externo.
-2. Testes de caracterização (golden tests já existentes: `ScoreEngineTest`, `ScoreEvidenceBuilderThresholdCharacterizationTest`, `GameReadinessClassifierTest`, `UsageProfileClassifierTest`, `AnalisadorAmostragemPingTest`) precisam ser revisados ANTES da implementação para confirmar quais casos hoje dependem do comportamento "1 timeout já é Ruim" — alguns podem estar codificando o bug como comportamento esperado.
-3. `pingCount` fast passar de 15→20 é uma mudança observável de duração de teste — Cora/produto deve validar que o aumento (poucas centenas de ms em rede saudável) é aceitável antes de Davi/Ramon implementar; não é decisão só técnica.
+1. Não recriar sondagem gateway/DNS/rota externa — usar `ConnectivityDiagnosisSource` como está.
+2. Não persistir o polling ambiente no `ConnectivityDiagnosisHistoryDao` (decisão 4.3).
+3. `ClassificadorConectividadeAoVivo` não importa tipo de `:app` (decisão 4.2) — mantém a direção de
+   dependência `:app → :core:diagnostico → :coreNetwork`.
+4. Hero só troca a fonte do tom/glifo do círculo quando não há diagnóstico pesado em andamento
+   (decisão 4.4) — nunca dois estados "ativos" ao mesmo tempo tentando pintar o mesmo círculo.
+5. Extensão revisada e aprovada (2026-09-26): campo `causaPrincipal: EstagioRede?` em
+   `Inicio2StatusAoVivo` (seção 5), para a decisão de Cora de usar fonte única também para o texto do
+   Hero. Aditivo dentro do escopo já aprovado — propaga dado já produzido por
+   `ClassificadorConectividadeAoVivo`/`List<StatusEstagio>` (seção 4.2), sem sondagem nova, sem módulo
+   novo e sem alterar a direção de dependência `:app → :core:diagnostico → :coreNetwork` (condição 3
+   continua valendo). Não reabre o gate.
 
 Riscos:
-- Mudar o gate de `provenance == medida` (inatingível) para `confianca == SUFICIENTE` (atingível) é o único ponto onde o comportamento REALMENTE muda de forma observável para o usuário — perda confirmada/recorrente agora pode, pela primeira vez, chegar a Ruim/Comprometido/teto 45. Isso é a correção pedida ("perda confirmada deve continuar pesando forte"), mas é uma mudança de comportamento que hoje nunca acontecia — precisa de teste de regressão explícito e não pode ser silenciosa.
-- `SpeedtestQualityClassifier` ganhar checagem de confiança muda os vereditos persistidos (`vereditoGamer` etc.) — janela de compatibilidade com histórico antigo (item 8) evita reclassificar dados velhos.
+- **Custo de bateria/dados mesmo em foreground.** Menor que o GET do Worker (TCP connect vs. HTTP
+  completo). Breno confirmou no código (`ConnectivityDiagnosisEngine`/`GatewayReachabilityProbe`/
+  `ExternalIpReachabilityProbe`) que uma rodada em rede saudável é ~4 handshakes TCP curtos sem
+  payload (~centenas de ms); pior caso (rede degradada, múltiplas portas/IPs tentados) chega ao teto
+  de 8s. Intervalo de espera fixado em **5s** entre rodadas (decisão acima, seção 6) — ciclo total
+  ~5,3s em rede saudável (percebido como "ao vivo" para um badge, sem justificar 1-2s que só
+  multiplicaria handshakes sem ganho perceptível). Validação em device real (bateria via
+  Battery Historian/Profiler, cadência real de chegada, device OEM com otimização agressiva,
+  consumo de dados, e necessidade de back-off após timeouts repetidos em rede ruim) fica com Breno,
+  **depois da implementação** — não bloqueia o início dela.
+- **Falso incerto por excesso de cautela.** Se o critério de `Incerto` (NivelConfianca BAIXA) for
+  aplicado com timeout global do engine ainda em andamento (etapa nunca alcançada), o badge pode
+  piscar "?" com frequência em redes só um pouco lentas — precisa de teste de caracterização com
+  cenários reais de rede lenta (não só rede boa/rede quebrada).
+- ~~Descompasso copy-vs-cor no Hero~~ — **resolvido** (decisão de Cora, seção 4.4): texto passa a
+  vir da mesma fonte que a cor, não mais de `MonitorConexaoLeveUseCase`, quando o status ao vivo
+  está disponível.
+- **Toque no ícone da trilha é novo comportamento de interação** (hoje `Inicio2TrailItem` não é
+  clicável) — requisitos de acessibilidade definidos por Breno (seção 5: área de toque ≥48dp,
+  `contentDescription` padronizado, ícone vetorial para "Incerto"); validação final em device real
+  ainda cabe a ele depois da implementação.
 
-Fora de escopo (reafirmando os não-objetivos do brief): redesign de telas, novo provedor de speedtest, segundo motor de diagnóstico, mudança de RSSI/RSRP/RSRQ/SINR, reescrita do Modo Gamer, LLM decidindo threshold, mudança de contrato NDS além do já necessário (nenhuma nesta fase).
+Não-objetivos: isto não substitui o diagnóstico completo/NDS (`analisarProblema`/"Analisar minha
+conexão" continuam intactos), não é o `ScoreEngine`/motor pesado do ADR-017, não estende a
+distinção Wi-Fi/Provedor para dados móveis, não persiste histórico do estado ambiente, não altera
+`MonitoramentoWorker`.
 
-## 10. Plano de implementação
+**Correção de Ramon ao `ClassificadorConectividadeAoVivo` (2026-09-26, aceita):** `WIFI_WITHOUT_INTERNET`
+mapeia para `INCERTO` nos dois estágios, não `ERRO`/`WIFI` como a primeira instrução previa. O próprio
+doc-comment do status em `core:network` já o descreve como "conclusão honesta quando não dá para
+atribuir a causa a uma camada específica", e o resolver só chega nele depois de gateway e DNS
+confirmados — atribuir a causa ao Wi-Fi aqui seria inventar evidência, violando AGENTS.md §8. Efeito
+visual: esse status vira badge "?" em vez de erro no ícone de Wi-Fi.
 
-Ordem sugerida, com checkpoint de teste após cada bloco:
+**Segunda correção, achada rodando o app em emulador (2026-09-26, aceita):** `GATEWAY_UNREACHABLE`/
+`NO_LOCAL_ADDRESS` marcavam `PROVEDOR = SUCESSO` (erro só no Wi-Fi). Isso também inventava evidência:
+a sondagem é sequencial e nunca alcança DNS/rota externa quando o gateway falha, então não há
+nenhuma evidência sobre o provedor nesse cenário. Corrigido para `PROVEDOR = NEUTRO` (não avaliado),
+via função dedicada `erroWifiSemEvidenciaExterna()` — não reusa mais `erroEm()`/`estagioOposto()`
+para esses dois status (essa suposição "oposto = sucesso" só vale para `DNS_FAILURE`/
+`EXTERNAL_ROUTE_FAILURE`, onde a etapa oposta foi de fato testada com sucesso antes da falha).
+Efeito visual: o nó "Internet" mostra um badge neutro ("Info") em vez de check verde quando o
+Wi-Fi está com erro de gateway — sem afetar o Hero (o pior caso continua vindo do Wi-Fi/Erro).
 
-1. **Ramon** — `AnalisadorAmostragemPing`: adicionar cálculo de `timeoutsConsecutivosMax` e a função que produz `EvidenciaPerdaPacotes`/`ConfiancaAmostral`. Checkpoint: estender `AnalisadorAmostragemPingTest` com casos (0 timeouts, 1 isolado, 2 consecutivos, 2 não-consecutivos, confirmação não disparada vs disparada).
-2. **Ramon** — `ExecutorSpeedtestCloudflare`: `SpeedtestConfig.fromModo()` (pingCount fast 15→20); implementar a janela de confirmação em `coletarAmostrasLatencia`/`executarFaseLatencia` (os 4 gatilhos da seção 7); parar de descartar `p95Ms`/`maxMs`/`picos` em `LatencyPhase`; propagar `EvidenciaPerdaPacotes` até `construirResultado`. Checkpoint: testes de `ExecutorSpeedtestCloudflare` (duração da fase de latência, confirmação disparando/não disparando, campos propagados).
-3. **Ramon** — `:core:diagnostico`: `InternetDiagnosticInput` ganha os campos novos; `GameReadinessClassifier.perdaFaixa`, `UsageProfileClassifier.perdaDimensao`, `ScoreEngine.aplicarTetos`/`ScoreEvidenceBuilder.perdaPacotesStatus` trocam o gate `provenance == medida` por `confianca == SUFICIENTE`. Checkpoint: rodar os golden tests existentes primeiro (sem alterar), listar quais quebram, atualizar só os que codificavam o bug (documentar a mudança de expectativa no próprio teste).
-4. **Ramon** — `SpeedtestQualityClassifier.classificarQualidade()`: ganha parâmetro de confiança; perda com `confianca == INSUFICIENTE` não deve sozinha empurrar veredito para `poor`/`gargaloPrimario = packetLoss` — cai para o pior caso entre as outras métricas, igual ao padrão já usado por `GameReadinessClassifier.piorFaixa`. Checkpoint: `ClassificacaoMetricaLocalTest` + novo teste dedicado de confirmação.
-5. **Davi** — `:core:database`: migration aditiva (novas colunas), `MedicaoEntity`, DAO, mapeamentos em `SpeedtestPersistenceCoordinator`/`MainViewModel`. Checkpoint: teste de migration seguindo o padrão `Migration15Para16Test`, teste de round-trip do DAO.
-6. **Davi** — UI que já lê `p95Ms`/`maxMs`/`picos`/confiança quando fizer sentido mostrar (ex.: badge "perda ainda não confirmada" em `ResultadoVelocidadeScreen`/`LaudoScreen`, reaproveitando o padrão já existente do sufixo "(estimada)") — escopo de copy/UX definido por Cora antes da implementação visual.
-7. **Ramon** — `NdsDiagnosticsRequestMapper.toNdsPacketLossSource`: aplicar o filtro "só reporta `perdaPercentual` quando `confianca == SUFICIENTE`" antes de montar o payload; `RecomendacaoPraticaEngine.recomendarPerdaDePacotes` e `AiModels`/`AiDiagnosisRepository` herdam o mesmo filtro (não precisam de novo código se o filtro acontecer na origem do dado). Checkpoint: teste de `NdsDiagnosticsRequestMapper` confirmando omissão quando `INSUFICIENTE`.
-8. **Breno** — regressão completa: `./android/gradlew test ktlintCheck detekt assembleDebug`; teste em rede real degradada (Wi-Fi ruim/perda intermitente) validando que 1 timeout isolado não vira "Ruim" em nenhuma tela, e que perda recorrente/consecutiva simulada (proxy/throttling) efetivamente chega a Ruim/Comprometido/teto pela primeira vez; medir o custo real de duração da janela de confirmação em rede degradada.
-9. **Camillo** — revisão de aderência ao plano após a implementação, focada em: nenhum segundo motor criado, `MetricClassifier`/`Provenance` genéricos intocados, contrato NDS não mudou além do combinado, migration é aditiva.
+### 10. Estratégia de testes
 
-## 11. Fechamento (Camillo, 2026-09-22) — achados médios de Breno
+- `ClassificadorConectividadeAoVivo` (`:core:diagnostico`): testes unitários puros por
+  `ConnectivityStatus` × `NivelConfianca` (matriz completa dos 10 valores de status combinados com
+  os 3 níveis de confiança) — sem depender de speedtest real, sem Robolectric.
+- `Inicio2ConnectionTrailMapper`: estender os testes existentes com `statusAoVivo` presente/ausente,
+  confirmando que nós sem entrada no mapa não ganham badge.
+- Hero: teste de caracterização confirmando que `Carregando`/`Interrompida` preservam o
+  comportamento atual (não usam o tom ambiente) e que `SemAnalise`/`StatusEmTempoReal` passam a usar
+  o pior caso da trilha.
+- Coordenador de polling (`:app`): teste com `TestDispatcher`/fake `ConnectivityDiagnosisSource`
+  confirmando start ao entrar na Home+foreground, stop ao sair/backgroundar, sem sondagens
+  sobrepostas.
+- Breno: validação em device real — rede boa, Wi-Fi sem internet (gateway ok, sem rota externa),
+  Wi-Fi totalmente offline, DNS bloqueado/lento, troca Wi-Fi↔móvel com Home aberta, app indo a
+  background no meio de uma sondagem.
 
-**Revisão de aderência:** confirmada. `git diff` mostra `MetricClassifier.kt` sem alteração (só um novo seam `classificarJitterLocal` em `ClassificacaoMetricaLocal.kt`, mesmo padrão do seam de bufferbloat já existente); `enum class Provenance` intocado (só `EvidenceScore` ganhou campo opcional `confiancaAmostral: ConfiancaAmostral? = null`, default null, não quebra os outros 10 consumidores); `enum class NdsProvenance` intocado (4 valores, sem alteração) — o filtro entrou como função local `perdaPercentualConfiavelParaNds()` no mapper, não no contrato. Migration 20→21 confirmada aditiva (schema JSON gerado, coluna nova nullable). `EvidenciaPerdaPacotes`/`ConfiancaAmostral` ficaram em `:core:diagnostico` — correto: `:feature:speedtest/build.gradle.kts` depende de `:core:diagnostico` (não o inverso), então colocar o vocabulário lá evita inversão de dependência; o kdoc do próprio arquivo já documenta essa decisão.
+### 11. Resumo para implementação (Davi/Ramon)
 
-**Achado 1 (janela de confirmação sem teto de duração) — decisão (b): adicionar teto de tempo, só no modo fast.**
-Contexto: com pingCount fast 20 + confirmação +20, o pior caso teórico saltou de ~60s (antes desta fatia, 15 probes) para ~160s (40 probes × 4s de `callTimeout`), sem proteção alguma. Isso não é "forçar um número cego de threshold de negócio" (nenhum corte de perda/latência/jitter muda) — é uma rede de segurança de resiliência/duração, categoria diferente da restrição do Luiz. Dado que o modo fast é usado majoritariamente em rede móvel e é o modo consciente de bateria/dados por design de produto, decidi (autoridade técnica/proporcional, sem precisar voltar ao Luiz):
-- Implementado `SpeedtestConfig.latenciaOrcamentoMs` (`ExecutorSpeedtestCloudflare.kt`), `null` por padrão (modo complete não muda — decisão da seção 7 preservada, completude > sensibilidade de duração).
-- Fast mode: `latenciaOrcamentoMs = 20_000L` (20s) cobrindo baseline + confirmação juntos. Reaproveita o MESMO idioma já usado no arquivo para o teto de 25s do throughput adaptativo (`executarFaseUploadAdaptativa`, `budgetMs`/`stopNs`/`System.nanoTime()`), não um mecanismo novo.
-- Ao estourar o orçamento, o loop para de coletar nova amostra e analisa o que já foi coletado — mesmo tratamento tolerante já usado para `mudouRede()` (troca de rede no meio da coleta); nunca é tratado como erro, nunca força perda a 0.
-- Não reabre pingCount=20, não reabre os 4 gatilhos, não reabre a regra de escalonamento de perda confirmada — só limita a duração total de wall-clock da fase de latência no fast.
-- Testes existentes de `ExecutorSpeedtestCloudflare`/`AnalisadorAmostragemPing` seguem verdes (`:featureSpeedtest:testDebugUnitTest`), `ktlintCheck`/`detekt` (`:featureSpeedtest`) sem violação nova.
-- **Follow-up ainda recomendado, não bloqueante:** validação empírica em device real/rede degradada real (throttling) para confirmar que 20s é um valor confortável (nem curto demais a ponto de cortar toda confirmação legítima, nem longo demais para UX) — abrir issue de validação pré-release, já que nem Ramon/Davi (MockWebServer) nem Breno (sem ferramenta de throttling) conseguiram validar isso com rede real até aqui.
-
-**Achado 2 (documentação de arquitetura desatualizada):** corrigido por Camillo — ver `docs_ai/ARQUITETURA/MODULOS/core-database.md`, `feature-speedtest.md`, `core-diagnostico.md` (contagens de linha reais, versão do banco, `EvidenciaPerdaPacotes.kt` adicionado à tabela de componentes, `last_updated` atualizado).
-
-**Veredito do gate arquitetural: FECHADO/APROVADO.** Nenhuma pendência arquitetural bloqueante restante. Único item aberto é o follow-up de validação empírica do teto de 20s (não bloqueia merge, mesmo veredito de proporcionalidade que Breno já havia dado ao risco original).
+Ordem sugerida:
+1. **Ramon** — `EstagioRede`/`TomDiagnostico`/`StatusEstagio`/`ClassificadorConectividadeAoVivo` em
+   `:core:diagnostico`, com testes da matriz completa.
+2. **Davi** — 5º valor `Incerto` em `SignallQFeedbackTone`/`SignallQBadgeTone` (+ ícone "?"),
+   corrigindo os `when` que deixam de compilar.
+3. **Davi** — coordenador de polling foreground em `:app` (liga ao ciclo de vida Home+processo),
+   consumindo `ConnectivityDiagnosisSource` diretamente (não o `ConnectivityDiagnosisRepository`).
+4. **Davi** — `Inicio2TrailNode`/`Inicio2ConnectionTrailMapper`/`Inicio2ConnectionTrail` (badge +
+   clicável), `Inicio2Hero` (glifo/tom condicionados), wiring em `AppShell.kt`.
+5. **Davi** — sheet de explicação por estágio (copy definida com Cora).
+6. **Breno** — regressão + validação em device real conforme seção 10.

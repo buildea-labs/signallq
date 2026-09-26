@@ -17,7 +17,9 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
+import io.signallq.app.core.diagnostico.EstagioRede
 import io.signallq.app.ui.SignallQTheme
+import io.signallq.app.ui.component.SignallQFeedbackTone
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -255,5 +257,117 @@ class Inicio2ScreenTest {
         }
 
         assertEquals(1, videos)
+    }
+
+    // Architecture Plan "Status de conectividade ao vivo na Home", decisão 4.4 -- teste de
+    // caracterização: Carregando/Interrompida NUNCA usam o tom ambiente (mesmo em Wi-Fi com
+    // statusAoVivo disponível); SemAnalise/StatusEmTempoReal passam a usar o pior caso da
+    // trilha quando statusAoVivo está disponível e a conexão é Wi-Fi.
+
+    private val statusAmbienteErroWifi =
+        Inicio2StatusAoVivo(
+            porEstagio = mapOf("Equipamento" to SignallQFeedbackTone.Error, "Wi-Fi" to SignallQFeedbackTone.Error),
+            geral = SignallQFeedbackTone.Error,
+            causaPrincipal = EstagioRede.WIFI,
+        )
+
+    @Test
+    fun `Hero Carregando preserva copy atual mesmo com statusAoVivo disponivel`() {
+        composeRule.setContent {
+            SignallQTheme {
+                Inicio2Screen(
+                    uiState = Inicio2UiState(Inicio2Conexao.Wifi, "Casa", Inicio2Analise.Carregando),
+                    onAnalisarConexao = { null },
+                    onAbrirPerfil = {},
+                    statusAoVivo = statusAmbienteErroWifi,
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("Analisando sua conexão").assertIsDisplayed()
+        composeRule.onNodeWithText("Problema no seu Wi-Fi").assertDoesNotExist()
+    }
+
+    @Test
+    fun `Hero Interrompida preserva copy atual mesmo com statusAoVivo disponivel`() {
+        composeRule.setContent {
+            SignallQTheme {
+                Inicio2Screen(
+                    uiState = Inicio2UiState(Inicio2Conexao.Wifi, "Casa", Inicio2Analise.Interrompida("Contexto preservado.")),
+                    onAnalisarConexao = { null },
+                    onAbrirPerfil = {},
+                    statusAoVivo = statusAmbienteErroWifi,
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("Análise interrompida").assertIsDisplayed()
+        composeRule.onNodeWithText("Problema no seu Wi-Fi").assertDoesNotExist()
+    }
+
+    @Test
+    fun `Hero SemAnalise em Wi-Fi usa pior caso da trilha quando statusAoVivo disponivel`() {
+        composeRule.setContent {
+            SignallQTheme {
+                Inicio2Screen(
+                    uiState = Inicio2UiState(Inicio2Conexao.Wifi, "Casa", Inicio2Analise.SemAnalise),
+                    onAnalisarConexao = { null },
+                    onAbrirPerfil = {},
+                    statusAoVivo = statusAmbienteErroWifi,
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("Problema no seu Wi-Fi").assertIsDisplayed()
+        composeRule.onNodeWithText("Internet lenta").assertDoesNotExist()
+    }
+
+    @Test
+    fun `Hero StatusEmTempoReal em Wi-Fi usa pior caso da trilha quando statusAoVivo disponivel`() {
+        composeRule.setContent {
+            SignallQTheme {
+                Inicio2Screen(
+                    uiState = Inicio2UiState(Inicio2Conexao.Wifi, "Casa", Inicio2Analise.StatusEmTempoReal("Bom", "Motivo de teste")),
+                    onAnalisarConexao = { null },
+                    onAbrirPerfil = {},
+                    statusAoVivo = statusAmbienteErroWifi,
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("Problema no seu Wi-Fi").assertIsDisplayed()
+        composeRule.onNodeWithText("Conexão boa").assertDoesNotExist()
+    }
+
+    @Test
+    fun `Hero em Wi-Fi sem statusAoVivo ainda mostra verificando sua rede`() {
+        composeRule.setContent {
+            SignallQTheme {
+                Inicio2Screen(
+                    uiState = Inicio2UiState(Inicio2Conexao.Wifi, "Casa", Inicio2Analise.SemAnalise),
+                    onAnalisarConexao = { null },
+                    onAbrirPerfil = {},
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("Verificando sua rede").assertIsDisplayed()
+    }
+
+    @Test
+    fun `Hero fora do Wi-Fi ignora statusAoVivo`() {
+        composeRule.setContent {
+            SignallQTheme {
+                Inicio2Screen(
+                    uiState = Inicio2UiState(Inicio2Conexao.Movel, null, Inicio2Analise.SemAnalise),
+                    onAnalisarConexao = { null },
+                    onAbrirPerfil = {},
+                    statusAoVivo = statusAmbienteErroWifi,
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("Internet lenta").assertIsDisplayed()
+        composeRule.onNodeWithText("Problema no seu Wi-Fi").assertDoesNotExist()
     }
 }
