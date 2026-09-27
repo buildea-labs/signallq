@@ -30,6 +30,13 @@ import javax.inject.Singleton
  * `hiltViewModel()` em Composable leaf -- este app é 100% data-driven, ver comentário em
  * `MainActivity.kt`).
  *
+ * Exceção documentada (Architecture Plan "WiFi Casa", `.agents/architecture-plan.md`):
+ * `WifiCasaScreen.kt` resolve `WifiCasaViewModel` via `hiltViewModel()` direto na tela folha,
+ * não pelo padrão acima. Ver o comentário completo em `MainActivity.kt` (junto ao
+ * `operadoraDirectoryResolver`) para o racional -- resumo: WifiCasaViewModel precisa
+ * sobreviver a navegação multi-tela interna e falar com Room de forma autocontida; não é
+ * precedente para generalizar `hiltViewModel()` em outras telas do hub.
+ *
  * Loop nunca fixed-rate: só agenda a próxima rodada depois que [ConnectivityDiagnosisSource
  * .diagnosticar] retorna (seção 6/7). Exceção inesperada vira [Inicio2StatusAoVivoMapper
  * .incerto] em vez de derrubar a Home (seção 7).

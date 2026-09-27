@@ -421,6 +421,9 @@ dependencies {
     kapt(libs.hilt.compiler)
     implementation(libs.hilt.work)
     ksp(libs.hilt.work.compiler)
+    // WiFi Casa (`.agents/architecture-plan.md`) -- primeira ferramenta do hub com
+    // `@HiltViewModel` de verdade; `hiltViewModel()` em Composable precisa deste artefato.
+    implementation(libs.hilt.navigation.compose)
     implementation(libs.timber)
     implementation(libs.androidx.profileinstaller)
     implementation(libs.okhttp)

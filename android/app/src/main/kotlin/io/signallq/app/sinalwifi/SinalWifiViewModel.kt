@@ -162,7 +162,13 @@ private fun calcularPadraoWifi(info: WifiInfo): String? {
     }
 }
 
-private fun normalizarSsid(ssid: String?): String? {
+/**
+ * Visibilidade `internal` (módulo `:app`) desde a feature WiFi Casa
+ * (`.agents/architecture-plan.md`) -- `WifiCasaViewModel` reaproveita esta normalização ao
+ * resolver `ResolvedorNetworkId.paraWifi` a partir do mesmo `WifiManager.connectionInfo`, em vez
+ * de duplicar a lógica de remover aspas/placeholder do SSID.
+ */
+internal fun normalizarSsid(ssid: String?): String? {
     val campo = ssid?.trim().orEmpty()
     if (campo.isBlank()) return null
     if (campo.equals("<unknown ssid>", ignoreCase = true)) return null

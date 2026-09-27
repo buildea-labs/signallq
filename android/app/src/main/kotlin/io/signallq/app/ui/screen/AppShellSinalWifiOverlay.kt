@@ -10,9 +10,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.zIndex
 
 /**
- * Overlay "Sinal WiFi" (GH#1201, indicador dinâmico de RSSI/PHY/padrão) do hub Ferramentas —
- * extraído do corpo de [AppShell] pela issue #1695 (épico #1647), entrada de exemplo do
- * [AppShellOverlayRegistry].
+ * Overlay "WiFi Casa" (`docs_ai/functional/WIFI_CASA_MAPEAMENTO_SPEC.md`, evolução de "Sinal
+ * WiFi"/GH#1201) do hub Ferramentas — extraído do corpo de [AppShell] pela issue #1695 (épico
+ * #1647), entrada de exemplo do [AppShellOverlayRegistry].
+ *
+ * `TipoFerramenta.SINAL_WIFI` e o nome técnico do overlay (`AppShellOverlay.SinalWifi`) não
+ * mudam (RF-12/`.agents/architecture-plan.md`) -- só o composable renderizado troca de
+ * [SinalWifiScreen] (indicador ao vivo ponto único, sem persistência) para [WifiCasaScreen]
+ * (mapeamento espacial persistido). [SinalWifiScreen]/`SinalWifiViewModel` continuam existindo,
+ * reaproveitados por dentro do fluxo de captura de marcador do WiFi Casa.
  */
 @Composable
 internal fun AppShellSinalWifiOverlay(
@@ -27,7 +33,7 @@ internal fun AppShellSinalWifiOverlay(
         enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
         exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
     ) {
-        SinalWifiScreen(
+        WifiCasaScreen(
             temPermissaoLocalizacao = temPermissaoLocalizacao,
             localizacaoBloqueadaPermanentemente = localizacaoBloqueadaPermanentemente,
             onSolicitarPermissaoLocalizacao = onSolicitarPermissaoLocalizacao,

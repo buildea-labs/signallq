@@ -1,365 +1,435 @@
 # Architecture Plan — trabalho corrente
 
-## Status de conectividade ao vivo na Home (badge de estágio Wi-Fi/Provedor + Hero coerente)
+## WiFi Casa — mapeamento espacial de Wi-Fi (grid 2D + Antes×Depois)
 
-Decidido por Luiz. Gate arquitetural confirmado: cruza `:app` (Home/Hero/trilha), `:core:diagnostico`
-e reusa um motor já existente em `:core:network`. Ver seção 9 para o veredito.
+Aprovado por Luiz (produto): `docs_ai/functional/WIFI_CASA_MAPEAMENTO_SPEC.md`. Gate arquitetural
+confirmado (AGENTS.md §5): entidade Room nova com FK/relação pai-filho, primeiro componente de
+canvas 2D de posicionamento livre do app, edição do hub de Ferramentas.
 
 > Use somente quando o gate arquitetural do `AGENTS.md` for acionado. Camillo mantém este artefato
 > curto e proporcional à mudança.
 
 (demais entradas históricas deste arquivo preservadas — ver git log; esta revisão substitui o topo
-do arquivo pela fatia corrente)
+do arquivo pela fatia corrente. A entrada anterior — "Status de conectividade ao vivo na Home" —
+está no histórico do commit `817b603c`)
 
 ---
 
 ### 1. Problema e comportamento esperado
 
-Na Home (`Inicio2Screen.kt`), sem o usuário rodar nenhum teste ativo, mostrar se a rede tem
-problema e, quando tem, se é no Wi-Fi (rede interna) ou no provedor (rede externa) — via badge
-sobreposto a cada ícone da trilha (`Inicio2ConnectionTrail.kt`) e um círculo central do Hero que
-fala a mesma linguagem visual, nunca contradizendo a trilha. Toque num ícone com problema abre uma
-sheet explicando aquele estágio. Regras não negociáveis (do brief de Luiz): sonda só em primeiro
-plano (sem `MonitoramentoWorker`/opt-in), "causa incerta" é estado de primeira classe (nunca força
-Wi-Fi/Provedor sem evidência), badge sempre visível (inclusive "tudo ok"), sem staleness (é ao
-vivo — só existe "carregando" antes da primeira leitura), fonte única de verdade (Hero deriva da
-trilha, nunca dois vereditos independentes), vocabulário único baseado em `SignallQFeedbackTone`
-mais um 5º estado "Incerto" (símbolo "?").
+Evoluir a ferramenta "Encontrar um bom lugar" (`TipoFerramenta.SINAL_WIFI`) — hoje um indicador
+Wi-Fi ao vivo, ponto único, sem persistência — para "WiFi Casa": o usuário anda pela casa,
+adiciona marcadores nomeados num grid 2D livre (sem planta real, sem triangulação), cada marcador
+guarda uma medição real de RSSI classificada pelo motor existente. O conjunto de marcadores forma
+uma sessão de mapeamento persistida (Room), retomável e revisitável. O usuário pode fechar um
+mapeamento como baseline ("vou reposicionar o roteador") e, ao concluir o próximo, ver uma
+comparação Antes×Depois marcador a marcador por rótulo correspondente. Escopo de produto e RFs
+estão fechados na spec — este plano não redefine comportamento, só arquitetura.
 
-### 2. Arquitetura atual relevante (achados de código, não do brief)
+### 2. Arquitetura atual relevante
 
-**Trilha e Hero hoje.** `Inicio2ConnectionTrailMapper.map()` (`Inicio2ConnectionTrail.kt`) é puro,
-sem badge — ícones fixos por `node.id` (`Public`/`Router`/`Hub`/`Wifi`/`Smartphone`), cor única
-`textSecondary`, itens não clicáveis. `Inicio2Hero` (`Inicio2Screen.kt:124-216`) tem glifo fixo
-`"!"` e tom vindo de `uiState.analise.veredito.feedbackTone()` — que só existe quando `analise` é
-`StatusEmTempoReal`, produzido por `MonitorConexaoLeveUseCase.calcularStatus()`
-(`core/diagnostico/MonitorConexaoLeveUseCase.kt`), que só olha RSSI/tipo de transporte — **não sabe
-nada sobre gateway, DNS ou rota externa**, isto é, não tem evidência nenhuma de "provedor".
-Composição acontece em `AppShell.kt:857-886`: `MainViewModel`/`AppShell` já expõem `snapshotRede` e
-`snapshotWifi` como estado observável; a trilha e o Hero são recompostos a partir deles.
+**Ferramenta atual (`SinalWifiViewModel.kt`/`SinalWifiScreen.kt`, ambos em `:app`, não num módulo
+`:feature:*`).** `SinalWifiViewModel` é uma classe simples criada via `remember{}` no Composable
+(mesmo padrão de `ModoGamerViewModel`), sem Hilt, sem persistência — `iniciarAmostragem()` faz
+polling de `WifiManager.getConnectionInfo()` a cada 1500ms só com a tela `RESUMED`
+(`repeatOnLifecycle`), emitindo `SinalWifiUiState` (rssi, banda, padrão, MU-MIMO). A categoria
+textual (Excelente/Bom/Regular/Fraco) usada na tela vem de `signalQuality(rssi, banda)`
+(`SinalTopologiaHelpers.kt:162`), que delega a `classificarRssiWifiLocal` — que por sua vez segue o
+mesmo threshold canônico de `MetricClassifier.classificarRssiWifi` usado por
+`WifiSignalQualityEngine` (ADR-017, issue #1749: fonte única de classificação RSSI Wi-Fi, sem
+threshold duplicado). WiFi Casa **não deve criar um terceiro vocabulário** — reaproveita
+`signalQuality`/`classificarRssiWifiLocal` para classificar cada marcador.
 
-**`MonitoramentoWorker` (background, opt-in, NÃO TOCAR).** `medirLatenciaHttp()`/
-`medirDnsResolveTime()`/`medirRssiWifi()` são métodos privados de uma `CoroutineWorker` com
-histerese e notificações, condicionada a `PreferenciasAppRepository.monitoramentoAtivoFlow`
-(default `false`). Continua servindo só o monitoramento em background — este plano não lê, não
-estende e não duplica essa lógica.
+**Precedente sessão pai + itens filhos (`ChatSessionEntity`/`ChatMessageEntity`,
+`core/database/chat/`).** FK simples (`sessionId` → `chat_sessions.id`, `ON DELETE CASCADE`),
+índice em `sessionId` e índice composto `(sessionId, createdAtEpochMs)` para ordenação cronológica
+por sessão, mais índice solto em `atualizadoEmEpochMs` da sessão para listagem "mais recentes
+primeiro". DAOs são consumidos diretamente pelas camadas acima — `core/database` não expõe
+Repository (confirmado em `docs_ai/ARQUITETURA/MODULOS/core-database.md`). Esse é o precedente a
+seguir para `mapeamento_wifi`/`marcador_mapeamento`.
 
-**Achado central — já existe o motor certo, não construído para isto ainda usado.**
-`android/core/network/.../connectivity/`: `ConnectivityDiagnosisEngine` + `ConnectivityStatusResolver`
-+ `ConnectivityDiagnosisRunner` (GH#1512) já fazem exatamente a distinção Wi-Fi-interno vs.
-provedor-externo que o brief pede, com proveniência declarada:
+**`ResolvedorNetworkId` (`core/database/rede/`).** Já resolve um id estável de rede
+(BSSID > SSID > operadora móvel) e já foi promovido para `core/database` justamente para ser
+compartilhado entre `ConnectionProfile` (`:featureSettings`) e `MedicaoEntity.networkId` (reteste,
+issue #1707). É a peça que RF-07 pede ("mesma rede/`networkId`") — reaproveitar, não recriar.
 
-- sondagem sequencial (só avança se a etapa anterior confirmou sucesso): **gateway** (TCP connect
-  portas 53/80/443, timeout 1,2s, amarrado à `Network` do Wi-Fi via `AndroidNetworkProbeBinding`,
-  nunca à rede default do sistema) → **DNS** → **rota externa** (IP puro 1.1.1.1/8.8.8.8/9.9.9.9 +
-  hostname, timeout 1,5s cada, em paralelo);
-- `ConnectivityStatus` (`INTERNET_AVAILABLE`, `GATEWAY_UNREACHABLE`, `NO_LOCAL_ADDRESS`,
-  `DNS_FAILURE`, `EXTERNAL_ROUTE_FAILURE`, `WIFI_WITHOUT_INTERNET`, `PARTIAL_CONNECTIVITY`,
-  `CAPTIVE_PORTAL`, `INCONCLUSIVE`, `WIFI_DISCONNECTED`) já separa camada local (gateway) de camada
-  externa (DNS/rota) — mapeia quase 1:1 para "Wi-Fi" vs. "Provedor";
-- `NivelConfianca` (ALTA/MEDIA/BAIXA) já existe por decisão de design (nunca trata etapa não
-  alcançada/timeout de teto global como evidência forte) — é o material bruto para o 5º estado
-  "Incerto" que Luiz pediu, sem inventar um enum de confiança novo;
-- custo por sondagem é TCP connect de poucos bytes (SYN), não GET com payload — bem mais barato que
-  o GET de 0 bytes ao Cloudflare do `MonitoramentoWorker`, adequado a polling frequente;
-- já é `@Singleton` via DI (`AppModule.kt:395-404`, `ConnectivityDiagnosisRunner`/
-  `ConnectivityDiagnosisSource`), já testado (`ConnectivityDiagnosisEngineTest`,
-  `ConnectivityStatusResolverTest`), já consumido em produção por
-  `ConnectivityDiagnosisRepositoryImpl` (`:feature:speedtest/.../connectivity/`) e por
-  `DiagnosticoOfflineViewModel` (fluxo guiado, opt-in, só quando já offline — CTA do
-  `SignallQOfflineBanner`, não wired à Home, não é polling contínuo).
+**Schema Room atual.** `SignallQDatabase` está na versão 21, 8 entities, 20 migrations
+encadeadas em `CoreDatabaseModulo.kt`, todas aditivas (nenhum `fallbackToDestructiveMigration`).
+Convenção observada: cada migração nova é um objeto `Migration(N, N+1)` com KDoc explicando o
+racional e garantia de não perda de dado.
 
-**Motor local × ADR-017.** ADR-017 substitui o motor pesado (`InternetDiagnosticEngine`/
-`MetricClassifier`/`ScoreEngine`) pelo NDS remoto — não se aplica aqui. `MonitorConexaoLeveUseCase`
-já é o precedente de um classificador leve, **sempre local, sem NDS**, convivendo com o motor
-pesado; este plano estende esse mesmo precedente, não o motor que a ADR-017 está descontinuando.
+**Canvas 2D de posicionamento livre.** Busca por `detectDragGestures`/`Canvas(` no app não
+encontrou nenhum componente de posicionamento livre por toque/arraste — `GaugeCircular.kt` usa
+`Canvas` só para desenho não-interativo. Confirma o gatilho #2 do gate: é peça genuinamente nova,
+sem precedente a reaproveitar.
 
-**Vocabulário visual.** `SignallQFeedbackTone` (`ui/component/SignallQFeedbackTone.kt`) e
-`SignallQBadgeTone` (`ui/component/SignallQControls.kt`) são enums de 4 valores
-(Neutral/Success/Warning/Error) com ícones canônicos (`Info`/`CheckCircle`/`WarningAmber`/
-`ErrorOutline`) e uma função de conversão entre eles já existente (`toBadgeTone()`). Uso confinado a
-`:app` (6 arquivos, todos em `ui/component`, `ui/screen/Inicio2Screen.kt` e testes de contrato) —
-raio de impacto pequeno e local ao adicionar um 5º valor.
+**Hub de Ferramentas.** `TipoFerramenta.SINAL_WIFI` (`TipoFerramenta.kt`) já existe como id técnico
+estável, compartilhado com o card do diagnóstico guiado. `FerramentasScreen.kt:215` tem o texto
+hardcoded (`"Encontrar um bom lugar"` / `"Ande pela casa acompanhando o sinal Wi-Fi"`,
+`Icons.Outlined.NetworkWifi`) num `when` de `TipoFerramenta.visual()` — ponto único de edição para
+a renomeação (RF-12). `screenName()` hoje mapeia `SINAL_WIFI` para `"sinal_wifi"`, mesmo valor de
+`SINAL_CANAIS_MOVEL` — como a tela muda de natureza (de indicador ao vivo para fluxo de
+mapeamento com telas/sheets), recomendo dar um `screenName()` próprio (`"wifi_casa"`) só para essa
+tela, evitando colisão de analytics entre duas telas agora bem diferentes.
 
 ### 3. Módulos afetados
 
-- `:app` — `Inicio2ConnectionTrail.kt` (badge + clicável + sheet), `Inicio2Screen.kt` (Hero glifo/
-  tom), `SignallQFeedbackTone.kt`/`SignallQControls.kt` (5º valor "Incerto" + ícone "?"),
-  `AppShell.kt`/`MainViewModel.kt` (novo coordenador de polling foreground, novo `StateFlow` de
-  estado ao vivo).
-- `:core:diagnostico` — novo classificador puro (estágio → tom), ao lado de
-  `MonitorConexaoLeveUseCase`.
-- `:core:network` — **nenhuma mudança de contrato.** Só reuso de `ConnectivityDiagnosisSource`/
-  `ConnectivityDiagnosisEngine`/`ConnectivityStatus`/`NivelConfianca`, já públicos.
-- `:core:database`/`ConnectivityDiagnosisHistoryDao` — **não tocar** (ver decisão 4.3).
+- `core/database` (`:coreDatabase`) — 2 entities novas, 1 DAO novo, 1 migração (22).
+- `:app` — ViewModel(s) e telas novas do fluxo WiFi Casa, canvas 2D, renomeação no hub.
+- `TipoFerramenta.kt`/`FerramentasScreen.kt` (`:app`) — copy e `screenName()`.
+- Nenhuma mudança em `core/diagnostico` (`MetricClassifier`/`WifiSignalQualityEngine` não são
+  tocados — RF-03 e o critério de aceite correspondente exigem isso).
+- `:featureWifi` **não é tocado**: hoje contém só `RedeVizinha`/`GrupoRedeWifi`/
+  `MontarResumoWifiUseCase` (varredura de redes vizinhas) — responsabilidade distinta de sessão de
+  mapeamento por marcador. Ver seção 4 para a alternativa rejeitada de colocar WiFi Casa lá.
 
 ### 4. Decisão proposta e alternativas rejeitadas
 
-**4.1 Sonda: reusar `ConnectivityDiagnosisEngine`/`ConnectivityDiagnosisSource`, não extrair
-`MonitoramentoWorker`.**
-Alternativa do brief inicial (extrair `medirLatenciaHttp`/`medirDnsResolveTime`/`medirRssiWifi` do
-Worker para um use case novo) é **rejeitada**: duplicaria, com heurística mais pobre (limiar único
-de latência/DNS, sem separar gateway de rota externa, sem proveniência), um motor que já existe,
-já testado, já mais barato e que já responde exatamente à pergunta "Wi-Fi ou provedor". Extrair do
-Worker só faria sentido se nenhum motor equivalente existisse — não é o caso aqui (regra do
-inventário/verificar-modulo: preferir a menor mudança, não recriar).
+**4.1 Onde vive o ViewModel/UI: `:app`, não um módulo `:feature:*` novo nem `:featureWifi`
+existente.**
 
-**4.2 Onde vive o classificador de estágio: `:core:diagnostico`, ao lado de
-`MonitorConexaoLeveUseCase`.**
-Alternativa rejeitada: colocar a regra de mapeamento tom-por-estágio dentro de `:app` (junto do
-`Inicio2ConnectionTrailMapper`, que é só apresentação). Rejeitada porque a régua "que `ConnectivityStatus`
-+ `NivelConfianca` viram qual tom" é uma regra de negócio de diagnóstico (mesma categoria de
-`MonitorConexaoLeveUseCase`), deve ser testável isoladamente sem Compose, e `:core:diagnostico` já
-depende de `:coreNetwork` (`build.gradle.kts` linha 53) — sem inversão de dependência nova.
-Novo tipo puro proposto:
+Decisão: manter o padrão já usado por `SinalWifiViewModel`/`SinalWifiScreen`,
+`DispositivosScreen`, `SinalScreen` — ferramentas do hub vivem em `:app/ui/screen` (e pacotes
+irmãos como `io.signallq.app.sinalwifi`), não em módulos `:feature:*` dedicados. WiFi Casa é
+evolução direta dessa mesma ferramenta (mesmo `TipoFerramenta.SINAL_WIFI`, mesma flag/permissão) —
+manter no mesmo lugar é a menor mudança que preserva a convenção existente.
+
+Alternativa rejeitada: mover para `:featureWifi`. Rejeitada porque (a) esse módulo hoje é sobre
+varredura de redes vizinhas (BSSIDs ao redor), um domínio diferente de "sessão de mapeamento por
+marcador"; misturar os dois no mesmo módulo vira gaveta genérica, contra
+`.claude/rules/higiene-e-padronizacao-repositorio.md` §5; (b) nenhuma outra ferramenta do hub
+equivalente foi promovida para módulo próprio — criar exceção só para WiFi Casa quebraria a
+convenção sem ganho arquitetural correspondente. Se o app inteiro migrar as ferramentas do hub
+para módulos `:feature:*` no futuro, isso deve ser uma decisão própria (dívida documentada, não
+decidida a reboque desta feature).
+
+Consequência de higiene: como `SinalWifiScreen.kt`/`SinalWifiViewModel.kt` continuam existindo
+(ainda usados como o "modo ao vivo" reaproveitado por dentro do fluxo — ver 4.3), WiFi Casa nasce
+em arquivos **novos e próprios**: `WifiCasaViewModel.kt`, `WifiCasaScreen.kt` (scaffold + roteamento
+de sub-telas), mais um arquivo por sub-tela/sheet (grid ativo, lista de mapeamentos, comparação
+Antes×Depois) — nunca inchando os arquivos existentes de "Sinal WiFi".
+
+**4.2 Desenho das entidades Room.**
+
+Duas tabelas novas, seguindo o precedente `chat_sessions`/`chat_messages`, em
+`core/database/wificasa/`:
 
 ```kotlin
-// io.signallq.app.core.diagnostico
-enum class EstagioRede { WIFI, PROVEDOR }
-
-data class StatusEstagio(
-    val estagio: EstagioRede,
-    val tom: TomDiagnostico, // ver 4.4 — não é o SignallQFeedbackTone do :app
+@Entity(
+    tableName = "mapeamento_wifi",
+    indices = [
+        Index(value = ["atualizadoEmEpochMs"]),
+        Index(value = ["networkId"]),
+        Index(value = ["comparadoComSessaoId"]),
+    ],
+    foreignKeys = [
+        ForeignKey(
+            entity = MapeamentoWifiEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["comparadoComSessaoId"],
+            onDelete = ForeignKey.SET_NULL, // apagar uma sessão não pode apagar a outra do par
+        ),
+    ],
+)
+data class MapeamentoWifiEntity(
+    @PrimaryKey val id: String,
+    val nome: String,
+    val networkId: String?,          // ResolvedorNetworkId, no momento da conclusão
+    val criadoEmEpochMs: Long,
+    val atualizadoEmEpochMs: Long,
+    /** em_andamento | concluido | baseline_pendente | baseline_comparado */
+    val status: String,
+    /** Preenchido só na sessão "depois", apontando pro "antes". Null enquanto solteira. */
+    val comparadoComSessaoId: String? = null,
 )
 
-object ClassificadorConectividadeAoVivo {
-    fun classificar(diagnostico: ConnectivityDiagnosis): List<StatusEstagio>
-}
-```
-
-`:core:diagnostico` não deve conhecer `SignallQFeedbackTone` (tipo de `:app`) — devolve um enum
-próprio equivalente (`TomDiagnostico { NEUTRO, SUCESSO, ATENCAO, ERRO, INCERTO }`), e o mapper de
-`:app` (`Inicio2ConnectionTrailMapper`) faz a tradução final para `SignallQFeedbackTone`. Evita
-`:core:diagnostico` (módulo de regra pura) depender de um componente de UI de `:app`.
-
-**4.3 Não persistir o polling ambiente no `ConnectivityDiagnosisHistoryDao`.**
-`ConnectivityDiagnosisRepositoryImpl.diagnosticar()` grava toda chamada no histórico Room — correto
-para eventos discretos (1 diagnóstico por speedtest), errado para um loop de poucos segundos
-enquanto a Home estiver visível (inundaria a tabela com ruído ambiente, sem valor de histórico
-real). Decisão: o coordenador da Home chama `ConnectivityDiagnosisSource` (a interface, já
-`@Singleton` via `ConnectivityDiagnosisRunner`) **diretamente**, não o `ConnectivityDiagnosisRepository`
-de `:feature:speedtest`. Nenhuma mudança de schema, nenhuma migration.
-
-**4.4 Hero deriva da trilha; não guarda um segundo veredito — texto incluído (decisão de Cora,
-2026-09-26).**
-`statusGeral` do Hero = pior caso entre os `StatusEstagio` correntes (ERRO > ATENCAO > INCERTO >
-SUCESSO > NEUTRO/carregando) — função pura, um único lugar. Escopo do que muda no Hero: **glifo, tom
-E texto (título/mensagem)** do círculo passam a vir do classificador ambiente em vez de
-`veredito.feedbackTone()`/`"!"` fixo/`MonitorConexaoLeveUseCase`, e **só quando não há diagnóstico
-pesado em andamento** (`uiState.analise` é `SemAnalise` ou `StatusEmTempoReal` — nunca
-`Carregando`/`Interrompida`, que continuam com o tratamento atual, dedicado ao fluxo "Analisar minha
-conexão") **e só em Wi-Fi com `Inicio2StatusAoVivo` já disponível** (mobile/ethernet e os primeiros
-segundos antes da 1ª leitura continuam 100% com `MonitorConexaoLeveUseCase`, sem alteração — decisão
-4.5 não muda). Cora rejeitou a alternativa "duas fontes + tabela de precedência" (RSSI alto não é
-evidência sobre o provedor — manteria uma segunda fonte de verdade disfarçada, reabrindo o risco que
-esta arquitetura existe para fechar).
-
-Copy definitivo (usar exatamente estes textos; jargão técnico como "DNS"/"gateway"/"rota externa"
-fica reservado para a sheet por estágio, não para o Hero):
-
-| Tom | Causa (`causaPrincipal`) | Título | Mensagem |
-|---|---|---|---|
-| Sucesso | — | Conexão estável | Wi-Fi e provedor funcionando bem agora. |
-| Atenção | Wi-Fi | Wi-Fi pode estar instável | O sinal do seu Wi-Fi está oscilando; vídeos e chamadas podem engasgar. |
-| Atenção | Provedor | Provedor com lentidão | Sua internet externa está mais lenta que o normal. |
-| Erro | Wi-Fi | Problema no seu Wi-Fi | Não conseguimos falar com seu roteador. Aproxime-se dele ou reinicie o Wi-Fi. |
-| Erro | Provedor | Problema no provedor | Seu Wi-Fi está bem, mas a internet externa não está respondendo. |
-| Incerto | null | Não conseguimos confirmar sua conexão | Vamos continuar checando; toque em "Analisar" para um diagnóstico completo. |
-| Neutro (antes da 1ª leitura, já em Wi-Fi) | — | Verificando sua rede | Conferindo Wi-Fi e provedor agora. |
-
-Fora de escopo desta decisão (refinamento futuro, não bloqueia Davi): copy dedicado para
-`CAPTIVE_PORTAL` — hoje cai em Erro/Atenção Wi-Fi genérico.
-
-**4.5 Trilha Wi-Fi-only para a distinção Wi-Fi/Provedor — mobile/ethernet não ganham essa
-granularidade agora.**
-`ConnectivityDiagnosisEngine` só sonda quando `wifiConnected = true` (por desenho, GH#1512). A
-trilha em modo móvel/ethernet (`mapSemWifi`) não tem hoje um nó "Provedor" separado de "Internet" —
-manter assim. Não-objetivo desta fatia: sondar gateway/DNS/rota externa em dados móveis. O nó
-"Internet" em modo não-Wi-Fi continua refletindo só conectado/desconectado (como hoje).
-
-### 5. Contrato entre sonda/classificador e UI
-
-```kotlin
-// io.signallq.app.ui.screen (novo tipo, ao lado de Inicio2ConnectionTrailState)
-data class Inicio2StatusAoVivo(
-    val porEstagio: Map<String, SignallQFeedbackTone>, // chave = Inicio2TrailNode.id ("Wi-Fi", "Internet", ...)
-    val geral: SignallQFeedbackTone,                    // pior caso, já resolvido
-    val causaPrincipal: EstagioRede?, // decisão de Cora: fonte única também para o texto do Hero.
-    // Propagado do mesmo List<StatusEstagio> que ClassificadorConectividadeAoVivo já produz — não é
-    // sondagem nova. null quando o pior tom não tem estágio único atribuível (ex.: geral == Incerto,
-    // ou dois estágios empatados no mesmo tom pior) — nunca inventar causa combinada; tratar como
-    // Incerto/null.
+@Entity(
+    tableName = "marcador_mapeamento",
+    foreignKeys = [
+        ForeignKey(
+            entity = MapeamentoWifiEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["mapeamentoId"],
+            onDelete = ForeignKey.CASCADE, // apagar o mapeamento apaga seus marcadores
+        ),
+    ],
+    indices = [
+        Index(value = ["mapeamentoId"]),
+        Index(value = ["mapeamentoId", "criadoEmEpochMs"]),
+    ],
+)
+data class MarcadorMapeamentoEntity(
+    @PrimaryKey val id: String,
+    val mapeamentoId: String,
+    val rotulo: String,
+    /** comodo | roteador */
+    val tipo: String,
+    val posX: Float,  // 0f..1f, normalizado — grid livre, sem escala real (spec 3.1)
+    val posY: Float,
+    val rssiDbm: Int?,     // null = marcador de roteador sem medição, ou medição não concluída
+    val bandaWifi: String?, // nome do enum BandaWifi, mesmo padrão já usado em medicao.bandaWifi
+    val criadoEmEpochMs: Long,
 )
 ```
 
-- `Inicio2ConnectionTrailMapper.map(...)` ganha parâmetro opcional `statusAoVivo:
-  Inicio2StatusAoVivo? = null`; quando presente, cada `Inicio2TrailNode` carrega o tom
-  correspondente (novo campo `tom: SignallQFeedbackTone` no data class, default `Neutral` para não
-  quebrar os dois `@Preview` existentes que constroem `Inicio2TrailNode` sem esse campo).
-  `null`/ausência de entrada no mapa para um `node.id` = estágio não avaliado (ex.: Mesh, Este
-  aparelho) → sem badge, comportamento atual preservado.
-- `Inicio2Hero` recebe o mesmo `SignallQFeedbackTone` + `causaPrincipal` (via `uiState` ou parâmetro
-  novo) para tom, glifo e texto (título/mensagem via tabela de copy da decisão 4.4).
-- Toque no ícone da trilha (novo `onEstagioClick: (String) -> Unit`) abre uma sheet (conteúdo/copy é
-  decisão de Cora/Davi, não desta arquitetura) — este plano só define que a sheet recebe o
-  `node.id` + tom + (quando disponível) o `ConnectivityDiagnosis` bruto para montar a explicação
-  humana, sem duplicar regra de classificação na sheet.
-- Área de toque de cada item da trilha (ícone + rótulo) deve ter no mínimo 48dp (padrão Material —
-  hoje o `Box` do ícone é 32dp/`LkSpacing.xxl`; usar `Modifier.minimumInteractiveComponentSize()` ou
-  padding equivalente; a `Row` com `SpaceBetween`/`weight(1f)` comporta isso sem redesenho —
-  confirmado por Breno, 2026-09-26). `contentDescription` no elemento clicável (não no ícone
-  isolado, com `mergeDescendants`/`clearAndSetSemantics` para TalkBack anunciar como um único
-  elemento), padrão: `"{rótulo do nó}: {tone.accessibleLabel()}. Toque para ver detalhes."` — estender
-  `SignallQFeedbackTone.accessibleLabel()` com "Incerto". O ícone do 5º valor "Incerto" deve ser um
-  ícone vetorial (`Icons.Outlined.QuestionMark`/`HelpOutline`), não um glifo de texto "?" solto, para
-  manter consistência com os demais tons (todos usam ícone vetorial, nunca só cor).
+Decisões dentro do desenho:
+
+- **`posX`/`posY` normalizados (0f..1f), não pixels/dp.** O grid é declarado pelo usuário sem
+  escala (spec 3.1) — normalizar desacopla a posição salva de tamanho de tela/densidade/rotação, e
+  a UI multiplica pelo tamanho real do canvas ao renderizar. Evita um `Migration` futura só para
+  corrigir posições salvas em unidade de tela.
+- **Sem coluna de categoria de sinal persistida.** `rssiDbm` + `bandaWifi` são o dado medido;
+  a categoria (Excelente/Bom/...) é *inferência determinística* e deve ser recalculada a partir de
+  `signalQuality(rssiDbm, banda)` no momento da leitura/comparação — nunca persistida como string
+  solta. Isso é o requisito não-negociável do AGENTS.md §8 ("não duplique thresholds em múltiplos
+  lugares"): se o threshold mudar no futuro, mapeamentos antigos são reclassificados
+  automaticamente, sem migração de dado.
+- **Vínculo baseline→comparação é um campo auto-referenciado em `MapeamentoWifiEntity`
+  (`comparadoComSessaoId`), não uma tabela `comparacao` separada.** Alternativa rejeitada: tabela
+  `wifi_casa_comparacao(id, baselineId, depoisId, criadoEmEpochMs)`. Rejeitada porque a spec (3.3,
+  RF-07) modela isso como um relacionamento 1:1 opcional e unidirecional no tempo — nunca há mais
+  de uma comparação por par de sessões, nunca um "histórico de recálculo" da comparação em si (o
+  resultado do Antes×Depois é sempre recalculado on-the-fly a partir dos marcadores das duas
+  sessões, nunca persistido). Uma tabela própria adicionaria uma terceira entidade e um terceiro
+  join sem necessidade real; um campo nullable autorreferenciado é a menor mudança que expressa o
+  mesmo contrato. Se um dia o produto pedir "comparar 3+ mapeamentos" ou histórico de recomparações,
+  isso justifica revisitar para uma tabela própria — não-objetivo desta versão.
+- **`ForeignKey.SET_NULL` em `comparadoComSessaoId`, `CASCADE` em `mapeamentoId` de
+  `marcador_mapeamento`.** Apagar um mapeamento não pode apagar o outro lado do par Antes×Depois
+  (SET_NULL preserva a sessão irmã, só perde o vínculo) — mas apagar um mapeamento deve apagar
+  seus próprios marcadores (CASCADE, mesmo padrão de `chat_messages`).
+- **Resolução do vínculo é lógica de aplicação, não trigger de banco.** Ao concluir uma sessão com
+  a flag "vou reposicionar o roteador": `UPDATE mapeamento_wifi SET status='baseline_pendente' ...`.
+  Ao concluir a *próxima* sessão da mesma `networkId`: DAO busca
+  `SELECT * FROM mapeamento_wifi WHERE status='baseline_pendente' AND networkId=:id ORDER BY
+  atualizadoEmEpochMs DESC LIMIT 1`; se encontrar, grava `comparadoComSessaoId` na sessão nova e
+  atualiza a antiga para `baseline_comparado` — duas escritas simples em transação Room
+  (`@Transaction`), sem trigger SQL (mais fácil de testar e de auditar em Kotlin).
+
+**4.3 Reaproveitamento da amostragem — `WifiCasaViewModel` compõe `SinalWifiViewModel`, não
+duplica a leitura de RSSI.**
+
+Decisão: `WifiCasaViewModel` (novo) instancia internamente um `SinalWifiViewModel` (o mesmo usado
+hoje) para capturar a medição de cada marcador — ao tocar "Adicionar marcador aqui", inicia
+`iniciarAmostragem()` do `SinalWifiViewModel` interno por uma janela curta (ex.: até o primeiro
+`amostrado && conectado`, ou N ciclos, a definir com Davi/Cora sem virar decisão de arquitetura),
+lê o último `SinalWifiUiState` (rssi, banda) e cancela a amostragem — persiste só o resultado final
+no marcador. Isso reaproveita 100% da lógica de leitura de `WifiManager`/tratamento de sentinela
+RSSI/estado desligado já validada, sem criar um segundo caminho de leitura de RSSI.
+
+Alternativa rejeitada: estender `SinalWifiViewModel` com um modo "capturar e persistir". Rejeitada
+porque misturaria responsabilidade de indicador-ao-vivo-sem-estado com responsabilidade de
+persistência/sessão — o próprio `SinalWifiViewModel` continua servindo sozinho como o indicador ao
+vivo (ele não desaparece, é o motor de leitura reaproveitado, não substituído).
+
+`WifiCasaViewModel` é diferente do `SinalWifiViewModel` num ponto estrutural: precisa sobreviver à
+navegação entre "adicionar marcador" → volta pro grid → "adicionar outro marcador" ao longo de
+minutos, e falar com o Room. Recomendo `@HiltViewModel` de verdade (não `remember{}`), com o DAO
+novo injetado — o estado "em andamento" é reconstruído a partir do Room no `init` (RF-09: retomar
+mapeamento incompleto), não guardado só em memória.
+
+**4.4 Componente de canvas 2D — novo, sem dependência externa, lógica de posicionamento separada
+da renderização.**
+
+`WifiCasaGridCanvas.kt` (novo, `:app/ui/screen`): `Box`/`Canvas` do Compose Foundation (já usado em
+`GaugeCircular.kt`) com `pointerInput` para tap (adicionar marcador na posição tocada) e drag
+(reposicionar um marcador existente) — nenhuma biblioteca de canvas/grafo externa, conforme o NFR
+da spec ("nenhuma dependência nova"). Marcadores desenhados como composables posicionados via
+`offset()` calculado a partir de `posX/posY` normalizado × tamanho do canvas em pixels — mesma
+lógica de conversão coordenada normalizada ↔ pixel precisa ser pura e testável isoladamente.
+
+Estratégia de teste: extrair a lógica de posicionamento (clamping em 0f..1f, conversão
+normalizado↔pixel, hit-test de "qual marcador está sob o toque") para uma classe/funções puras
+sem `Compose`/`Context` (ex.: `WifiCasaGridPosicionamento.kt`), testável com JUnit puro — teste de
+caracterização visual em Compose é caro e frágil (o projeto não tem esse padrão hoje) e não é
+necessário para validar a lógica de posição. Teste de UI Compose fica restrito a smoke test de que
+o gesto dispara o callback certo, não a geometria pixel-a-pixel.
+
+Acessibilidade (NFR da spec): a lista equivalente ao grid (marcador + categoria + rótulo em lista
+plana) é uma segunda forma de renderizar o mesmo estado de marcadores — não uma segunda fonte de
+verdade; ambas leem do mesmo `WifiCasaUiState`.
+
+**4.5 Renomeação no hub.**
+
+Editar `FerramentasScreen.kt:215` (copy) e, se Davi confirmar na decomposição técnica que a tela
+é suficientemente distinta, `TipoFerramenta.screenName()` (novo valor `"wifi_casa"` só para
+`SINAL_WIFI`, deixando de compartilhar `"sinal_wifi"` com `SINAL_CANAIS_MOVEL"`) — mudança
+analytics, avaliar com Ramon/Breno se telemetria existente depende do valor atual antes de trocar.
+`TipoFerramenta.SINAL_WIFI` (id técnico/enum) não muda, conforme RF-12.
+
+### 5. Contratos/schema (Room)
+
+- Migração `21 → 22`, aditiva, seguindo o padrão de `MIGRATION_20_21`: dois `CREATE TABLE IF NOT
+  EXISTS` (`mapeamento_wifi`, `marcador_mapeamento`) + `CREATE INDEX IF NOT EXISTS` para os 3
+  índices de `mapeamento_wifi` e os 2 de `marcador_mapeamento`. Nenhuma tabela existente é alterada.
+- `SignallQDatabase`: `version = 22`, adiciona as 2 entities à lista `entities = [...]`, expõe
+  `mapeamentoWifiDao()`.
+- Novo DAO único (`MapeamentoWifiDao`, cobre as duas tabelas — mesmo padrão de `ChatSessionDao`
+  cobrindo `chat_sessions` + `chat_messages`): `observarMapeamentos()`, `observarMapeamento(id)`,
+  `observarMarcadores(mapeamentoId)`, `salvarMapeamento`, `salvarMarcador`, `atualizarMarcador`,
+  `apagarMarcador`, `buscarBaselinePendente(networkId)`, `concluirComoBaseline(id, ...)`,
+  `vincularComparacao(idDepois, idAntes, ...)` (transação).
+- Nenhum contrato de API externa é criado — tudo local (RF-11).
 
 ### 6. Fluxo de dados
 
-```
-Home visível + app foreground
-        ↓ (novo coordenador — MainViewModel ou state holder dedicado em :app)
-loop: aguarda conclusão da sondagem anterior → ConnectivityDiagnosisSource.diagnosticar()
-      → espera 5s (recomendação de Breno, 2026-09-26 — faixa aceitável 4-6s) → repete
-        ↓
-ConnectivityDiagnosis (ConnectivityStatus + NivelConfianca)
-        ↓
-ClassificadorConectividadeAoVivo.classificar() [:core:diagnostico, puro, testável]
-        ↓
-StatusEstagio (WIFI, PROVEDOR) → tradução para SignallQFeedbackTone [:app]
-        ↓
-Inicio2StatusAoVivo → Inicio2ConnectionTrailMapper (badges) + Inicio2Hero (círculo, pior caso)
-```
+1. Usuário toca "WiFi Casa" no hub → `WifiCasaViewModel` verifica Room por mapeamento
+   `status='em_andamento'` mais recente; se existir, retoma; senão oferece "Começar novo".
+2. Ao criar/retomar, resolve `networkId` atual via `ResolvedorNetworkId` (mesma leitura de
+   SSID/BSSID já feita hoje via `WifiManager`) e grava/atualiza no `MapeamentoWifiEntity`.
+3. "Adicionar marcador aqui": usuário toca uma posição no `WifiCasaGridCanvas` → abre
+   nomeação (rótulo) → `WifiCasaViewModel` dispara a amostragem via `SinalWifiViewModel` interno
+   (4.3) → ao capturar, grava `MarcadorMapeamentoEntity` (posX/posY/rótulo/rssi/banda) via DAO.
+4. Grid observa `observarMarcadores(mapeamentoId)` (Flow) — cada marcador exibe
+   `signalQuality(rssiDbm, banda)` calculado na leitura, nunca um valor persistido.
+5. "Salvar e concluir" → `status='concluido'`. "Vou reposicionar o roteador" →
+   `status='baseline_pendente'`.
+6. Ao concluir qualquer mapeamento, `WifiCasaViewModel` chama `buscarBaselinePendente(networkId)`;
+   se houver, grava o vínculo (4.2) e navega para a tela de comparação.
+7. Tela de comparação lê os marcadores das duas sessões, casa por `rotulo` (normalizado —
+   trim + case-insensitive, função pura testável), calcula
+   melhorou/piorou/não mudou comparando `signalQuality`/`rssiDbm` de cada par, marca
+   sobras de cada lado como "novo"/"removido" (RF-08) — tudo calculado em memória, nada persistido.
 
-Início/parada do loop: inicia quando `AppShellRoot.Home` está selecionada E o processo está em
-foreground; para quando qualquer uma das duas condições deixa de valer. Antes da primeira resposta,
-`Inicio2StatusAoVivo` é `null` (estado "carregando" — sem badge ou badge neutro de carregamento,
-decisão visual de Davi/Cora). Ao voltar a foreground/à Home, reseta para `null` (carregando) até a
-próxima leitura — nunca reexibe o último valor como se fosse atual (regra "sem staleness").
+### 7. Persistência/migração
 
-### 7. Falhas, timeout e fallback
+Ver seção 5. Sem dado legado a migrar/preservar (feature nova, tabelas novas) — não colide com
+nenhuma entidade existente (`medicao`, `chat_*`, `recommendation_history`,
+`connectivity_diagnosis_history`, `provider_directory_cache`, `analytics_outbox`,
+`apelido_dispositivo`). `networkId` reaproveita o mesmo formato de string de
+`ResolvedorNetworkId`/`MedicaoEntity.networkId` (prefixos `wifi-bssid:`/`wifi-ssid:`/`movel:`) —
+comparável entre `medicao` e `mapeamento_wifi` se algum dia for útil correlacionar, sem exigir isso
+agora (não-objetivo).
 
-- Etapas já tipadas (`ProbeResult.Success/Failure/Timeout/NotExecuted/Unavailable`) — o classificador
-  nunca trata timeout como sucesso (regra dura do `AGENTS.md` §8) nem inventa dado ausente.
-- Teto do próprio engine: 8s globais (`GLOBAL_TIMEOUT_MS_DEFAULT`); coordenador da Home não precisa
-  de teto adicional — só evita rodadas sobrepostas (aguarda a rodada terminar antes de agendar a
-  próxima, nunca fixed-rate).
-- Exceção inesperada de `diagnosticar()` (fora do modelo `ProbeResult`) → capturada pelo coordenador,
-  vira `Inicio2StatusAoVivo` com todos os estágios `Incerto`, nunca derruba a Home.
-- `NivelConfianca.BAIXA` em qualquer resolução (`ConnectivityStatusResolution.confidence`) força o(s)
-  estágio(s) afetado(s) a `Incerto`, mesmo que o `ConnectivityStatus` resolvido sugira uma causa —
-  é a implementação direta da regra "nunca apresentar causa raiz sem evidência suficiente".
-- `WIFI_DISCONNECTED`/transporte não-Wi-Fi: sem badge de estágio Wi-Fi/Provedor (ver 4.5) — trilha
-  cai no modo atual sem essa granularidade.
+### 8. Falhas, timeout e fallback
 
-### 8. Compatibilidade
+- Amostragem sem leitura válida (Wi-Fi desligado, sem conexão, timeout da janela de captura): o
+  marcador não é salvo até haver uma leitura válida — mesma semântica de "sem leitura ainda" já
+  usada por `SinalWifiUiState.amostrado`; nunca salvar `rssiDbm = 0` como estado válido (mesmo
+  cuidado do sentinela `-127`/`0` já tratado em `SinalWifiViewModel.amostrar()`).
+  UI mostra o mesmo `SignallQStatefulScreen` (Offline/PermissionRequired) já usado hoje.
+- Concluir mapeamento sem nenhum marcador: permitido (RF-01 não exige mínimo), mas a comparação
+  Antes×Depois exige ao menos um marcador correspondente por rótulo (RF-08/critério de aceite) —
+  se não houver nenhum, a tela de comparação declara "sem marcadores correspondentes para
+  comparar", nunca inventa correspondência fraca.
+- Baseline pendente numa rede diferente da do novo mapeamento: não é oferecida comparação
+  automática (RF-07 exige mesma `networkId`) — o baseline permanece `baseline_pendente`
+  indefinidamente até aparecer um mapeamento compatível ou ser apagado manualmente pelo usuário.
+- App fechado no meio de uma captura de marcador: a captura em andamento é perdida (não há
+  marcador parcial persistido), mas os marcadores já salvos e o mapeamento `em_andamento`
+  permanecem no Room — retomada normal via RF-09.
 
-- `MonitoramentoWorker`, histerese, notificações e preferências de monitoramento: **zero mudança**.
-- `ConnectivityDiagnosisRepositoryImpl`/`ConnectivityDiagnosisHistoryDao`/consumo por
-  `:feature:speedtest`: **zero mudança** (decisão 4.3 evita qualquer efeito colateral cruzado).
-- `MonitorConexaoLeveUseCase`: continua sendo a fonte do título/mensagem textual do Hero; não é
-  removido nem substituído nesta fatia.
-- `SignallQFeedbackTone`/`SignallQBadgeTone`: adicionar `Incerto` é aditivo, mas **quebra
-  exaustividade de `when`** em todo call site existente (6 arquivos, listados na investigação) —
-  compilador força a atualização, não há risco de esquecer um branch silenciosamente.
-- `Inicio2TrailNode`: adicionar campo `tom` com default preserva os 2 `@Preview` existentes em
-  `Inicio2Screen.kt` sem alteração.
+### 9. Segurança/privacidade
 
-### 9. Gate Camillo: decisão
+Tudo local (Room, sem rede) — sem envio a nuvem, mesmo princípio já aplicado ao histórico de
+medições (RF-11). Nenhum SSID/BSSID bruto é exibido na UI de WiFi Casa (só usados internamente
+para resolver `networkId`, mesmo padrão de sanitização já aplicado em
+`connectivity_diagnosis_history`, GH#1512). Nenhuma permissão nova é introduzida — reaproveita a
+permissão de localização já exigida hoje por `SINAL_WIFI` para ler RSSI/BSSID.
 
-**Aprovado.** Cruza `:app`, `:core:diagnostico` e reusa contrato público de `:core:network` — gate
-do §5 se aplica (item 1: múltiplos módulos com mudança de responsabilidade; item 7 tangencial: não é
-o motor central de diagnóstico do ADR-017, mas é uma extensão do "motor leve" que convive com ele).
-Escopo real é menor do que "criar sonda nova": a maior parte do trabalho é **wiring** de um motor já
-maduro (`ConnectivityDiagnosisEngine`, GH#1512) que ninguém tinha ainda ligado à Home, mais um
-classificador leve e pequeno, mais extensão de um enum de 4 para 5 valores.
+### 10. Compatibilidade
 
-Condições:
-1. Não recriar sondagem gateway/DNS/rota externa — usar `ConnectivityDiagnosisSource` como está.
-2. Não persistir o polling ambiente no `ConnectivityDiagnosisHistoryDao` (decisão 4.3).
-3. `ClassificadorConectividadeAoVivo` não importa tipo de `:app` (decisão 4.2) — mantém a direção de
-   dependência `:app → :core:diagnostico → :coreNetwork`.
-4. Hero só troca a fonte do tom/glifo do círculo quando não há diagnóstico pesado em andamento
-   (decisão 4.4) — nunca dois estados "ativos" ao mesmo tempo tentando pintar o mesmo círculo.
-5. Extensão revisada e aprovada (2026-09-26): campo `causaPrincipal: EstagioRede?` em
-   `Inicio2StatusAoVivo` (seção 5), para a decisão de Cora de usar fonte única também para o texto do
-   Hero. Aditivo dentro do escopo já aprovado — propaga dado já produzido por
-   `ClassificadorConectividadeAoVivo`/`List<StatusEstagio>` (seção 4.2), sem sondagem nova, sem módulo
-   novo e sem alterar a direção de dependência `:app → :core:diagnostico → :coreNetwork` (condição 3
-   continua valendo). Não reabre o gate.
+- `TipoFerramenta.SINAL_WIFI` não muda de valor — nenhuma migração de flag/telemetria/deep link.
+- Migração de schema é aditiva; instalações existentes não perdem nenhum dado ao atualizar.
+- Testes a atualizar (spec, critério de aceite): `FerramentasScreenTest.kt`,
+  `AppShellRootRegistryTest.kt` (texto/ícone novos), mais os testes já existentes de
+  `SinalWifiViewModelTest.kt`/`SinalWifiScreenTest.kt` — não devem quebrar, já que
+  `SinalWifiViewModel`/`SinalWifiScreen` continuam existindo como estão (reaproveitados por
+  composição, não removidos).
 
-Riscos:
-- **Custo de bateria/dados mesmo em foreground.** Menor que o GET do Worker (TCP connect vs. HTTP
-  completo). Breno confirmou no código (`ConnectivityDiagnosisEngine`/`GatewayReachabilityProbe`/
-  `ExternalIpReachabilityProbe`) que uma rodada em rede saudável é ~4 handshakes TCP curtos sem
-  payload (~centenas de ms); pior caso (rede degradada, múltiplas portas/IPs tentados) chega ao teto
-  de 8s. Intervalo de espera fixado em **5s** entre rodadas (decisão acima, seção 6) — ciclo total
-  ~5,3s em rede saudável (percebido como "ao vivo" para um badge, sem justificar 1-2s que só
-  multiplicaria handshakes sem ganho perceptível). Validação em device real (bateria via
-  Battery Historian/Profiler, cadência real de chegada, device OEM com otimização agressiva,
-  consumo de dados, e necessidade de back-off após timeouts repetidos em rede ruim) fica com Breno,
-  **depois da implementação** — não bloqueia o início dela.
-- **Falso incerto por excesso de cautela.** Se o critério de `Incerto` (NivelConfianca BAIXA) for
-  aplicado com timeout global do engine ainda em andamento (etapa nunca alcançada), o badge pode
-  piscar "?" com frequência em redes só um pouco lentas — precisa de teste de caracterização com
-  cenários reais de rede lenta (não só rede boa/rede quebrada).
-- ~~Descompasso copy-vs-cor no Hero~~ — **resolvido** (decisão de Cora, seção 4.4): texto passa a
-  vir da mesma fonte que a cor, não mais de `MonitorConexaoLeveUseCase`, quando o status ao vivo
-  está disponível.
-- **Toque no ícone da trilha é novo comportamento de interação** (hoje `Inicio2TrailItem` não é
-  clicável) — requisitos de acessibilidade definidos por Breno (seção 5: área de toque ≥48dp,
-  `contentDescription` padronizado, ícone vetorial para "Incerto"); validação final em device real
-  ainda cabe a ele depois da implementação.
+### 11. Estratégia de testes
 
-Não-objetivos: isto não substitui o diagnóstico completo/NDS (`analisarProblema`/"Analisar minha
-conexão" continuam intactos), não é o `ScoreEngine`/motor pesado do ADR-017, não estende a
-distinção Wi-Fi/Provedor para dados móveis, não persiste histórico do estado ambiente, não altera
-`MonitoramentoWorker`.
+- **Migration test** `Migration21Para22Test` (androidTest, `MigrationTestHelper`), seguindo o
+  padrão dos 9 testes de migração já existentes: banco v21 populado → migra → tabelas novas vazias
+  e íntegras; instalação nova direto na v22 sem migração.
+- **DAO test** `MapeamentoWifiDaoTest` (androidTest): CASCADE de `marcador_mapeamento` ao apagar
+  `mapeamento_wifi`; SET_NULL de `comparadoComSessaoId` ao apagar o lado oposto do par; query de
+  `buscarBaselinePendente` por `networkId`.
+- **Unit test** da lógica de vínculo baseline→comparação e do casamento de marcadores por rótulo
+  (função pura, sem Room/Compose) — cobre "sem correspondência" (novo/removido), "mesmo rótulo,
+  case/espaço diferente", "sem baseline pendente".
+- **Unit test** de `WifiCasaGridPosicionamento` (clamping, conversão normalizado↔pixel, hit-test) —
+  sem Compose.
+- **Unit test** de `WifiCasaViewModel` reaproveitando o padrão de `SinalWifiViewModelTest.kt`
+  (fake `WifiManager`/DAO em memória) para a orquestração de captura-e-persistência.
+- Nenhum teste novo em `core/diagnostico` — `MetricClassifier`/`WifiSignalQualityEngine` não mudam
+  (critério de aceite da spec).
 
-**Correção de Ramon ao `ClassificadorConectividadeAoVivo` (2026-09-26, aceita):** `WIFI_WITHOUT_INTERNET`
-mapeia para `INCERTO` nos dois estágios, não `ERRO`/`WIFI` como a primeira instrução previa. O próprio
-doc-comment do status em `core:network` já o descreve como "conclusão honesta quando não dá para
-atribuir a causa a uma camada específica", e o resolver só chega nele depois de gateway e DNS
-confirmados — atribuir a causa ao Wi-Fi aqui seria inventar evidência, violando AGENTS.md §8. Efeito
-visual: esse status vira badge "?" em vez de erro no ícone de Wi-Fi.
+### 12. Riscos
 
-**Segunda correção, achada rodando o app em emulador (2026-09-26, aceita):** `GATEWAY_UNREACHABLE`/
-`NO_LOCAL_ADDRESS` marcavam `PROVEDOR = SUCESSO` (erro só no Wi-Fi). Isso também inventava evidência:
-a sondagem é sequencial e nunca alcança DNS/rota externa quando o gateway falha, então não há
-nenhuma evidência sobre o provedor nesse cenário. Corrigido para `PROVEDOR = NEUTRO` (não avaliado),
-via função dedicada `erroWifiSemEvidenciaExterna()` — não reusa mais `erroEm()`/`estagioOposto()`
-para esses dois status (essa suposição "oposto = sucesso" só vale para `DNS_FAILURE`/
-`EXTERNAL_ROUTE_FAILURE`, onde a etapa oposta foi de fato testada com sucesso antes da falha).
-Efeito visual: o nó "Internet" mostra um badge neutro ("Info") em vez de check verde quando o
-Wi-Fi está com erro de gateway — sem afetar o Hero (o pior caso continua vindo do Wi-Fi/Erro).
+- **Duração real da captura por marcador não está definida na spec** (RF-02 diz só "medição feita
+  no momento da adição"). Definir com Davi/Cora antes de implementar (não é decisão de arquitetura,
+  mas afeta UX: captura longa demais frustra o fluxo de andar pela casa).
+- **`screenName()` compartilhado hoje entre `SINAL_WIFI` e `SINAL_CANAIS_MOVEL`** — trocar para um
+  valor próprio é mudança de contrato de analytics; confirmar com Ramon/Breno se algum dashboard/
+  funil depende do valor atual antes de separar.
+- **`WifiCasaViewModel` como `@HiltViewModel`** é uma mudança de padrão em relação ao
+  `remember{}` do `SinalWifiViewModel`/`ModoGamerViewModel` — justificada pela necessidade de
+  sobreviver à navegação multi-tela e falar com Room, mas é a primeira ferramenta do hub a fazer
+  isso; Davi deve confirmar que o DI grafo (`:app` Hilt) já suporta injetar o DAO novo sem fricção.
+- **Tamanho de `:app`**: WiFi Casa adiciona ~5-8 arquivos novos em `:app/ui/screen` e
+  `:app/wificasa` (viewmodel/estado). Nenhum arquivo existente deve crescer significativamente —
+  se algum ultrapassar 400 linhas, extrair antes de continuar (regra de higiene §7).
 
-### 10. Estratégia de testes
+### 12.1 Reconciliação pós-revisão do Breno — forma de obtenção do `WifiCasaViewModel`
 
-- `ClassificadorConectividadeAoVivo` (`:core:diagnostico`): testes unitários puros por
-  `ConnectivityStatus` × `NivelConfianca` (matriz completa dos 10 valores de status combinados com
-  os 3 níveis de confiança) — sem depender de speedtest real, sem Robolectric.
-- `Inicio2ConnectionTrailMapper`: estender os testes existentes com `statusAoVivo` presente/ausente,
-  confirmando que nós sem entrada no mapa não ganham badge.
-- Hero: teste de caracterização confirmando que `Carregando`/`Interrompida` preservam o
-  comportamento atual (não usam o tom ambiente) e que `SemAnalise`/`StatusEmTempoReal` passam a usar
-  o pior caso da trilha.
-- Coordenador de polling (`:app`): teste com `TestDispatcher`/fake `ConnectivityDiagnosisSource`
-  confirmando start ao entrar na Home+foreground, stop ao sair/backgroundar, sem sondagens
-  sobrepostas.
-- Breno: validação em device real — rede boa, Wi-Fi sem internet (gateway ok, sem rota externa),
-  Wi-Fi totalmente offline, DNS bloqueado/lento, troca Wi-Fi↔móvel com Home aberta, app indo a
-  background no meio de uma sondagem.
+Achado do Breno (revisão de `WifiCasaScreen.kt`): a seção 4.3 aprovou `@HiltViewModel` como
+*anotação*, mas não decidiu explicitamente a *forma de obtenção* da instância — `WifiCasaScreen.kt`
+nasceu usando `viewModel: WifiCasaViewModel = hiltViewModel()` direto no Composable folha, o que
+contraria o comentário já documentado em `MainActivity.kt` ("AppShell/Inicio2Screen/
+ResultadoVelocidadeScreen são 100% data-driven, sem `hiltViewModel()` em Composables leaf") e em
+`StatusConectividadeAoVivoCoordinator.kt`.
 
-### 11. Resumo para implementação (Davi/Ramon)
+**Decisão: manter `hiltViewModel()` em `WifiCasaScreen.kt`, como exceção documentada — não
+padronizar para `by viewModels()` na `MainActivity` + parâmetro via `AppShellSinalWifiOverlay`.**
 
-Ordem sugerida:
-1. **Ramon** — `EstagioRede`/`TomDiagnostico`/`StatusEstagio`/`ClassificadorConectividadeAoVivo` em
-   `:core:diagnostico`, com testes da matriz completa.
-2. **Davi** — 5º valor `Incerto` em `SignallQFeedbackTone`/`SignallQBadgeTone` (+ ícone "?"),
-   corrigindo os `when` que deixam de compilar.
-3. **Davi** — coordenador de polling foreground em `:app` (liga ao ciclo de vida Home+processo),
-   consumindo `ConnectivityDiagnosisSource` diretamente (não o `ConnectivityDiagnosisRepository`).
-4. **Davi** — `Inicio2TrailNode`/`Inicio2ConnectionTrailMapper`/`Inicio2ConnectionTrail` (badge +
-   clicável), `Inicio2Hero` (glifo/tom condicionados), wiring em `AppShell.kt`.
-5. **Davi** — sheet de explicação por estágio (copy definida com Cora).
-6. **Breno** — regressão + validação em device real conforme seção 10.
+Motivos:
+
+- O app é single-`Activity` com `MainActivity` como único `@AndroidEntryPoint` — `hiltViewModel()`
+  dentro de `WifiCasaScreen` resolve para o mesmo `ViewModelStoreOwner` (a própria `MainActivity`)
+  que um campo `by viewModels()` resolveria. A diferença entre as duas formas é *onde* a instância é
+  obtida, não o ciclo de vida nem o escopo do `ViewModel` — Breno confirmou isso em device real
+  (sem crash, sobrevive a rotação/navegação).
+- `WifiCasaViewModel` é estruturalmente diferente de `DevicesViewModel`/`SpeedtestViewModel`: esses
+  dois são convertidos em dado puro (estado primitivo + callbacks) antes de chegar a qualquer
+  Composable — nenhuma tela do hub recebe o objeto `ViewModel` em si (`DispositivosScreen`,
+  `SpeedTestScreen` etc. só recebem `SnapshotScanDispositivos`, `SnapshotRede`, lambdas). Passar
+  `WifiCasaViewModel` por parâmetro através de `AppShellSinalWifiOverlay`/`AppShell` não
+  produziria esse mesmo padrão data-driven — produziria uma terceira variante (objeto `ViewModel`
+  inteiro passado por parâmetro), que não é mais "correta" arquiteturalmente do que
+  `hiltViewModel()` local, só move o acoplamento para `AppShell`, que já é dívida de tamanho
+  conhecida (§4.3 da regra de higiene do repositório). Não há ganho real em forçar essa mudança.
+- Já existe precedente parcial de um Composable resolver sua própria instância de `ViewModel`:
+  `DiagnosticoOfflineDialog.kt:64` (`viewModel(factory = ...)`, não-Hilt) — instancia
+  `DiagnosticoOfflineViewModel` dentro do próprio diálogo porque o fluxo (stepper de 4 etapas) é
+  autocontido e não precisa de wiring cross-cutting no nível da Activity. `WifiCasaViewModel` está
+  na mesma categoria: fluxo multi-tela autocontido (grid → captura → lista → comparação) que não
+  precisa aparecer em `MainActivity`/`AppShell` para nada além de existir.
+- Forçar o padrão antigo (threading do `ViewModel` por parâmetro) aumentaria acoplamento de
+  `AppShell`/`AppShellSinalWifiOverlay` sem nenhum ganho de testabilidade ou clareza — o
+  `WifiCasaViewModel` já é testável isoladamente via Hilt fake modules, como qualquer
+  `@HiltViewModel` do app.
+
+**Não é uma licença geral para `hiltViewModel()` no resto do hub.** A exceção vale especificamente
+para telas cujo `ViewModel` (a) precisa sobreviver a uma navegação interna multi-tela própria e (b)
+fala com persistência (Room) de forma autocontida, sem que a Activity ou o `AppShell` precisem do
+seu estado para nenhum outro propósito. `DevicesViewModel`/`SpeedtestViewModel`/
+`StatusConectividadeAoVivoCoordinator` continuam no padrão data-driven porque seu estado É
+consumido fora da própria tela (notificações, badge da Home, etc.) — outra ferramenta do hub que
+quiser repetir esse padrão precisa da mesma revisão do Camillo, não pode citar WiFi Casa como
+precedente automático.
+
+Comentários atualizados como registro da exceção: `MainActivity.kt` (junto a
+`operadoraDirectoryResolver`) e `StatusConectividadeAoVivoCoordinator.kt` (topo da classe).
+Nenhuma mudança de código pedida ao Davi — `WifiCasaScreen.kt:89` permanece como está.
+
+### 13. Não-objetivos (herdados da spec, reafirmados aqui)
+
+- Importar/desenhar planta real, escala real, triangulação.
+- Detecção automática de reposicionamento de roteador via BSSID/RSSI.
+- Recomendação automática de onde posicionar o roteador via IA.
+- Comparação entre mapeamentos de `networkId` diferentes.
+- Exportar/compartilhar mapeamento.
+- Tabela própria de "comparação" (ver 4.2) — revisitar só se o produto pedir histórico de
+  recomparações ou comparação entre 3+ mapeamentos.
+- Promover ferramentas do hub para módulos `:feature:*` dedicados como consequência desta feature.
