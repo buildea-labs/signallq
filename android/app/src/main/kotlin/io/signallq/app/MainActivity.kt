@@ -69,6 +69,22 @@ class MainActivity : ComponentActivity() {
     // worker signallq-diagnostic -> fallback generico. Injetado aqui (nao dentro de
     // Composable) porque AppShell/Inicio2Screen/ResultadoVelocidadeScreen sao 100%
     // data-driven (sem hiltViewModel() em Composables leaf neste app).
+    //
+    // Excecao documentada (Architecture Plan "WiFi Casa", .agents/architecture-plan.md,
+    // secao "Decisao de forma de obtencao do ViewModel"): WifiCasaScreen.kt resolve
+    // WifiCasaViewModel via hiltViewModel() direto na tela folha, quebrando a regra acima
+    // no sentido literal. Motivo: WifiCasaViewModel precisa sobreviver a navegacao interna
+    // entre sub-telas (grid -> captura -> comparacao) falando com Room de forma autocontida,
+    // e o app e single-Activity (LocalViewModelStoreOwner resolve para esta MainActivity,
+    // @AndroidEntryPoint, entao o escopo do ViewModel e identico ao de um campo `by
+    // viewModels()` aqui — so muda ONDE a instancia e resolvida, nao o ciclo de vida).
+    // Diferente do padrao usado por DevicesViewModel/SpeedtestViewModel abaixo: aqueles sao
+    // convertidos em dado puro (estado + callbacks) antes de chegar em qualquer Composable;
+    // WifiCasaViewModel e o unico ViewModel do hub cujo objeto encapsula uma submaquina de
+    // navegacao propria (WifiCasaUiState.telaAtual) que nao precisa (nem deveria) subir para
+    // o AppShellOverlayRegistry. Nao usar isso como precedente para promover outra ferramenta
+    // do hub a hiltViewModel() sem o mesmo motivo (fluxo multi-tela + persistencia Room
+    // autocontida) — cada nova excecao exige a mesma revisao do Camillo.
     @Inject
     lateinit var operadoraDirectoryResolver: io.signallq.app.ui.OperadoraDirectoryResolver
 

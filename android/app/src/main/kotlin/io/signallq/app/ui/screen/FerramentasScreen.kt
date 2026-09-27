@@ -212,7 +212,7 @@ private fun FerramentaDisponibilidade.subtitle(
 private fun TipoFerramenta.visual(): FerramentaVisual =
     when (this) {
         TipoFerramenta.SINAL_CANAIS_MOVEL -> FerramentaVisual("Wi-Fi e rede móvel", "Veja o sinal e os canais da sua rede", Icons.Outlined.SignalCellularAlt)
-        TipoFerramenta.SINAL_WIFI -> FerramentaVisual("Encontrar um bom lugar", "Ande pela casa acompanhando o sinal Wi-Fi", Icons.Outlined.NetworkWifi)
+        TipoFerramenta.SINAL_WIFI -> FerramentaVisual("WiFi Casa", "Mapeie o sinal em cada cômodo e compare antes e depois de mudar o roteador", Icons.Outlined.NetworkWifi)
         TipoFerramenta.DISPOSITIVOS -> FerramentaVisual("Quem está usando sua rede", "Veja os aparelhos conectados", Icons.Outlined.Devices)
         TipoFerramenta.EQUIPAMENTO_INTERNET -> FerramentaVisual("Seu equipamento", "Veja o estado do modem ou da ONT", Icons.Outlined.Router)
         TipoFerramenta.PING -> FerramentaVisual("Tempo de resposta", "Veja se há atraso até um endereço", Icons.Outlined.NetworkCheck)

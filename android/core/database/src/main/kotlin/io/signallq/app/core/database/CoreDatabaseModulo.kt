@@ -338,6 +338,65 @@ object CoreDatabaseModulo {
             }
         }
 
+    /** `docs_ai/functional/WIFI_CASA_MAPEAMENTO_SPEC.md`/`.agents/architecture-plan.md`
+     *  (WiFi Casa — mapeamento espacial de sinal Wi-Fi). Aditiva: cria as duas tabelas novas
+     *  (sessão de mapeamento + marcadores filhos, precedente `chat_sessions`/`chat_messages`) --
+     *  nenhuma tabela existente é alterada, nenhuma linha é perdida. Instalações existentes
+     *  simplesmente não têm nenhum mapeamento até o usuário criar o primeiro. */
+    internal val MIGRATION_21_22 =
+        object : Migration(21, 22) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `mapeamento_wifi` (" +
+                        "`id` TEXT NOT NULL, " +
+                        "`nome` TEXT NOT NULL, " +
+                        "`networkId` TEXT, " +
+                        "`criadoEmEpochMs` INTEGER NOT NULL, " +
+                        "`atualizadoEmEpochMs` INTEGER NOT NULL, " +
+                        "`status` TEXT NOT NULL, " +
+                        "`comparadoComSessaoId` TEXT, " +
+                        "PRIMARY KEY(`id`), " +
+                        "FOREIGN KEY(`comparadoComSessaoId`) REFERENCES `mapeamento_wifi`(`id`) " +
+                        "ON UPDATE NO ACTION ON DELETE SET NULL )",
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_mapeamento_wifi_atualizadoEmEpochMs` " +
+                        "ON `mapeamento_wifi` (`atualizadoEmEpochMs`)",
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_mapeamento_wifi_networkId` " +
+                        "ON `mapeamento_wifi` (`networkId`)",
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_mapeamento_wifi_comparadoComSessaoId` " +
+                        "ON `mapeamento_wifi` (`comparadoComSessaoId`)",
+                )
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `marcador_mapeamento` (" +
+                        "`id` TEXT NOT NULL, " +
+                        "`mapeamentoId` TEXT NOT NULL, " +
+                        "`rotulo` TEXT NOT NULL, " +
+                        "`tipo` TEXT NOT NULL, " +
+                        "`posX` REAL NOT NULL, " +
+                        "`posY` REAL NOT NULL, " +
+                        "`rssiDbm` INTEGER, " +
+                        "`bandaWifi` TEXT, " +
+                        "`criadoEmEpochMs` INTEGER NOT NULL, " +
+                        "PRIMARY KEY(`id`), " +
+                        "FOREIGN KEY(`mapeamentoId`) REFERENCES `mapeamento_wifi`(`id`) " +
+                        "ON UPDATE NO ACTION ON DELETE CASCADE )",
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_marcador_mapeamento_mapeamentoId` " +
+                        "ON `marcador_mapeamento` (`mapeamentoId`)",
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_marcador_mapeamento_mapeamentoId_criadoEmEpochMs` " +
+                        "ON `marcador_mapeamento` (`mapeamentoId`, `criadoEmEpochMs`)",
+                )
+            }
+        }
+
     fun criarBanco(context: Context): SignallQDatabase =
         Room
             .databaseBuilder(
@@ -364,5 +423,6 @@ object CoreDatabaseModulo {
             .addMigrations(MIGRATION_18_19)
             .addMigrations(MIGRATION_19_20)
             .addMigrations(MIGRATION_20_21)
+            .addMigrations(MIGRATION_21_22)
             .build()
 }

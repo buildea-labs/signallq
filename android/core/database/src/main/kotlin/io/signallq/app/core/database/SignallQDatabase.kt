@@ -13,6 +13,9 @@ import io.signallq.app.core.database.provider.ProviderDirectoryCacheDao
 import io.signallq.app.core.database.provider.ProviderDirectoryCacheEntity
 import io.signallq.app.core.database.recommendation.RecommendationHistoryDao
 import io.signallq.app.core.database.recommendation.RecommendationHistoryEntity
+import io.signallq.app.core.database.wificasa.MapeamentoWifiDao
+import io.signallq.app.core.database.wificasa.MapeamentoWifiEntity
+import io.signallq.app.core.database.wificasa.MarcadorMapeamentoEntity
 
 @Database(
     entities = [
@@ -24,8 +27,10 @@ import io.signallq.app.core.database.recommendation.RecommendationHistoryEntity
         ConnectivityDiagnosisHistoryEntity::class,
         ProviderDirectoryCacheEntity::class,
         AnalyticsOutboxEntity::class,
+        MapeamentoWifiEntity::class,
+        MarcadorMapeamentoEntity::class,
     ],
-    version = 21,
+    version = 22,
     exportSchema = true,
 )
 abstract class SignallQDatabase : RoomDatabase() {
@@ -42,4 +47,6 @@ abstract class SignallQDatabase : RoomDatabase() {
     abstract fun providerDirectoryCacheDao(): ProviderDirectoryCacheDao
 
     abstract fun analyticsOutboxDao(): AnalyticsOutboxDao
+
+    abstract fun mapeamentoWifiDao(): MapeamentoWifiDao
 }

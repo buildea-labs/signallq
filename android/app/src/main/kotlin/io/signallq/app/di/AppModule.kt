@@ -1,6 +1,7 @@
 ﻿package io.signallq.app.di
 
 import android.content.Context
+import android.net.wifi.WifiManager
 import com.google.firebase.analytics.FirebaseAnalytics
 import com.google.firebase.remoteconfig.FirebaseRemoteConfig
 import com.google.firebase.remoteconfig.FirebaseRemoteConfigSettings
@@ -22,6 +23,7 @@ import io.signallq.app.core.database.MedicaoDao
 import io.signallq.app.core.database.SignallQDatabase
 import io.signallq.app.core.database.chat.ChatSessionDao
 import io.signallq.app.core.database.connectivity.ConnectivityDiagnosisHistoryDao
+import io.signallq.app.core.database.wificasa.MapeamentoWifiDao
 import io.signallq.app.core.datastore.FeatureFlagStore
 import io.signallq.app.core.datastore.PreferenciasAppRepository
 import io.signallq.app.core.featureflags.FeatureFlagCatalog
@@ -379,6 +381,23 @@ object AppModule {
     @Provides
     @Singleton
     fun provideChatSessionDao(bancoDados: SignallQDatabase): ChatSessionDao = bancoDados.chatSessionDao()
+
+    @Provides
+    @Singleton
+    fun provideMapeamentoWifiDao(bancoDados: SignallQDatabase): MapeamentoWifiDao = bancoDados.mapeamentoWifiDao()
+
+    /**
+     * WiFi Casa (`.agents/architecture-plan.md`) -- `WifiCasaViewModel` precisa do `WifiManager`
+     * injetado (em vez de resolvido via `Context` dentro do ViewModel) para poder receber um
+     * mock em teste unitário, mesmo padrão de constructor injection já usado em
+     * `SinalWifiViewModelTest` (que instancia `SinalWifiViewModel` direto com um `WifiManager`
+     * mockado, sem passar por Hilt).
+     */
+    @Provides
+    @Singleton
+    fun provideWifiManager(
+        @ApplicationContext ctx: Context,
+    ): WifiManager = ctx.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
 
     @Provides
     @Singleton

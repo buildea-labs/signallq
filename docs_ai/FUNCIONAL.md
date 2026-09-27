@@ -4,7 +4,7 @@ description: "O que o app Android SignallQ (io.signallq.app) entrega ao usuário
 type: "funcional"
 status: "ativo"
 owner: "Claudete"
-last_updated: "2026-08-28"
+last_updated: "2026-09-26"
 ---
 
 - **Fonte de verdade:** o código do app consumer em `android/app/src/main/kotlin/io/signallq/app/`
@@ -201,7 +201,7 @@ como lista aberta, em um toque, sem grid ou catálogo visual concorrente:
 | Card | Descrição exibida | Destino |
 |---|---|---|
 | Wi-Fi e rede móvel | "Veja o sinal e os canais da sua rede" | `SinalScreen` em `Overlay.SinalCanais` |
-| Encontrar um bom lugar | "Ande pela casa acompanhando o sinal Wi-Fi" | `SinalWifiScreen` |
+| WiFi Casa | "Mapeie o sinal em cada cômodo e compare antes e depois de mudar o roteador" | `WifiCasaScreen` |
 | Quem está usando sua rede | "Veja os aparelhos conectados" | `DispositivosScreen` |
 | Seu equipamento | "Veja o estado do modem ou da ONT" | `EquipamentoInternetScreen` |
 | Tempo de resposta | "Veja se há atraso até um endereço" | `PingScreen` |

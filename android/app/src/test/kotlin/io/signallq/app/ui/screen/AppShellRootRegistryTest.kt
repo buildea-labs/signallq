@@ -172,7 +172,7 @@ class AppShellRootRegistryTest {
         }
         listOf(
             "Wi-Fi e rede móvel" to "sinal_canais",
-            "Encontrar um bom lugar" to "sinal_wifi",
+            "WiFi Casa" to "sinal_wifi",
             "Quem está usando sua rede" to "dispositivos",
             "Seu equipamento" to "equipamento",
             "Tempo de resposta" to "ping",

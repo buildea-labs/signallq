@@ -50,7 +50,7 @@ class FerramentasScreenTest {
         }
         listOf(
             "Wi-Fi e rede móvel",
-            "Encontrar um bom lugar",
+            "WiFi Casa",
             "Quem está usando sua rede",
             "Seu equipamento",
             "Tempo de resposta",

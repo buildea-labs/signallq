@@ -146,10 +146,12 @@ Processo: `PROCESSO_PR_E_AGENTES_2026-07-16.md`, `WORKFLOW_BOARD.md`, `FAQ_USERS
 overlays do `AppShell.kt`, issue #1695) · `appshell-root-content-registry.md` (padrão irmão para
 root content/raízes, issue #1698 — cobre os ~85% do crescimento que o de overlays não cobria).
 
-## Funcional pontual — `functional/` (3)
+## Funcional pontual — `functional/` (4)
 
 `FEATURE_FLAGS.md` · `DIAGNOSTICO_GUIADO_MODO_GAMER_SPEC.md` ·
-`JORNADA_ANDROID_GUIADA_2_SPEC.md` (draft da jornada futura orientada por sintomas).
+`JORNADA_ANDROID_GUIADA_2_SPEC.md` (draft da jornada futura orientada por sintomas) ·
+`WIFI_CASA_MAPEAMENTO_SPEC.md` (ativo — evolução de "Encontrar um bom lugar" para mapeamento de
+cômodos com grid 2D e comparação Antes×Depois de reposicionamento de roteador/mesh, implementada).
 
 ## Design — `design-system/` (12)
 
