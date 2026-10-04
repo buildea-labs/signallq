@@ -5,7 +5,7 @@ type: "técnico"
 status: "ativo"
 owner: "Camilo"
 last_updated: "2026-10-04"
-version: "1.1.0"
+version: "1.2.0"
 ---
 
 # `:coreTelephony`
@@ -19,6 +19,8 @@ version: "1.1.0"
 Fornece os dados de rede móvel usados pelo diagnóstico: tecnologia (5G SA/NSA, 4G, 3G, 2G), RSRP/RSRQ/SINR/EcNo, banda, identidade de célula (cellId, mcc, mnc, tac), roaming e rádio desligado — via `MonitorTelephony.snapshotFlow` e `captureSimsAtivos()` por SIM ativo.
 
 Não é dele: solicitar `READ_PHONE_STATE` ao usuário (isso é da UI), classificar a qualidade do sinal (`MetricClassifier` vive em `:core:diagnostico`, GH#1206), persistir os snapshots ou enviá-los à IA. O contrato de erro é explícito: **nunca lança** — sem permissão, sem SIM ativa ou em emulador, `snapshotFlow.value` permanece `null` e o fato é logado uma vez por sessão.
+
+Uso na aba Móvel e estados sem permissão: [`features/wifi-canais-sinal.md`](../../features/wifi-canais-sinal.md).
 
 ## Dependências
 

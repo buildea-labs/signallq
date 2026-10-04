@@ -5,7 +5,7 @@ type: "técnico"
 status: "ativo"
 owner: "Camilo"
 last_updated: "2026-10-04"
-version: "1.1.0"
+version: "1.2.0"
 ---
 
 # `:core:featureflags`
@@ -77,6 +77,10 @@ são consumidos por mais de uma árvore de features.
 | `FeatureFlagsModulo.kt` | Fábrica (`criarCatalogo`, `criarProvider`) — mesmo padrão de `CoreNetworkModulo`, sem anotações Dagger |
 | `FeatureFlagRawValue.kt`, `FeatureFlagValue.kt`, `FeatureFlagType.kt`, `FeatureFlagCriticality.kt`, `FeatureFlagDisabledBehavior.kt`, `FeatureFlagKey.kt` | Tipos de apoio do domínio |
 | `src/test/.../FeatureFlagKeysParityTest.kt` | Impede divergência entre `FeatureFlagKeys` e o JSON — toda chave em um precisa existir no outro |
+
+## Features
+
+Features que listam este módulo (comportamento e regras de negócio ficam na página da feature): [`assist-diagnostico`](../../features/assist-diagnostico.md), [`dns-ping`](../../features/dns-ping.md), [`equipamento-internet`](../../features/equipamento-internet.md), [`monitoramento-alertas`](../../features/monitoramento-alertas.md), [`perfil-ajustes-legal`](../../features/perfil-ajustes-legal.md), [`velocidade-resultado`](../../features/velocidade-resultado.md).
 
 ## Riscos e dívidas
 

@@ -58,7 +58,7 @@ owner: "Squad"
 **Exemplos:**
 - `FUNCIONAL.md` (índice funcional principal)
 - `functional/FEATURE_FLAGS.md`
-- `functional/WIFI_CASA_MAPEAMENTO_SPEC.md`
+- `functional/JORNADA_ANDROID_GUIADA_2_SPEC.md`
 
 **Mantém-se vivo?** Sim — mudanças no fluxo, design ou requisitos devem atualizar a doc.
 

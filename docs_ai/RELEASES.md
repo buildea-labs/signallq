@@ -20,7 +20,7 @@ Marca: Linka (até 0.14.x) → Veloo (0.15.0) → SignallQ (0.16.0+).
 
 ## v1.0.9 (versionCode 89) — 2026-09-27 (tag `v1.0.9`)
 
-- **Wi-Fi Casa:** mapeamento espacial de Wi-Fi com grade 2D e comparação Antes × Depois (#1909; ver `functional/WIFI_CASA_MAPEAMENTO_SPEC.md`).
+- **Wi-Fi Casa:** mapeamento espacial de Wi-Fi com grade 2D e comparação Antes × Depois (#1909; ver `features/wifi-casa.md`).
 - **Início:** status de conectividade ao vivo na trilha e no Hero (#1908).
 - **Diagnóstico:** confiabilidade estatística de amostragem e de perda de pacotes (#1906).
 - **Modo gamer:** sonda UDP real (beacon AWS GameLift) e remoção de hosts mortos do catálogo (#1902, #1904).

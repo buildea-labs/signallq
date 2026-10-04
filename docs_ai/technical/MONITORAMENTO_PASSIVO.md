@@ -5,128 +5,47 @@ type: "técnico"
 status: "ativo"
 owner: "Camilo"
 last_updated: "2026-10-04"
-version: "1.1.0"
+version: "2.0.0"
 ---
 
 # Monitoramento Passivo — MonitoramentoWorker
 
 - **Fonte de verdade:** código — `android/app/src/main/kotlin/io/signallq/app/monitoramento/` (`MonitoramentoWorker.kt`, `MonitoramentoScheduler.kt`, `HisteresiHelper.kt`) e `MonitoramentoSheet.kt`
-- **Escopo:** background monitoring de qualidade de rede (latência, DNS, Wi-Fi) e notificações de alerta
+- **Escopo:** mecânica técnica do worker. Comportamento de produto, alertas, histerese, persistência, permissões, OEMs, testes e riscos estão em [`features/monitoramento-alertas.md`](../features/monitoramento-alertas.md).
+- **Substitui:** a versão 1.1.0, que repetia a página de feature e afirmava que não existe cooldown nem teto diário de notificações — o código tem os dois (`SignallQNotificationHelper.kt`). Limiares e contenção não são copiados aqui: ficam no código.
 
----
-
-## 1. Objetivo técnico
-
-Detectar degradação de conectividade em background (sem o usuário abrir o app) e notificar
-apenas em transições de estado (ok → alerta), evitando spam de notificação.
-
-## 2. Visão geral da solução
+## Fluxo
 
 ```
-WorkManager (PeriodicWorkRequest, 30 min, policy KEEP)
+WorkManager (PeriodicWorkRequest, policy KEEP)
   ↓
 MonitoramentoWorker.doWork()
-  ├─ medirLatenciaHttp()   — 3 amostras paralelas a speed.cloudflare.com, mediana
-  ├─ medirDnsResolveTime() — InetAddress.getByName("cloudflare.com"), timeout 5s
-  ├─ medirRssiWifi()       — RSSI do Wi-Fi conectado (ConnectivityManager/WifiManager)
+  ├─ medirLatenciaHttp()   — amostras paralelas, mediana
+  ├─ medirDnsResolveTime() — resolução de nome, com timeout
+  ├─ medirRssiWifi()       — RSSI do Wi-Fi conectado
   ↓
 aplicarHisterese(latencia, dns, rssi) — HisteresiHelper (lógica pura)
   ↓
-persistirMedicaoMonitor() — grava MedicaoEntity (fonte="monitor") no Room via MedicaoDao
+persistirMedicaoMonitor() — MedicaoEntity (fonte="monitor") no Room via MedicaoDao
 ```
 
-Não há chamada a IA nem orquestração de fases neste worker — é uma medição direta + histerese +
-persistência. O fluxo de IA ("Análise avançada" — `MainViewModel.analisarProblema()`, worker
-`linka-ai-diagnosis-worker`) é acionado pelo usuário na tela de diagnóstico, não pelo
-monitoramento passivo — ver `docs_ai/technical/AI_FLOW.md`.
+Medição direta + histerese + persistência; sem IA nem orquestração de fases. O fluxo de IA ("Análise avançada", `MainViewModel.analisarProblema()`) é acionado pelo usuário no diagnóstico — ver `technical/AI_FLOW.md`.
 
-## 3. Scheduling
+## Scheduling
 
-**Framework:** WorkManager (`MonitoramentoScheduler.kt`)
+Framework: WorkManager (`MonitoramentoScheduler.kt`).
 
-- **Período:** 30 minutos (`MonitoramentoScheduler.INTERVALO_MINUTOS`, usada tanto pelo
-  `PeriodicWorkRequestBuilder<MonitoramentoWorker>` quanto pela comunicação de frequência real na
-  UI — `MonitoramentoSheet.kt`, issue #1666. Não é um valor nominal só para o Worker: mudar aqui
-  sem atualizar a UI quebra a honestidade da comunicação, e vice-versa)
-- **Tag:** `linka_monitoramento_passivo`
-- **Policy:** `ExistingPeriodicWorkPolicy.KEEP` (evita duplicar o work já agendado)
-- **Toggle do usuário:** `PreferenciasAppRepository.monitoramentoAtivoFlow`
+- **Período:** `MonitoramentoScheduler.INTERVALO_MINUTOS`, usado pelo `PeriodicWorkRequestBuilder<MonitoramentoWorker>` **e** pela UI para comunicar a frequência real (`MonitoramentoSheet.kt`, issue #1666). Mudar só um dos lados quebra a honestidade da comunicação.
+- **Tag:** `linka_monitoramento_passivo`.
+- **Policy:** `ExistingPeriodicWorkPolicy.KEEP` (não duplica o work já agendado).
+- **Toggle do usuário:** `PreferenciasAppRepository.monitoramentoAtivoFlow`.
 
-## 4. Medições por execução
+## Medições por execução
 
 | Medição | Método | Timeout | Detalhe |
 |---|---|---|---|
-| Latência HTTP | `medirLatenciaHttp()` | 10s/amostra (connect 5s + read 5s) | 3 amostras paralelas (`async`/`awaitAll`) contra `https://speed.cloudflare.com/__down?bytes=0`, usa a mediana |
-| DNS | `medirDnsResolveTime()` | 5s | `InetAddress.getByName("cloudflare.com")`, mede tempo de resolução |
-| RSSI Wi-Fi | `medirRssiWifi()` | — | Via `ConnectivityManager`/`WifiInfo` (Android 12+) ou `WifiManager` (legado). Retorna motivo (`SemWifi`/`SemPermissao`/`Invalido`) quando não há valor |
+| Latência HTTP | `medirLatenciaHttp()` | `CALL_TIMEOUT_MS` por amostra (`CONNECT_TIMEOUT_MS` + `READ_TIMEOUT_MS`) | amostras paralelas (`async`/`awaitAll`) contra `https://speed.cloudflare.com/__down?bytes=0`; usa a mediana |
+| DNS | `medirDnsResolveTime()` | `DNS_TIMEOUT_MS` | `InetAddress.getByName("cloudflare.com")`; mede o tempo de resolução |
+| RSSI Wi-Fi | `medirRssiWifi()` | — | `ConnectivityManager`/`WifiInfo` (Android 12+) ou `WifiManager` (legado); sem valor, devolve o motivo (`SemWifi`/`SemPermissao`/`Invalido`) |
 
-## 5. Histerese e thresholds (`aplicarHisterese`)
-
-Notifica **apenas na transição** ok→alerta (nunca repete enquanto o estado permanecer em
-alerta). Estados anteriores/atuais persistidos via `PreferenciasAppRepository` (DataStore).
-
-| Alerta | Entra em alerta | Sai do alerta | Notificação |
-|---|---|---|---|
-| Latência alta | > 400ms | < 300ms | `notificarLatenciaAlta` |
-| DNS lento | > 2500ms | < 1800ms | `notificarDnsLento` |
-| Wi-Fi fraco | RSSI < -75dBm | RSSI > -68dBm | `notificarWifiFraco` |
-| Sem internet | sem latência **e** sem DNS | qualquer um voltando | `notificarSemInternet` (prioridade sobre os demais) |
-
-Métrica `null` (ex.: Doze Mode interrompeu a medição) mantém o estado anterior — não força
-transição. Cada tipo de notificação tem um controle granular próprio do usuário
-(`notificacaoLatenciaAtivaFlow`, `notificacaoDnsAtivaFlow`, `notificacaoRssiAtivaFlow`,
-`notificacaoSemInternetAtivaFlow`) — o usuário pode desligar um tipo sem desligar o
-monitoramento inteiro.
-
-**Não existe** cooldown temporal fixo nem teto de N alertas/dia — o único mecanismo de
-contenção é a histerese por transição de estado.
-
-## 6. Persistência
-
-`persistirMedicaoMonitor()` grava uma `MedicaoEntity` no Room (`MedicaoDao`) com
-`fonte = "monitor"` e `connectionType = "monitor"` — usada para compor o gráfico de
-uptime/histórico junto com as medições de speedtest completo. `downloadMbps`/`uploadMbps`
-ficam `null` (o monitor não mede throughput, só latência/DNS/RSSI).
-
-Não existe tabela dedicada de alertas.
-
-## 7. Permissões & Constraints
-
-```xml
-<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-<uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
-<uses-permission android:name="android.permission.INTERNET" />
-<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-```
-
-### OEM Quirks
-
-- **Samsung:** pode não rodar em Doze sem exceção de bateria configurada pelo usuário.
-- **Xiaomi:** MIUI pode atrasar o disparo do work por horas — comportamento da plataforma, não
-  do app.
-- **Moto/AOSP:** respeitam as constraints padrão do WorkManager.
-
-## 8. Configuração do usuário
-
-Toggle de monitoramento e notificações vivem em Ajustes/Perfil (overlay `Perfil`, ver
-`docs_ai/technical/SCREEN_MAP.md`); não há tela dedicada de monitoramento.
-
-## 9. Testes
-
-`android/app/src/test/kotlin/io/signallq/app/monitoramento/`:
-`MonitoramentoWorkerHistereseTest.kt` (transições de estado/thresholds) e
-`MonitoramentoWorkerMedicaoTest.kt` (persistência da medição sintética).
-
-Em `ui/screen/`: `MonitoramentoSheetFrequenciaRealTest.kt` (copy honesta de frequência real, com
-guarda de regressão contra `MonitoramentoScheduler.INTERVALO_MINUTOS`) e
-`HistoricoUptimeWiringCaracterizacaoTest.kt` (renderização real de `UptimeGridChart` em
-`HistoricoScreen.kt`).
-
-## 10. Riscos técnicos
-
-- Sem foreground service: em dispositivos muito agressivos com Doze/battery-saver (alguns OEMs
-  Android), o intervalo real pode variar bem além dos 30 minutos nominais — comportamento da
-  plataforma, não um bug do worker.
-- Medição de latência/DNS usa domínio fixo (`speed.cloudflare.com`, `cloudflare.com`) — uma
-  degradação isolada da Cloudflare (rara, mas possível) apareceria como falso alerta de rede do
-  usuário.
+Métrica `null` (ex.: Doze interrompeu a medição) mantém o estado anterior e não força transição.

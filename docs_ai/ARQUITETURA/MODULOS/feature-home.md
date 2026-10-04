@@ -5,7 +5,7 @@ type: "técnico"
 status: "ativo"
 owner: "Camilo"
 last_updated: "2026-10-04"
-version: "1.1.0"
+version: "1.2.0"
 ---
 
 # `:featureHome`
@@ -18,6 +18,8 @@ version: "1.1.0"
 Concentra a única regra de negócio da tela Início que foi extraída para fora do `:app`: decidir **qual** medição é exibida — a da execução atual ou a última medição salva no histórico — nunca uma mistura das duas (`ResolvedorMedicaoHome`). Trabalha sobre uma struct genérica (`MetricasMedicaoHome`), deliberadamente desacoplada dos tipos de `:featureSpeedtest` e de `:coreDatabase`.
 
 Não é dele: renderizar a tela Início (a `Inicio2Screen.kt` vive em `:app`), buscar dados, converter entidades do Room, orquestrar speedtest ou navegação. O módulo não tem nenhum Composable, ViewModel, UiState nem Repository.
+
+Comportamento da tela Início e a regra de medição exibida: [`features/inicio-status.md`](../../features/inicio-status.md).
 
 ## Dependências
 
