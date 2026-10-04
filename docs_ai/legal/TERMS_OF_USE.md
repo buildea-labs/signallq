@@ -1,6 +1,16 @@
+---
+title: "Termos de Uso — SignallQ"
+description: "Termos de uso do aplicativo SignallQ, espelhados na tela Termos de Uso do app."
+type: "referência"
+status: "ativo"
+owner: "Luiz Giammattey"
+last_updated: "2026-10-04"
+version: "1.1.0"
+---
+
 # Termos de Uso — SignallQ
 
-**Última atualização:** 28 de junho de 2026
+**Última atualização:** 4 de outubro de 2026
 
 ---
 
