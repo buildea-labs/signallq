@@ -4,7 +4,7 @@ description: "Mapa de todos os documentos existentes em docs_ai, gerado a partir
 type: "índice"
 status: "ativo"
 owner: "Squad"
-last_updated: "2026-08-15"
+last_updated: "2026-10-04"
 ---
 
 # Índice da documentação
@@ -115,6 +115,10 @@ Release e build: `RELEASE.md`, `APK_OUTPUT_POLICY.md`, `VERSIONING.md`, `SIGNING
 `INFRASTRUCTURE_COSTS.md`. Processo: `PROCESSO_PR_E_AGENTES_2026-07-16.md`, `FAQ_USERS.md`,
 `THIRD_PARTY_NOTICES.md`.
 
+## Páginas de feature — `features/` (3)
+
+Uma página por feature de produto, com negócio e técnico no mesmo arquivo e frontmatter legível por máquina (módulos, arquivos, eventos, flags, testes). Comece por [`features/INDEX.md`](features/INDEX.md) (tabela gerada por `scripts/gerar-features-index.sh`; `features/features.json` tem o mesmo conteúdo para máquina). Formato e regras: [`features/README.md`](features/README.md). O CI valida que todo caminho, evento e flag do frontmatter existe.
+
 ## Referências técnicas — `technical/` (15)
 
 `admin-api-schema.md` · `analytics-events.md` · `analytics-events-schema.md` · `AI_FLOW.md` ·
@@ -150,10 +154,10 @@ Release e build: `RELEASE.md`, `APK_OUTPUT_POLICY.md`, `VERSIONING.md`, `SIGNING
 `firebase-test-cases.yaml` — casos de teste do Firebase Test Lab. Único artefato da pasta e não é
 Markdown, por isso não aparece nas contagens de documento.
 
-## Templates — `templates/` (5)
+## Templates — `templates/` (6)
 
 `README.md` · `TEMPLATE_TECNICO.md` · `TEMPLATE_FUNCIONAL.md` · `TEMPLATE_ADR.md` ·
-`TEMPLATE_RUNBOOK.md`.
+`TEMPLATE_RUNBOOK.md` · `feature-page.md`.
 
 ## Vazio por decisão — `_archive/`
 

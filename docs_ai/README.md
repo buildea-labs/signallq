@@ -4,7 +4,7 @@ description: "Ponto de entrada da documentação do app consumer Android e do ba
 type: "índice"
 status: "ativo"
 owner: "Claudete (processo) · Camilo (técnico)"
-last_updated: "2026-08-15"
+last_updated: "2026-10-04"
 ---
 
 # Documentação — SignallQ
@@ -63,6 +63,7 @@ O `signallq-admin-worker` é **deste** repositório, embora o painel Admin que o
 |---|---|
 | `decisions/` | ADRs (`ADR-001`…`ADR-013`) e decisões de negócio — **preservados, não regeneráveis** |
 | `operations/` | Runbooks: release, deploy, hotfix, rollback, assinatura, custos |
+| `features/` | Uma página por feature (negócio + técnico + mapa de código/eventos/flags/testes); comece por `features/INDEX.md` |
 | `technical/` | Referências técnicas pontuais: schema da Admin API, mapas de campo de equipamento (Intelbras, Nokia, TP-Link), fluxo de IA, ping executor |
 | `functional/` | Specs funcionais que não migraram para `FUNCIONAL.md` |
 | `design-system/` | Decisões de design (tokens, paleta, topbar) — conteúdo vigente em `DESIGN_SYSTEM.md` |

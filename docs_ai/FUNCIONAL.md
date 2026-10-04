@@ -5,7 +5,7 @@ type: "funcional"
 status: "ativo"
 owner: "Cora"
 last_updated: "2026-10-04"
-version: "2.1.1"
+version: "2.1.2"
 ---
 
 - **Fonte de verdade:** o código do app consumer em `android/app/src/main/kotlin/io/signallq/app/`
@@ -420,59 +420,11 @@ A sheet de AP mesh é explicitamente honesta sobre o limite: "Sinal, banda e cli
 estão disponíveis via varredura passiva. Para métricas detalhadas, acesse o painel do seu roteador
 mesh." (`MeshApSheet` em `DispositivoDetalheSheet.kt`).
 
-### 5.4b Ping (tempo de resposta)
+### 5.4b Ping (tempo de resposta) e 5.5 DNS
 
-**Tela:** `PingScreen` (overlay via Ferramentas) — migrada para tela cheia roteada na issue #1665
-(épico #1647, Task 2.0.17), mesmo padrão de `DnsScreen` (GH#933 Fase 4): antes era
-`ModalBottomSheet`, agora usa `Scaffold`+`CenterAlignedTopAppBar` com botão Voltar. Motor
-(`PingExecutor`, `feature/speedtest`) e telemetria preservados — a mudança é de apresentação e
-navegação, não de medição.
-
-Título e descrição lideram com significado, não com o nome do protocolo: "Tempo de resposta" em
-vez de "Teste de Latência" — segue a tradução de `docs_ai/design-system/SIGNALLQ_DESIGN_SYSTEM_2_SPEC.md`
-§4.3 (Ping → "Tempo de resposta"). A tela mede latência HTTPS contra um endpoint (nunca ICMP — ver
-seção 7) e declara isso explicitamente no resultado ("Via HTTPS · <host>").
-
-**Destino sugerido + opção avançada (decisão de produto do Luiz, 2026-08-19):** a tela sempre
-executa contra um destino sugerido por padrão (`speed.cloudflare.com`, o mesmo alvo histórico) e
-mostra esse destino de forma visível. Quem quer testar outro endereço abre "Testar outro
-endereço" (opção avançada, escondida por padrão — nunca removida) e digita um host; o campo nunca
-fica exposto por padrão para não repetir a queixa de "ferramenta de rede parece um terminal". A
-validação do host digitado reaproveita `DetectorEnderecoIpPrivado` (o mesmo detector já usado por
-`DnsScreen`/`feature/dns`) — endereços privados/locais (RFC 1918, loopback, link-local, ULA IPv6)
-são recusados antes de qualquer teste, sem criar um segundo validador. `PingScreen` aceita um
-`destinoContextual` opcional para pré-preencher o destino a partir de um diagnóstico futuro; hoje
-nenhum chamador ainda produz esse valor (fica `null`, preservando o comportamento padrão) — plumbing
-deliberadamente adiado até existir uma fonte real de contexto, para não inventar dado fictício.
-
-Cancelamento (voltar da tela) encerra a coleta de amostras via ciclo de vida estrutural do Compose
-(`LaunchedEffect`/`rememberCoroutineScope` cancelam a coroutine ao sair de composição) — o mesmo
-mecanismo que já existia na versão em sheet, agora também coberto por teste de caracterização em
-`PingScreenViewModelTest`.
-
-### 5.5 DNS
-
-**Tela:** `DnsScreen` (overlay via Ferramentas ou Velocidade). Já operava como tela cheia roteada
-desde GH#933 (Fase 4) e já liderava com significado ("DNS afeta a abertura de sites, não a
-velocidade da sua conexão") antes da issue #1665 — revisada como parte da Task 2.0.17 e já
-conforme aos critérios da jornada única, sem mudança de código necessária. DNS não tem um "destino"
-customizável análogo ao do Ping: a ferramenta compara resolvedores DNS conhecidos, não testa um
-host escolhido pelo usuário — por isso não ganhou a mesma opção avançada.
-
-**O app não troca o DNS.** A tela diz isso ao usuário na cara: "Isso não troca o DNS
-automaticamente. Para alterar, você precisa configurar no Android ou no roteador."
-(`DnsScreen.kt`).
-
-Quatro blocos. **Seu DNS atual** — nome resolvido e IP do resolvedor, com a latência omitida quando o
-DNS é o próprio roteador (o app explica que o roteador só repassa as consultas). **Benchmark** —
-botão "Comparar servidores DNS" mede sete provedores públicos via DNS-over-HTTPS: Cloudflare, Google
-DNS, Quad9, OpenDNS, AdGuard, Control D e CleanBrowsing
-(`feature/dns/.../BenchmarkDnsDoh.kt`); cada linha mostra tempo em ms, nota A/B/C/D e badges
-"atual"/"mais rápido". **Recomendação** — declara o vencedor, ou recusa declarar: quando os melhores
-ficam dentro de 10 ms, a tela diz "Empate técnico entre os servidores mais rápidos nesta conexão."
-(`DnsScreen.kt`). **Guia** — colapsável "Quando vale a pena trocar DNS?", com o passo a
-passo real de configuração em duas abas (Dispositivo, 5 passos; Roteador, 6 passos), cada uma
-declarando o escopo do efeito.
+`PingScreen` ("Tempo de resposta", latência HTTPS, nunca ICMP) e `DnsScreen` (benchmark DoH de sete
+provedores públicos; o app não troca o DNS) são telas cheias abertas pelo hub Ferramentas. Regras,
+estados, eventos, flags e testes: [`features/dns-ping.md`](features/dns-ping.md).
 
 ### 5.5b Diagnóstico offline guiado
 
@@ -494,7 +446,7 @@ novamente" (só quando houve falha) e "Concluir".
 problema é o DNS configurado na rede, não a internet em si", em vez de deixar o usuário achando
 que a internet inteira caiu. Quando essa evidência existe, o app vai além do diagnóstico: mostra uma
 recomendação real de DNS público (provedor + IPs primário/secundário, via o mesmo orientador
-(`OrientadorConfiguracaoDns`) que a tela DNS em 5.5 usa — a tela visual em si não é reaproveitada,
+(`OrientadorConfiguracaoDns`) que a tela DNS (ver [`features/dns-ping.md`](features/dns-ping.md)) usa — a tela visual em si não é reaproveitada,
 só a lógica de recomendação). Não recomenda trocar para o que a rede já está usando. As outras três
 etapas (gateway, rota externa, hostname/captive portal) ainda só explicam a causa, sem recomendação
 estruturada equivalente — dívida conhecida, não um esquecimento, registrada no histórico da
