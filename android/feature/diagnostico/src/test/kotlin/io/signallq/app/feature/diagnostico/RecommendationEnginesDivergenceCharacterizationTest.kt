@@ -34,7 +34,7 @@ import org.junit.Test
  * REC-01..14 equivalente direta -- a tag so aparece quando a REC correspondente de fato
  * disparou, herdando as mesmas exclusoes/gatilhos do motor legado. Este arquivo cobre os 3
  * cenarios que provam a correcao. Ver
- * `docs_ai/ARQUITETURA/AUDITORIA_1228_FASE0_INVENTARIO_COMPLETO.md`, Parte 8, P1-1/P1-2.
+ * auditoria #1228, Fase 0, achados P1-1/P1-2.
  */
 class RecommendationEnginesDivergenceCharacterizationTest {
     private fun wifiFracoNaBanda24Input(): DiagnosticInput =

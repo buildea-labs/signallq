@@ -1,17 +1,27 @@
 ---
 title: "Cobertura do protótipo — SignallQ Android 2.0"
-description: "Quais telas e fluxos da Jornada Android 2.0 o protótipo cobre e quais ficaram de fora."
+description: "Quais telas e fluxos da Jornada Android 2.0 o protótipo cobre, e onde ele diverge do app real v1.0.9."
 type: "funcional"
 status: "ativo"
-owner: "Claudete"
-last_updated: "2026-08-16"
+owner: "Cora"
+last_updated: "2026-10-04"
+version: "1.1.0"
 ---
 
 # Cobertura do protótipo SignallQ Android 2.0
 
-Inventário baseado no app Android real e na jornada guiada 2.0. O protótipo contém 42 destinos navegáveis.
+Inventário do protótipo (histórico do épico #1647) conferido contra o app v1.0.9 em 2026-10-04.
+O protótipo contém 42 destinos navegáveis. Em divergência, vale o app (`docs_ai/FUNCIONAL.md`).
 
-## Navegação principal proposta
+## Divergências conhecidas do app real (v1.0.9)
+
+- **Fora do protótipo:** WiFi Casa (mapeamento por cômodo com Antes×Depois, `WifiCasaScreen`), status de
+  conectividade ao vivo na trilha da Início e sonda UDP do Modo gamer — entregues depois do protótipo.
+- **Só no protótipo:** destino "Mais" — o app não tem essa tela; Ajustes e demais itens abrem pelo perfil
+  na barra superior.
+- A barra inferior do app tem 4 abas (Início, Velocidade, Histórico, Ferramentas), como abaixo.
+
+## Navegação principal
 
 - Início — veredito atual, trilha da conexão e entrada do diagnóstico guiado.
 - Velocidade — medição manual como fonte de evidência.

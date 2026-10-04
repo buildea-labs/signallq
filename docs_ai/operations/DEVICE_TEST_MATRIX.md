@@ -1,7 +1,15 @@
+---
+title: "Matriz de dispositivos para teste"
+description: "Matriz mínima de dispositivo, versão Android e operadora por release."
+type: "runbook"
+status: "ativo"
+owner: "Camillo"
+last_updated: "2026-10-04"
+version: "1.1.0"
+---
+
 # Matriz de Dispositivos para Teste — SignallQ
 
-- **Status:** ativo
-- **Última validação:** 2026-07-23
 - **Fonte de verdade:** `android/gradle/libs.versions.toml` (minSdk/targetSdk/compileSdk reais)
 - **Escopo:** matriz de dispositivo/Android/operadora obrigatória por release
 

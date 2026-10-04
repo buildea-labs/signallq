@@ -3,23 +3,14 @@ title: "FAQ — SignallQ"
 description: "Perguntas frequentes de usuários finais do SignallQ (Play Store + landing page)."
 type: "referência"
 status: "ativo"
-owner: "Claudete"
-last_updated: "2026-07-23"
+owner: "Cora"
+last_updated: "2026-10-04"
+version: "1.2.0"
 ---
 
 # FAQ — SignallQ
 
-- **Status:** ativo
-- **Última validação:** 2026-07-23
 - **Escopo:** conteúdo público (Play Store / landing page)
-
-> **Verificado em 2026-07-23:** o app tem AdMob/`NativeAd` integrado no código (issue #555), mas
-> `AdsFlagsManager`/`AdsRemoteConfigRepository` mantêm a chave mestra `ads_native_enabled` desligada
-> por padrão até Luiz criar as chaves no Firebase Remote Config (ver comentário em
-> `android/app/src/main/kotlin/io/signallq/app/ads/AdsRemoteConfigRepository.kt`) — nenhum
-> usuário vê anúncio hoje. **"Sem anúncios" abaixo é verdade no estado atual.** Atualizar este FAQ,
-> `PLAY_STORE_LISTING.md`, `docs_ai/legal/TERMS_OF_USE.md` e `TermosDeUsoScreen.kt` no dia em que as
-> chaves forem ligadas — não antes.
 
 ## Geral
 
@@ -27,7 +18,7 @@ last_updated: "2026-07-23"
 O SignallQ é um app de diagnóstico de conectividade que analisa sua internet (Wi-Fi e móvel), mede velocidade, identifica problemas e gera recomendações com inteligência artificial.
 
 **O SignallQ é gratuito?**
-Sim, o SignallQ é 100% gratuito. Sem assinaturas, sem anúncios, sem compras dentro do app.
+Sim, o SignallQ é gratuito. Sem assinaturas e sem compras dentro do app. O app exibe anúncios (Google AdMob), que o mantêm gratuito.
 
 **O SignallQ funciona sem internet?**
 Parcialmente. O speedtest e o diagnóstico IA precisam de conexão. O histórico de medições anteriores e a análise de Wi-Fi local funcionam offline.

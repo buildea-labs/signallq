@@ -8,7 +8,7 @@ import org.junit.Test
  * Fase 0 da auditoria #1228 — congela, sem alterar producao, as tres divergencias ja
  * documentadas na issue #1466 entre [InternetDiagnosticEngine] (limiares de negocio
  * literais) e [MetricClassifier] (tabela "canonica" pretendida). Ver
- * `docs_ai/ARQUITETURA/AUDITORIA_1228_FASE0_INVENTARIO_COMPLETO.md`, Parte 2 e Parte 8
+ * auditoria #1228, Fase 0, achados
  * (P0-1), para o achado completo: as duas fontes divergem simultaneamente na MESMA tela
  * (`ResultadoVelocidadeScreen`), nao so em teoria.
  *

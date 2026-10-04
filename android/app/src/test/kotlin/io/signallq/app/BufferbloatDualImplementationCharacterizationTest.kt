@@ -26,7 +26,7 @@ import org.junit.Test
  * persistido em `MedicaoEntity.gargaloPrimario` vem de [SpeedtestQualityClassifier]; o
  * badge de bufferbloat mostrado ao usuario (tela de Resultado, Historico) vem de
  * [MetricClassifier] -- ambos agora leem o mesmo corte numerico (ver
- * `docs_ai/ARQUITETURA/AUDITORIA_1228_FASE0_INVENTARIO_COMPLETO.md`, Parte 8, P1-4).
+ * auditoria #1228, Fase 0, achado P1-4).
  */
 class BufferbloatDualImplementationCharacterizationTest {
     private fun statusEquivalente(deltaMs: Double): Boolean {

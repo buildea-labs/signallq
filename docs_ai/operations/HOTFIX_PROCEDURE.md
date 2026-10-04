@@ -1,7 +1,16 @@
+---
+title: "Procedimento de hotfix"
+description: "Fluxo de correção crítica fora do ciclo regular de release."
+type: "runbook"
+status: "ativo"
+owner: "Camillo"
+last_updated: "2026-10-04"
+version: "1.1.0"
+---
+
 # Procedimento de Hotfix — SignallQ
 
-- **Status:** ativo
-- **Última validação:** 2026-07-23
+- **Fonte de verdade:** `RELEASE.md` (canais) e `.github/workflows/release.yml`
 - **Escopo:** correções críticas fora do ciclo regular de release
 
 ## Quando usar
@@ -29,8 +38,7 @@ git checkout main
 git checkout -b hotfix/N-descricao-curta
 ```
 
-`N` é o número da issue GitHub (não mais `sig-XXX` — Linear deixou de ser fonte da verdade de
-execução em 2026-07-09, ver `.claude/CLAUDE.md`, seção "Fontes da Verdade").
+`N` é o número da issue GitHub.
 
 - Escopo mínimo: apenas o fix, nada mais
 - Sem refactor, sem cleanup, sem features
@@ -45,16 +53,7 @@ execução em 2026-07-09, ver `.claude/CLAUDE.md`, seção "Fontes da Verdade").
 
 ### 4. Deploy
 
-**Android (Firebase App Distribution):**
-```powershell
-.\android\gradlew.bat clean assembleRelease --no-build-cache
-.\android\gradlew.bat appDistributionUploadRelease
-```
-
-**Android (Play Store — após M3):**
-- Upload AAB via Play Console
-- Staged rollout: 10% → monitorar 2h → 100%
-- Rollout imediato apenas para P0
+**Android:** bump de `versionCode`/`versionName`, `CHANGELOG.md` e tag `vX.Y.Z`; `release.yml` publica na trilha `beta`. Produção só por disparo manual e com autorização do Luiz — fluxo completo em `RELEASE.md`. Para validação rápida antes, use `firebase-distribution.yml`. Rollout imediato só para P0.
 
 **Workers Cloudflare:**
 ```bash
@@ -72,7 +71,7 @@ npx wrangler deploy
 
 ## Versionamento de Hotfix
 
-- Patch version: `0.21.0` → `0.21.1`
+- Patch version: ex. `1.0.9` → `1.0.10`
 - versionCode: incrementar em 1
 - CHANGELOG.md: adicionar entrada na seção da versão atual
 
@@ -80,5 +79,5 @@ npx wrangler deploy
 
 Se o hotfix introduzir novo problema:
 1. Play Store: pausar rollout imediatamente
-2. Firebase: enviar build anterior via App Distribution
+2. Firebase: redistribuir o build anterior (ver `ROLLBACK_PLAN.md`)
 3. Workers: `npx wrangler rollback` ou redeploy versão anterior

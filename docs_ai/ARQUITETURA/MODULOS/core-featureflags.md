@@ -4,7 +4,8 @@ description: "Fundação de feature flags do Consumer — catálogo tipado e pro
 type: "técnico"
 status: "ativo"
 owner: "Camilo"
-last_updated: "2026-08-20"
+last_updated: "2026-10-04"
+version: "1.1.0"
 ---
 
 # `:core:featureflags`
@@ -63,22 +64,19 @@ são consumidos por mais de uma árvore de features.
 
 | Arquivo / classe | Responsabilidade |
 |---|---|
-| `src/main/resources/featureflags/consumer-catalog.json` (170 linhas, **11 flags**) | Catálogo canônico — fonte de verdade também para o SignallQ Admin (F3/#1479) e o Worker (F2/#1478). Fica em `resources/`, não `assets/`, para funcionar igual em teste JVM puro, Robolectric e device |
-| `FeatureFlagKeys.kt` (69 linhas) | Constantes tipadas das 11 chaves; `ALL` e `CONSUMER_MODULE_KEYS` (as 9 chaves `enabled` por módulo feature, instrumentadas em F4/#1480) |
-| `FeatureFlagDefinition.kt` (27) | Entrada tipada do catálogo, espelhando 1:1 o schema JSON: `module`, `type`, `defaultValue`, `criticality`, `owner`, `disabledBehavior`, `dependencies`, `androidImplemented`, `adminManaged`, `analyticsEvent` |
-| `FeatureFlagCatalogParser.kt` (127) | Parser JSON → `List<FeatureFlagDefinition>`, usando `org.json.JSONObject` |
-| `FeatureFlagCatalogLoader.kt` (23) | Lê `/featureflags/consumer-catalog.json` do classpath; ausência é erro de build, lança `FeatureFlagCatalogParseException` |
-| `FeatureFlagCatalog.kt` (36) | Catálogo em memória — indexação por chave, `defaultsAsValues()` e `toRemoteConfigDefaultsMap()` para alimentar `setDefaultsAsync` |
-| `FeatureFlagProvider.kt` (43) | Contrato único: `observe(key): Flow<FeatureFlagValue>`, `isEnabled(key): Boolean` (nunca lança, fallback `false`) e `suspend refresh(force): FeatureFlagRefreshResult` |
-| `RemoteConfigFeatureFlagProvider.kt` (168) | Implementação sobre `FirebaseRemoteConfig`. `MutableStateFlow` semeado com os defaults; timeout de fetch de 8s; lê os valores ativos independentemente do resultado do fetch, preservando a última config válida |
-| `FeatureFlagRefreshResult.kt` (30) | `Success(activated, fetchTimeMillis)` vs `Failure(reason, cause)` — `fetchAndActivate()` retornando `false` é `Success(activated = false)`, nunca falha. Razões: `TIMEOUT`, `NETWORK_ERROR`, `THROTTLED`, `UNKNOWN` |
-| `FeatureFlagSource.kt` (27) | `DEFAULT` / `REMOTE` / `STATIC`, mapeado 1:1 de `FirebaseRemoteConfigValue.getSource()` |
-| `FeatureFlagsModulo.kt` (21) | Fábrica (`criarCatalogo`, `criarProvider`) — mesmo padrão de `CoreNetworkModulo`, sem anotações Dagger |
-| `FeatureFlagRawValue.kt` (52), `FeatureFlagValue.kt` (11), `FeatureFlagType.kt` (13), `FeatureFlagCriticality.kt` (14), `FeatureFlagDisabledBehavior.kt` (23), `FeatureFlagKey.kt` (16) | Tipos de apoio do domínio |
-| `src/test/.../FeatureFlagKeysParityTest.kt` (31) | Impede divergência entre `FeatureFlagKeys` e o JSON — toda chave em um precisa existir no outro |
-
-Total: 17 arquivos Kotlin em `src/main` (711 linhas) + o catálogo JSON, e 4 arquivos de teste
-(474 linhas).
+| `src/main/resources/featureflags/consumer-catalog.json` (**14 flags**) | Catálogo canônico — fonte de verdade também para o SignallQ Admin (F3/#1479) e o Worker (F2/#1478). Fica em `resources/`, não `assets/`, para funcionar igual em teste JVM puro, Robolectric e device |
+| `FeatureFlagKeys.kt` | Constantes tipadas das 14 chaves; `ALL` e `CONSUMER_MODULE_KEYS` (as 9 chaves `enabled` por módulo feature, instrumentadas em F4/#1480) |
+| `FeatureFlagDefinition.kt` | Entrada tipada do catálogo, espelhando 1:1 o schema JSON: `module`, `type`, `defaultValue`, `criticality`, `owner`, `disabledBehavior`, `dependencies`, `androidImplemented`, `adminManaged`, `analyticsEvent` |
+| `FeatureFlagCatalogParser.kt` | Parser JSON → `List<FeatureFlagDefinition>`, usando `org.json.JSONObject` |
+| `FeatureFlagCatalogLoader.kt` | Lê `/featureflags/consumer-catalog.json` do classpath; ausência é erro de build, lança `FeatureFlagCatalogParseException` |
+| `FeatureFlagCatalog.kt` | Catálogo em memória — indexação por chave, `defaultsAsValues()` e `toRemoteConfigDefaultsMap()` para alimentar `setDefaultsAsync` |
+| `FeatureFlagProvider.kt` | Contrato único: `observe(key): Flow<FeatureFlagValue>`, `isEnabled(key): Boolean` (nunca lança, fallback `false`) e `suspend refresh(force): FeatureFlagRefreshResult` |
+| `RemoteConfigFeatureFlagProvider.kt` | Implementação sobre `FirebaseRemoteConfig`. `MutableStateFlow` semeado com os defaults; timeout de fetch de 8s; lê os valores ativos independentemente do resultado do fetch, preservando a última config válida |
+| `FeatureFlagRefreshResult.kt` | `Success(activated, fetchTimeMillis)` vs `Failure(reason, cause)` — `fetchAndActivate()` retornando `false` é `Success(activated = false)`, nunca falha. Razões: `TIMEOUT`, `NETWORK_ERROR`, `THROTTLED`, `UNKNOWN` |
+| `FeatureFlagSource.kt` | `DEFAULT` / `REMOTE` / `STATIC`, mapeado 1:1 de `FirebaseRemoteConfigValue.getSource()` |
+| `FeatureFlagsModulo.kt` | Fábrica (`criarCatalogo`, `criarProvider`) — mesmo padrão de `CoreNetworkModulo`, sem anotações Dagger |
+| `FeatureFlagRawValue.kt`, `FeatureFlagValue.kt`, `FeatureFlagType.kt`, `FeatureFlagCriticality.kt`, `FeatureFlagDisabledBehavior.kt`, `FeatureFlagKey.kt` | Tipos de apoio do domínio |
+| `src/test/.../FeatureFlagKeysParityTest.kt` | Impede divergência entre `FeatureFlagKeys` e o JSON — toda chave em um precisa existir no outro |
 
 ## Riscos e dívidas
 
@@ -90,14 +88,13 @@ Total: 17 arquivos Kotlin em `src/main` (711 linhas) + o catálogo JSON, e 4 arq
   código legado permanece.
 - **Uma flag do catálogo não é implementada no Android.**
   `consumer_speedtest_cloudflare_engine_enabled` tem `androidImplemented = false` — segue como
-  smoke-test da fundação, não gateia nada. Das 11 chaves, 9 são as flags de módulo reais.
+  smoke-test da fundação, não gateia nada. Das 14 chaves, 9 são flags de módulo (`CONSUMER_MODULE_KEYS`), 4 do domínio de diagnóstico (shadow mode e NDS) e 1 é esta smoke-test.
 - **`FeatureFlagCatalogParser` usa `org.json`**, o que obriga cada consumidor de teste JVM a
   declarar a dependência real de `org.json` para não cair no stub do `android.jar` — pegadinha já
   documentada em comentário no `build.gradle.kts`, mas que se repete em `:app` e
   `:core:diagnostico`.
 - **Sem testes instrumentados.** `androidTestImplementation` declarado, mas não existe diretório
-  `src/androidTest`. A cobertura JVM é razoável (474 linhas de teste para 711 de produção,
-  incluindo o teste de paridade catálogo↔código).
+  `src/androidTest`. A cobertura JVM inclui o teste de paridade catálogo↔código.
 - **Classificação de falha por nome de classe.** `classificarFalha` decide `THROTTLED` via
   `erro.javaClass.simpleName.contains("Throttled")` — heurística frágil que quebra silenciosamente
   se o SDK do Firebase renomear a exceção ou se o build for ofuscado.
@@ -105,6 +102,3 @@ Total: 17 arquivos Kotlin em `src/main` (711 linhas) + o catálogo JSON, e 4 arq
   `refresh()` (hoje: `SignallQApplication.onCreate`). Não há listener de update em tempo real do
   Remote Config nem refresh periódico — o "reativo" do `ConsumerFeatureGateCoordinator` só se
   concretiza no próximo `refresh()`.
-- **Nenhum arquivo acima de 800 linhas** — o maior é `RemoteConfigFeatureFlagProvider.kt` com 168.
-- Caminho físico correto (`src/main/kotlin/io/signallq/app/core/featureflags/`) — módulo nasceu
-  direto no path novo, nunca passou por `io/veloo/`.

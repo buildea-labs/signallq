@@ -1,47 +1,36 @@
 ---
 title: "CI/CD Pipeline"
-description: "Pipeline de integração contínua e deploy automatizado do SignallQ via GitHub Actions"
+description: "Workflows do GitHub Actions do SignallQ: CI Android, docs, release e utilitários."
 type: "técnico"
 status: "ativo"
-owner: "Camilo"
-last_updated: "2026-08-15"
+owner: "Camillo"
+last_updated: "2026-10-04"
+version: "2.0.0"
 ---
 
 # CI/CD Pipeline — SignallQ
 
-- **Status:** ativo
-- **Última validação:** 2026-08-15 (nota sobre discord_notify.sh/slack_notify.sh atualizada — Fase 4f do épico #1623)
 - **Fonte de verdade:** `.github/workflows/*.yml`
-- **Escopo:** CI (testes/lint/build) e CD (release/deploy) automatizados via GitHub Actions
+- **Escopo:** CI (testes/lint/build) e CD (release) via GitHub Actions
 
-Documentação do pipeline de integração contínua e deploy automatizado para SignallQ.
+## Workflows
 
-## Overview
-
-O projeto tem **9 workflows** em `.github/workflows/` (1 desativado):
-
-| Workflow | Função |
-|---|---|
-| `android-ci.yml` | CI — testes, lint, análise e build do app Android (detalhado abaixo) |
-| `firebase-distribution.yml` | Deploy sob demanda (`workflow_dispatch`) para Firebase App Distribution |
-| `release.yml` | Release oficial — dispara em tag `vX.Y.Z`, publica AAB na trilha `internal` da Play Console |
-| `promote-release.yml` | Promove o mesmo AAB de `internal` → `alpha` (`workflow_dispatch`), guardrail bloqueia `beta`/`production` |
-| `auto-move-board.yml` | Safety net — move card do Project quando PR/issue muda fora do controle dos agentes locais |
-| `auto-update-branch.yml` | Mantém PRs abertas atualizadas com `main` automaticamente |
-| `site-ci.yml` | CI do SignallQ Site (React/Vite/TS) |
-| `site-deploy.yml` | Deploy do SignallQ Site para Cloudflare Pages (`signallq.pages.dev`) |
-| `pages-deploy.yml.disabled` | Desativado — não roda (sufixo `.disabled`) |
-
-Este documento detalha só o `android-ci.yml`. Para release/deploy Android ver
-`docs_ai/operations/RELEASE.md` e `DEPLOY.md`.
+| Workflow | Gatilho | Função |
+|---|---|---|
+| `android-ci.yml` | push/PR em `main` (só roda se `android/` ou o workflow mudou) | Testes, ktlint, detekt e build debug |
+| `docs-ci.yml` | PR/push em `main`, segunda 12:00 UTC, manual | `scripts/validar-docs.sh` (ver `.claude/rules/politica-documentacao-viva.md`) |
+| `release.yml` | tag `v*` ou manual | Build assinado, GitHub Release e publicação na Play Console — ver `RELEASE.md` |
+| `promote-release.yml` | manual | Move AAB entre `internal`/`alpha`; sem uso ativo — ver `RELEASE.md` |
+| `firebase-distribution.yml` | manual | Build para Firebase App Distribution — ver `RELEASE.md` |
+| `auto-move-board.yml` | issues/PRs | Move cards do GitHub Project |
+| `auto-update-branch.yml` | push em `main` | Atualiza PRs abertas atrasadas em relação a `main` |
+| `pages-deploy.yml.disabled`, `site-ci.yml.disabled`, `site-deploy.yml.disabled` | — | Desativados (sufixo `.disabled`); o site vive em `signallq-web` |
 
 ## Android CI — `android-ci.yml`
 
 ### Triggers
 
-Disparado automaticamente em `push`/`pull_request` contra `main`.
-
-Workflow só roda se houve mudança em `android/` ou no próprio workflow.
+Ver tabela acima. Jobs:
 
 ### Jobs
 
@@ -76,12 +65,6 @@ Todos os jobs usam cache gradle para accelerar builds. Cache é automático entr
 
 Versão fixa: **JDK 17** (Temurin).
 
-## Histórico de Runs
-
-Acessar em https://github.com/7ALabs/SignallQ/actions
-
-Artefatos disponibilizados por 30 dias.
-
 ## Interpretando Falhas
 
 ### Unit Tests falham
@@ -90,10 +73,10 @@ Possíveis causas:
 
 1. **Teste quebrado** — código novo não passou nos testes existentes
    - Solução: revisar o diff e corrigir lógica ou teste
-   
+
 2. **Dependência de teste ausente**
    - Solução: verificar `build.gradle.kts` do módulo
-   
+
 3. **Flakiness** — teste passa/falha aleatoriamente
    - Solução: investigar concorrência, timeouts ou estado compartilhado
 
@@ -126,51 +109,14 @@ Causas comuns:
 
 Solução: rodar localmente `./gradlew clean assembleDebug`.
 
-## Adicionando Novos Checks
+## Performance
 
-### Android
+Run completo: ~20-35 min (testes 8-12, ktlint 2-3, detekt 3-5, build debug 5-10).
 
-1. Adicione a dependência no módulo `build.gradle.kts`
-2. Configure em `.gradle/` ou no próprio `build.gradle.kts`
-3. Adicione novo job ao `android-ci.yml`
-4. Commit e teste em branch
+Histórico de runs: https://github.com/buildea-labs/signallq/actions (artefatos por 30 dias).
 
 ## Troubleshooting
 
-### Cache Gradle corrompido
-
-Solução: limpar cache em Settings → Actions → Clear all caches.
-
-### Node ou JDK versão errada
-
-Verificar versões em CI vs local. Se diferenças, atualizar `.github/workflows/*.yml`.
-
-### Artefatos não aparecem
-
-Se o job passou e nenhum arquivo foi gerado, o upload silenciosamente ignora com `if-no-files-found: ignore`.
-
-Para debug, rodar localmente e verificar output.
-
-## Performance
-
-| Job | Tempo esperado |
-|---|---|
-| Unit Tests | 8-12 min |
-| Ktlint | 2-3 min |
-| Detekt | 3-5 min |
-| Build Debug | 5-10 min |
-
-Total por run: ~20-35 minutos.
-
-## Próximos Passos
-
-- E2E / UI tests em emulador
-- Performance profiling automatizado
-- Upload de resultados para dashboard externo
-- Notificação automática em Slack/Discord via GitHub App (os antigos `discord_notify.sh`/
-  `slack_notify.sh` foram removidos por dívida morta na Fase 4f do épico #1623 — GitHub já
-  notifica Slack diretamente; histórico via `git show 0daa424a:scripts/legacy/discord_notify.sh`)
-
-Release workflow (`release.yml`) e promoção de trilha (`promote-release.yml`) **já existem** —
-removido da lista de pendências.
-
+- **Cache Gradle corrompido:** Settings → Actions → Clear all caches.
+- **Artefato ausente:** o upload usa `if-no-files-found: ignore`; reproduza localmente.
+- **Notificações Slack/Discord:** o GitHub já notifica o Slack; os antigos `discord_notify.sh`/`slack_notify.sh` foram removidos (`git show 0daa424a:scripts/legacy/discord_notify.sh`).

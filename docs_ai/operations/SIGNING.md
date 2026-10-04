@@ -1,27 +1,28 @@
+---
+title: "App Signing — keystore e credenciais"
+description: "Assinatura de release do app Android: setup local, GitHub Secrets e validação."
+type: "runbook"
+status: "ativo"
+owner: "Camillo"
+last_updated: "2026-10-04"
+version: "1.1.0"
+---
+
 # App Signing — Keystore e Credenciais
 
-- **Status:** ativo
-- **Última validação:** 2026-07-23
+- **Fonte de verdade:** `android/app/build.gradle.kts` e `.github/workflows/release.yml`
 - **Escopo:** signing local e CI do app Android
 
 ## Visão geral
 
 O SignallQ Android usa assinatura de release para distribuir builds assinados em produção. Todas as credenciais (senhas, alias, keystore) ficam **fora do git** — nunca são comitadas nem expostas no repositório.
 
-### Status de segurança
-
-- `key.properties` está em `.gitignore` (linha 17)
-- `*.jks` (keystore) está em `.gitignore` (linha 18)
-- `segredos/` está em `.gitignore` (linha 38)
-- Keystore nunca foi comitada ou exposta
-- Histórico do repositório está limpo
-
 ## Estrutura local
 
 O keystore fica organizado assim:
 
 ```
-C:\Projetos\SignallQ\            # diretório local (produto SignallQ)
+<raiz-do-repo>/android/
 ├── segredos/
 │   └── signallq.jks              # ← Keystore local, NÃO vai ao git
 ├── key.properties             # ← Credenciais locais, NÃO vai ao git
@@ -33,7 +34,7 @@ C:\Projetos\SignallQ\            # diretório local (produto SignallQ)
 ### 1. Copiar template
 
 ```powershell
-cd "C:\Projetos\SignallQ"
+cd android
 Copy-Item key.properties.template key.properties
 ```
 
@@ -55,7 +56,7 @@ storeFile=segredos/signallq.jks
 O arquivo `segredos/signallq.jks` já deve estar disponível localmente (transferido de forma segura, não via git).
 
 ```
-C:\Projetos\SignallQ\segredos\signallq.jks
+android\segredos\signallq.jks
 ```
 
 Se ainda não existe, veja seção "Gerar novo keystore" abaixo.
@@ -119,8 +120,7 @@ builds\apk\release\<versionName>\signallq-android-v<versionName>+<versionCode>-r
 ## CI/CD — GitHub Secrets (já configurados, não é mais "futuro")
 
 O release automatizado via GitHub Actions (`.github/workflows/release.yml` e
-`firebase-distribution.yml`) já usa 4 GitHub Secrets configurados no repositório — ver
-`docs_ai/operations/DEPLOY.md`:
+`firebase-distribution.yml`) já usa 4 GitHub Secrets de assinatura (demais secrets em `RELEASE.md`):
 
 | Secret                | Valor                                |
 |-----------------------|--------------------------------------|
@@ -139,7 +139,7 @@ O workflow CI:
 ### Para gerar KEYSTORE_BASE64
 
 ```powershell
-$bytes = [System.IO.File]::ReadAllBytes("C:\Projetos\SignallQ\segredos\signallq.jks")
+$bytes = [System.IO.File]::ReadAllBytes("android\segredos\signallq.jks")
 $base64 = [System.Convert]::ToBase64String($bytes)
 Write-Output $base64 | Set-Clipboard
 ```
@@ -151,7 +151,7 @@ Cole o valor em GitHub Secrets → Repository secrets → `KEYSTORE_BASE64`.
 Se não tiver um keystore existente, crie um com:
 
 ```powershell
-$keystorePath = "C:\Projetos\SignallQ\segredos\signallq.jks"
+$keystorePath = "android\segredos\signallq.jks"
 $storePassword = "SENHA_FORTE_AQUI"
 $keyPassword = "SENHA_DA_CHAVE_AQUI"
 
@@ -183,7 +183,7 @@ Depois preencha `key.properties` com essas senhas e o alias `signallq`.
 Depois de um build release bem-sucedido, valide a assinatura:
 
 ```powershell
-$apk = "builds\apk\release\<versionName>\signallq-android-v<versionName>+<versionCode>-release-<timestamp>.apk"
+$apk = "android\builds\apk\release\<versionName>\signallq-android-v<versionName>+<versionCode>-release-<timestamp>.apk"
 jarsigner -verify $apk
 ```
 
@@ -196,5 +196,5 @@ jar verified.
 ## Referências
 
 - `app/build.gradle.kts` — configuração de signing
-- `docs_ai/operations/GuiaReleaseBuild.md` — fluxo completo de release
+- `docs_ai/operations/RELEASE.md` — fluxo completo de release
 - `.gitignore` — arquivos sempre ignorados

@@ -4,7 +4,8 @@ description: "Motor genérico de paginação HTML→PDF via WebView, compartilha
 type: "técnico"
 status: "ativo"
 owner: "Camilo"
-last_updated: "2026-08-15"
+last_updated: "2026-10-04"
+version: "1.1.0"
 ---
 
 # `:core:relatorio`
@@ -18,8 +19,7 @@ last_updated: "2026-08-15"
 Renderiza uma `String` de HTML em um arquivo PDF paginado, usando
 `WebView.createPrintDocumentAdapter()` e o pipeline de impressão do Android. Extraído de
 `ExportadorHistoricoPDF.exportarComWebView()` (`:featureHistory`) na issue #1157 Fase 1b para
-virar o único motor de PDF do repositório, com paginação real em vez de `PdfDocument`/`Canvas`
-manual.
+virar o motor de PDF por HTML com paginação real (o `ExportadorHistoricoPDF.exportar` sem `Context` ainda usa `PdfDocument` manual — dois caminhos convivem).
 
 O módulo não conhece nenhum schema de dado do chamador — não sabe o que é medição, laudo ou
 histórico. Montar o HTML (layout, copy, máscara de dado sensível, disclaimer) é responsabilidade
@@ -60,20 +60,18 @@ precisamente para não prender o motor de PDF a um schema específico.
 
 | Arquivo / classe | Responsabilidade |
 |---|---|
-| `src/main/kotlin/io/signallq/app/core/relatorio/WebViewHtmlPdfExporter.kt` (72 linhas) | Função `suspend exportarHtmlComoPdf(html, arquivo, context): Boolean` — API pública única do módulo. Cria o `WebView` na Main thread com JavaScript desabilitado, carrega o HTML via `loadDataWithBaseURL`, e em `onPageFinished` delega ao helper. Timeout de carregamento de 10s; qualquer falha vira `false` (nunca lança) |
-| `src/main/kotlin/io/signallq/app/core/relatorio/PdfPrintHelper.kt` (122 linhas) | `internal object` que roda o ciclo `onLayout` → `onWrite` do `PrintDocumentAdapter` escrevendo direto num `ParcelFileDescriptor` sobre o arquivo de destino. A4, 300 dpi, `NO_MARGINS`; timeout próprio de 10s e wrapper que garante callback único |
-
-Total: 2 arquivos, 194 linhas em `src/main`. Não há `src/test` nem `src/androidTest`.
+| `src/main/kotlin/io/signallq/app/core/relatorio/WebViewHtmlPdfExporter.kt` | Função `suspend exportarHtmlComoPdf(html, arquivo, context): Boolean` — API pública única do módulo. Cria o `WebView` na Main thread com JavaScript desabilitado, carrega o HTML via `loadDataWithBaseURL`, e em `onPageFinished` delega ao helper. Timeout de carregamento de 10s; qualquer falha vira `false` (nunca lança) |
+| `src/main/kotlin/io/signallq/app/core/relatorio/PdfPrintHelper.kt` | `internal object` que roda o ciclo `onLayout` → `onWrite` do `PrintDocumentAdapter` escrevendo direto num `ParcelFileDescriptor` sobre o arquivo de destino. A4, 300 dpi, `NO_MARGINS`; timeout próprio de 10s e wrapper que garante callback único |
 
 ## Riscos e dívidas
 
-- **Zero testes.** O módulo tem 0 linhas de teste — não existe diretório `src/test` nem
+- **Zero testes.** Não existe diretório `src/test` nem
   `src/androidTest`, embora `build.gradle.kts` declare `testImplementation(libs.junit)` e as
   dependências de androidTest. É o módulo com a menor cobertura do repositório, e todo o
   comportamento de erro (timeout, `onWriteFailed`, `onLayoutCancelled`) só é verificado em
   produção.
 - **Falha silenciosa por contrato.** Toda a superfície pública retorna `Boolean` e engole exceções
-  (`catch (e: Exception) { false }` em dois pontos, sem log). Quem chama não consegue distinguir
+  (`catch (e: Exception) { false }`, sem log). Quem chama não consegue distinguir
   timeout de HTML inválido, de falta de espaço em disco, ou de `WebView` indisponível — nem existe
   Timber no módulo para deixar rastro.
 - **Dois timeouts independentes de 10s** (`TIMEOUT_CARREGAMENTO_MS` no exporter e `TIMEOUT_MS` no
@@ -88,5 +86,3 @@ Total: 2 arquivos, 194 linhas em `src/main`. Não há `src/test` nem `src/androi
 - **Limpeza de PDFs temporários não é de ninguém.** O KDoc de `RelatorioDiagnosticoExporter`
   (`:app`) registra explicitamente que política de limpeza de arquivos acumulados ficou fora de
   escopo; este módulo, por design, também não trata disso.
-- Caminho físico correto (`src/main/kotlin/io/signallq/app/core/relatorio/`) — módulo nasceu
-  direto no path novo, nunca passou por `io/veloo/`.

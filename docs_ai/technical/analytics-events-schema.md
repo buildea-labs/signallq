@@ -1,176 +1,50 @@
-﻿# Schema de Eventos GA4 — SignallQ Android
-
-**Status:** ativo
-**Última validação:** 2026-07-24 (adição de User Properties, GH#1360)
-**Fonte de verdade:** código real (`AnalyticsTracker`/`FirebaseAnalyticsTracker`, `AppModule.kt`)
-**Escopo:** eventos GA4 do schema SIG-134 (`feature_used`, `screen_view`, `app_session_start`, `feature_crash`, `battery_snapshot`) — distinto do funil principal SIG-155 documentado em `analytics-events.md`
-**Responsável:** Camilo (Backend Android)
-
-> SIG-134 — instrumentação GA4 para alimentar ProductAnalyticsPage no Admin Panel.
-
-## Visão Geral
-
-Eventos Firebase Analytics (GA4) enviados pelo app Android. Sem PII — todos os identificadores são anônimos por sessão de processo.
-
-`session_id` é um UUID gerado uma vez por instância do processo (`FirebaseAnalyticsTracker`). Não persiste entre sessões de app.
-
 ---
+title: "Schema de Eventos GA4 — AnalyticsTracker (SIG-134)"
+description: "Eventos genéricos do AnalyticsTracker (feature_used, screen_view, sessão, crash, bateria, feature_blocked_remote) e user properties do app Android."
+type: "técnico"
+status: "ativo"
+owner: "Ramon"
+last_updated: "2026-10-04"
+version: "2.0.0"
+---
+
+# Schema de Eventos GA4 — `AnalyticsTracker` (SIG-134)
+
+**Fonte de verdade:** código — interface `AnalyticsTracker` (`android/core/network/.../AnalyticsTracker.kt`), implementação `FirebaseAnalyticsTracker` e `CompositeAnalyticsTracker` (`android/app/.../analytics/`), `DistributionChannel.kt`.
+**Escopo:** eventos genéricos que alimentam a `ProductAnalyticsPage` do painel Admin. Os eventos do funil SIG-155, da jornada guiada, do NDS e de recomendação estão em [`analytics-events.md`](analytics-events.md).
+**Substitui:** a versão anterior, que repetia o funil e o endpoint `/flags` (esse vive em [`feature-flags-remote-config.md`](feature-flags-remote-config.md)).
+
+Sem PII. `session_id` é um UUID gerado por instância de processo em `FirebaseAnalyticsTracker`; não persiste entre sessões do app.
 
 ## Eventos
 
-### `feature_used`
-
-Disparo: quando o usuário aciona uma feature principal.
-
-| Parâmetro | Tipo | Descrição |
+| Evento | Parâmetros | Disparo |
 |---|---|---|
-| `feature_id` | String | Identificador da feature: `speedtest`, `diagnostico`, `wifi`, `historico`, `dns`, `fibra` |
-| `session_id` | String | UUID da sessão atual |
-| `app_version` | String | `BuildConfig.VERSION_NAME` |
-| `timestamp` | Long | `System.currentTimeMillis()` |
+| `feature_used` | `feature_id`, `session_id`, `app_version`, `timestamp` (ms) | `MainActivity`, ao acionar a feature; ver `feature_id` abaixo |
+| `screen_view` | `screen_name`, `session_id`, `app_version` | `AppShell` (`LaunchedEffect` da raiz selecionada) e abertura de ferramenta, via callback `onScreenView` |
+| `app_session_start` | `session_id`, `app_version` | `MainActivity.onCreate` |
+| `app_session_end` | `session_id`, `app_version` | `registrarSessionEnd()` |
+| `feature_crash` | `feature_id` (derivado da tag Timber), `error_type` (`simpleName` ou `"LoggedError"`), `app_version` | `ReleaseTree` (Timber, erros nível ERROR+ em release); o mesmo erro vai ao Crashlytics |
+| `battery_snapshot` | `level` (0–100), `charging`, `session_id` | `MainActivity.onCreate`, via `ACTION_BATTERY_CHANGED` |
+| `feature_blocked_remote` | `feature_id` (id curto de módulo, ex. `wifi`, `dns`), `session_id`, `app_version` | feature bloqueada por flag remota (GH#1480) |
 
-Pontos de disparo:
-- `speedtest` — `MainActivity.speedtestViewModel.onSpeedtestConcluido`
-- `diagnostico` — `MainActivity.AppShellDiagnosticoState.onIniciarDiagnostico`
-- `wifi` — `MainActivity.AppShellWifiState.onRefreshSinal`
-- `dns` — `MainActivity.onDispararBenchmarkDns`
-- `fibra` — `MainActivity.onReconectarFibra`
-- `historico` — `MainActivity.onFiltroConexaoHistoricoChange` / `onFiltroOperadoraHistoricoChange`
+**`feature_id` em `feature_used`** (conferido no código em 2026-10-04): `speedtest`, `speedtest_iniciado`, `speedtest_completou`, `speedtest_compartilhou`, `wifi`, `dns`, `fibra`, `historico`, `review_prompt_google_play`. `diagnostico` não é mais disparado por `feature_used` (o diagnóstico usa o funil SIG-155).
 
----
+**`screen_name`** (de `AppShellNavigation.kt` e `TipoFerramenta.kt`): raízes `home`, `speedtest`, `historico`, `ferramentas`; ferramentas `sinal_wifi`, `dispositivos`, `equipamento_internet`, `ping`, `dns`, `laudo`, `monitoramento`, `modo_gamer`.
 
-### `screen_view`
+## User properties (GH#1360)
 
-Disparo: ao navegar entre as 4 raízes do `AppShell`.
+Definidas uma vez por sessão em `registrarSessionStart()` via `setUserProperty()`:
 
-| Parâmetro | Tipo | Descrição |
+| Property | Valores | Fonte |
 |---|---|---|
-| `screen_name` | String | `home`, `speedtest`, `sinal_wifi`, `historico`, `ajustes` |
-| `session_id` | String | UUID da sessão atual |
-| `app_version` | String | `BuildConfig.VERSION_NAME` |
-
-Ponto de disparo: `LaunchedEffect(selectedTab)` em `AppShell.kt`, via callback `onScreenView`.
-
----
-
-### `app_session_start`
-
-Disparo: `MainActivity.onCreate()`.
-
-| Parâmetro | Tipo | Descrição |
-|---|---|---|
-| `session_id` | String | UUID da sessão atual |
-| `app_version` | String | `BuildConfig.VERSION_NAME` |
-
----
-
-### `feature_crash`
-
-Disparo: erros de nível ERROR+ capturados pelo `ReleaseTree` (Timber, builds release).
-
-| Parâmetro | Tipo | Descrição |
-|---|---|---|
-| `feature_id` | String | Derivado da tag Timber (ex: `speedtest`, `diagnostico`) |
-| `error_type` | String | `t.javaClass.simpleName` ou `"LoggedError"` |
-| `app_version` | String | `BuildConfig.VERSION_NAME` |
-
-Nota: o mesmo evento é enviado ao Crashlytics via `FirebaseCrashlytics.recordException`.
-
----
-
-### `battery_snapshot`
-
-Disparo: `MainActivity.onCreate()`, via `ACTION_BATTERY_CHANGED` (sticky broadcast).
-
-| Parâmetro | Tipo | Descrição |
-|---|---|---|
-| `level` | Int | Percentual de bateria (0–100) |
-| `charging` | Boolean | `true` se carregando ou com bateria cheia |
-| `session_id` | String | UUID da sessão atual |
-
----
-
-## User Properties (GH#1360)
-
-Além dos eventos acima, `FirebaseAnalyticsTracker` define **3 user properties** GA4 —
-dimensões que valem para a sessão inteira, não por evento isolado. Setadas uma vez por
-sessão, em `registrarSessionStart()` (chamado uma vez em `MainActivity.onCreate()`), via
-`FirebaseAnalytics.setUserProperty()`.
-
-| User Property | Valores possíveis | Fonte |
-|---|---|---|
-| `environment` | `production`, `staging` | `environmentFor(distChannel)` — `production` só quando instalado via Play Store |
+| `environment` | `production`, `staging` | `environmentFor(distChannel)`; `production` só quando instalado pela Play Store |
 | `dist_channel` | `play_store`, `sideload`, `unknown` (ou nome do pacote instalador) | `distributionChannel(context)` |
 | `build_type` | `debug`, `release` | `BuildConfig.BUILD_TYPE` |
 
-Ambas as funções (`distributionChannel`, `environmentFor`) vivem em
-`DistributionChannel.kt` (mesmo pacote `io.signallq.app.analytics`) e já eram usadas pelo
-`CompositeAnalyticsTracker` para classificar o envio ao `signallq-admin-worker`
-(`POST /ingest/analytics`, GH#759) — GH#1360 reaproveita a mesma fonte para alinhar o
-critério de ambiente entre os dois sistemas de analytics (Firebase e `/ingest/*`), que
-continuam paralelos e sem correlação cruzada (ver doc do `CompositeAnalyticsTracker`).
-
-**Pendência fora do alcance de código:** para `environment`/`dist_channel`/`build_type`
-ficarem consultáveis via API/relatórios do GA4, é preciso registrá-las como "custom
-dimension" no Admin do Google Analytics — ação manual de console, não coberta por este
-PR.
-
----
+As mesmas funções classificam o envio ao `signallq-admin-worker` (`POST /ingest/analytics`) no `CompositeAnalyticsTracker`; Firebase e `/ingest/*` seguem como sistemas paralelos, sem correlação cruzada.
+**Pendência manual (console GA4):** registrar as três properties como custom dimensions para consultá-las via API/relatórios.
 
 ## Arquitetura
 
-```
-:coreNetwork
-  AnalyticsTracker (interface)
-
-:app
-  FirebaseAnalyticsTracker (implementação @Singleton)
-  AppModule.provideAnalyticsTracker() → bind interface → impl
-  AppModule.provideFirebaseAnalytics() → FirebaseAnalytics.getInstance(ctx)
-
-  Pontos de injeção:
-  - SignallQApplication (@Inject) → ReleaseTree(analyticsTracker)
-  - MainActivity (@Inject) → app_session_start, battery_snapshot, screen_view, feature_used
-```
-
-Os módulos `:feature*` não dependem de Firebase diretamente — se precisarem registrar eventos, receberão `AnalyticsTracker` via Hilt respeitando a lei de dependências (`:feature*` → `:core*` apenas).
-
----
-
-## Funil principal (SIG-155)
-
-Todas as 6 features do `feature_id` documentadas acima já disparam `feature_used`
-ao serem acionadas pelo usuário:
-
-```
-speedtest  → MainActivity.speedtestViewModel.onSpeedtestConcluido
-diagnostico → AppShellDiagnosticoState.onIniciarDiagnostico
-wifi       → AppShellWifiState.onRefreshSinal
-dns        → onDispararBenchmarkDns
-fibra      → onReconectarFibra
-historico  → onFiltroConexaoHistoricoChange / onFiltroOperadoraHistoricoChange
-```
-
-Combinado com `screen_view` (navegação entre abas) e `app_session_start`, esse
-conjunto permite montar o funil de engajamento no GA4/Admin Panel: quantas
-sessões tocam cada feature principal a partir da abertura do app.
-
-Nota: `docs_ai/technical/analytics-events.md` descreve um contrato mais amplo
-e granular (eventos `speedtest_iniciado`, `diag_concluido`, `ia_laudo_*` etc.)
-que ainda não foi implementado — trata-se de uma proposta de evolução futura,
-não do estado atual. O estado atual é o descrito neste arquivo.
-
----
-
-## Feature Flags — Endpoint /flags (SIG-13)
-
-As feature flags remotas são buscadas pelo `FeatureFlagRepository` em dois endpoints:
-
-| Endpoint | Schema | Uso |
-|---|---|---|
-| `GET /flags` | `{flags:[{key,enabled}]}` | Flags de produto (SIG-13) |
-| `GET /feature-flags` | `{flags:[{key,enabled,scope}]}` | Flags legadas (mantidas por compatibilidade) |
-
-Keys do `/flags` (SIG-13): `feature_speedtest`, `feature_wifi`, `feature_diagnostico_ia`, `feature_dns`, `feature_fibra`, `feature_devices`.
-
-Métodos de conveniência em `FeatureFlagProvider`: `isFeatureSpeedtestEnabled()`, `isFeatureWifiEnabled()`, etc.
+`AnalyticsTracker` (interface em `:coreNetwork`) → `FirebaseAnalyticsTracker` (`@Singleton`, `:app`), composto com o envio ao worker por `CompositeAnalyticsTracker`; binding em `AppModule`. Módulos `:feature*` recebem `AnalyticsTracker` por Hilt e nunca dependem de Firebase diretamente.

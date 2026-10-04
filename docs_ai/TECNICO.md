@@ -4,7 +4,8 @@ description: "Stack, build, persistência, integrações Cloudflare, analytics e
 type: "técnico"
 status: "ativo"
 owner: "Camilo"
-last_updated: "2026-08-28"
+last_updated: "2026-10-04"
+version: "1.1.0"
 ---
 
 # Documentação técnica — SignallQ consumer
@@ -28,7 +29,7 @@ last_updated: "2026-08-28"
 | Módulos Gradle | **22** | `android/settings.gradle.kts` |
 | Workers Cloudflare | 5 | `integrations/cloudflare/*/wrangler.toml` |
 | Tabelas D1 | 38 — 20 admin + 18 diagnostic | `*/migrations/*.sql`, `*/schema.sql` |
-| Contratos OpenAPI | 7 contratos · **122** endpoints | `docs_ai/CONTRATOS/openapi/` |
+| Contratos OpenAPI | 5 contratos · **108** endpoints | `docs_ai/CONTRATOS/openapi/` |
 | Arquivos `.kt` em caminho legado `io/veloo` | 0 (sendo 0 em `src/main`) | dívida conhecida — higiene §4.1 |
 
 **Módulos (22):** :app :core:diagnostico :core:featureflags :core:nds :core:probejogo :core:relatorio :coreDatabase :coreDatastore :coreNetwork :corePermissions :coreRecommendation :coreTelephony :featureDevices :featureDiagnostico :featureDns :featureFibra :featureHistory :featureHome :featureRouter :featureSettings :featureSpeedtest :featureWifi
@@ -49,10 +50,8 @@ last_updated: "2026-08-28"
 |---|---|---:|
 | `ai-diagnosis-worker.yaml` | 2 | 2 |
 | `game-latency-probe-worker.yaml` | 1 | 2 |
-| `signallq-admin-api.yaml` | 2.1.0 | 59 |
-| `signallq-analytics-events.yaml` | 1.0.0 | 5 |
+| `signallq-admin-api.yaml` | 2.2.0 | 59 |
 | `signallq-diagnostic-worker.yaml` | 1 | 43 |
-| `signallq-integrations-api.yaml` | 1.0.0 | 9 |
 | `signallq-privacy-worker.yaml` | 1 | 2 |
 
 <!-- INVENTARIO:FIM -->
@@ -81,17 +80,16 @@ técnicos: banco `linkaKotlin.db`, DataStore `linkaPreferencias`, canais de noti
 Worker `linka-ai-diagnosis-worker`.
 
 **Path físico ↔ package Kotlin alinhados:** todos os arquivos `.kt` residem em
-`.../kotlin/io/signallq/app/...`, coerente com `package io.signallq.app`. Migração dos 525 arquivos
-legados que viviam em `io/signallq/app/` foi concluída em 2026-08-15 (issue #1645); dívida
-histórica em `.claude/rules/higiene-e-padronizacao-repositorio.md` §4.1 marcada RESOLVIDA.
+`.../kotlin/io/signallq/app/...`, coerente com `package io.signallq.app` (migração concluída em
+2026-08-15, issue #1645).
 
 ### 2.2 Stack
 
 | Tecnologia | Versão | Papel |
 |---|---|---|
-| Kotlin | 2.3.21 | Linguagem |
+| Kotlin | 2.4.20 (kapt 2.3.21) | Linguagem |
 | AGP | 9.2.1 (application) / 9.3.1 (library) | Build |
-| Compose (plugin) | 2.4.10 | Compilador Compose |
+| Compose (plugin) | 2.4.20 | Compilador Compose |
 | Compose BOM | ver inventário | UI declarativa |
 | Material 3 | via BOM (+ `com.google.android.material` 1.14.0) | Design system |
 | Room | ver inventário | Persistência local |
@@ -116,8 +114,8 @@ Detalhe que costuma ser documentado errado: **não existe uma única pilha HTTP*
   (timeout configurável por instância, não singleton), porque não precisa amarrar à `Network`
   sob análise da mesma forma que os outros (é sempre uma consulta contra o resolvedor público).
 - **OkHttp é usado nas chamadas a Workers**, em `:featureDiagnostico`.
-- **`:featureDevices` fixa `okhttp:5.4.0` direto no `build.gradle.kts`**, fora do version catalog —
-  pode divergir do `libs.okhttp` dos demais módulos. Dívida registrada.
+- **`:featureDevices` fixa `okhttp:5.5.0` direto no `build.gradle.kts`**, fora do version catalog —
+  hoje igual ao `libs.okhttp`, mas diverge no próximo bump. Dívida registrada.
 
 ### 2.4 Diagnóstico de conectividade: dois motores paralelos
 
@@ -161,18 +159,19 @@ registrada, issue #1823), para não recomendar trocar para o DNS que a rede já 
 
 ### 3.1 Local — Room
 
-Schema **v18**, `exportSchema = true`, 8 entidades, 7 DAOs, 17 migrations encadeadas, sem
-`fallbackToDestructiveMigration`. Arquivo do banco: `linkaKotlin.db`.
+`SignallQDatabase`, schema **v22**, `exportSchema = true`, 10 entidades, 8 DAOs, migrations
+encadeadas até `MIGRATION_21_22`, sem `fallbackToDestructiveMigration`. Arquivo do banco:
+`linkaKotlin.db`.
 
-Schemas versionados em `android/core/database/schemas/`. **Falta o `15.json`** — existem 10–14, 16,
-17, 18. A migration 14→15 não é verificável por diff de schema. Persistem também schemas de dois
-nomes antigos do banco (`LinkaDatabase` 1–10, `VelooDatabase` 10), mantidos por histórico.
+Schemas versionados em `android/core/database/schemas/` (`SignallQDatabase` 9–22). Persistem também
+schemas de dois nomes antigos do banco (`LinkaDatabase` 1–10, `VelooDatabase` 10), mantidos por
+histórico.
 
 Detalhe em `ARQUITETURA/MODULOS/core-database.md`.
 
 ### 3.2 Preferências — DataStore
 
-`linkaPreferencias`. `PreferenciasAppRepository.kt` (694 linhas) concentra dezenas de chaves — é um
+`linkaPreferencias`. `PreferenciasAppRepository.kt` (741 linhas) concentra dezenas de chaves — é um
 repositório-gaveta e está registrado como dívida.
 
 ### 3.3 Remoto — D1
@@ -201,7 +200,7 @@ Complemento narrativo do Worker admin: `technical/admin-api-schema.md`.
 |---|---|
 | Modelo padrão | `@cf/qwen/qwen3-30b-a3b-fp8` (Qwen3 30B MoE FP8) |
 | Schema de saída | `2` |
-| Versão do prompt de entrada | `diagnostico_v5_local_primary` |
+| Versão do prompt | app: `diagnostico_v6_local_device` (`AI_PROMPT_VERSION` em `AiModels.kt`); Worker: `diagnostico_v6_explicacao_humana` |
 | Timeouts OkHttp | connect 15 s · read 90 s · write 30 s |
 | **Timeout efetivo** | **40 s** — `explainDiagnosis` é envolvido em `withTimeoutOrNull(40_000L)`; os 90 s só valem no caminho de streaming |
 | Cache | 5 minutos |
@@ -209,7 +208,7 @@ Complemento narrativo do Worker admin: `technical/admin-api-schema.md`.
 
 O cliente sempre envia payload v2 e o parser aceita schema `1` e `2`, tolerando campos ausentes.
 
-Na versão `v5_local_primary`, quando o motor local reporta confiança ≥ 0,75, **ele é a decisão
+Desde `v5_local_primary`, quando o motor local reporta confiança ≥ 0,75, **ele é a decisão
 primária** e a IA apenas valida e explica.
 
 ### 4.2 Ingestão de analytics
@@ -239,8 +238,8 @@ Crashlytics ativo. **Não há Firebase Realtime Database.**
 
 | Falha | Evidência | Issue |
 |---|---|---|
-| `POST /ingest/provider-detection` e `/ingest/diagnostic-divergence` aceitam requisição **anônima** | `signallq-diagnostic-worker/src/index.ts:1141,1145` — ficam fora do gate `needsAdminSession`, que só cobre `/admin/`. É intencional e comentado no código | **#1585** |
-| Credencial de modem gravada **em claro** | `CredenciaisModemStore` cai para `SharedPreferences` sem cifra em `catch (_: Exception)` genérico quando o AndroidKeyStore falha | — |
+| `POST /ingest/provider-detection` e `/ingest/diagnostic-divergence` aceitam requisição **anônima** | `signallq-diagnostic-worker/src/index.ts` (rotas `/ingest/provider-detection` e `/ingest/diagnostic-divergence`) — ficam fora do gate `needsAdminSession`, que só cobre `/admin/`. É intencional e comentado no código | **#1585** |
+| Credencial de modem gravada **em claro** no fallback | `CredenciaisModemStore` usa `EncryptedSharedPreferences`; cai para `SharedPreferences` sem cifra em `catch (_: Exception)` genérico quando o AndroidKeyStore falha | — |
 | Sessão admin duplicada entre Workers | `auth.ts` de admin e diagnostic são funcionalmente idênticos; `validateSession` é byte-a-byte igual. Duas fontes de verdade sobre quem é admin | **#1587** |
 
 O padrão de proteção **já existe** no repositório: o `signallq-admin-worker` valida `INGEST_KEY`/
@@ -271,14 +270,15 @@ regra de higiene para tamanho de arquivo.
 Dois canais, ambos por GitHub Actions — nunca comando local:
 
 1. **Firebase App Distribution** — `.github/workflows/firebase-distribution.yml`, disparo manual.
-2. **Play Console** — tag `vX.Y.Z` dispara `release.yml`, que publica na trilha `internal`;
-   `promote-release.yml` promove o **mesmo AAB** para `alpha` sem rebuild. Beta e produção estão
-   bloqueados por guardrail no workflow.
+2. **Play Console** — tag `vX.Y.Z` dispara `release.yml`; o default do push de tag é a trilha
+   `beta` com anúncios desligados. Disparo manual aceita `playTrack` `beta` ou `production`
+   (produção com ads reais exige decisão explícita do Luiz; `adsEnabled=true` fora de `production`
+   é barrado por guardrail). `promote-release.yml` promove um AAB já publicado de `internal`/`alpha`
+   sem rebuild.
 
-**Regra dura:** nunca subir build sem incrementar `versionCode` antes. O Pro tem contador próprio
-(`proVersionCode`/`proVersionName`) — nunca incrementar junto.
+**Regra dura:** nunca subir build sem incrementar `versionCode` antes.
 
-Estado atual: consumer em trilha **alpha**. Procedimento completo em `operations/RELEASE.md`.
+Procedimento completo em `operations/RELEASE.md`.
 
 Validações locais, a partir de `android/` (`gradlew.bat` no Windows):
 
@@ -306,13 +306,13 @@ estado estático entre classes (ver GH#1684). Não roda no CI por padrão:
 
 | Risco | Detalhe |
 |---|---|
-| UI monolítica em `:app` | ~150 arquivos em `src/main`, dez acima de 800. `Inicio2Screen.kt`, `MainViewModel.kt` 2438, `SinalCanalSection.kt` 1215, `SinalWifiSection.kt` 1110 (issue #1660 extraiu o antigo `SinalScreen.kt` monolítico, 3383 linhas, em scaffold + `SinalWifiSection.kt`/`SinalCanalSection.kt`/`SinalMovelSection.kt`/`SinalSharedComponents.kt`) |
-| Dependência feature→feature | 2 violações — ver `ARQUITETURA/README.md` §2 |
-| Três mecanismos de feature flag | `:core:featureflags` (11 flags), `FeatureFlagProvider` legado em `:coreNetwork`, e Firebase Remote Config — com colisão de nome entre os dois primeiros |
-| Ausência de teste em pontos sensíveis | `:core:relatorio` (0 testes, compartilhado com o Pro), `:corePermissions` (0), `ExecutorSpeedtestCloudflare.kt` (1495 linhas, sem teste direto), `ExecutorFibra` e `NokiaModemCrypto` |
-| `:app` sem `androidTest` | Dependências de teste instrumentado declaradas, diretório inexistente |
-| `:core:diagnostico` não é Kotlin puro | Declara "zero `android.*`" mas `topology/` faz HTTP e `Runtime.exec("/system/bin/ping")` |
-| Fibra com um único driver | Só Nokia G-1425G-B em produção. TP-Link e Intelbras têm apenas mapa de reconhecimento documental em `technical/*_FIELD_MAP.md`, sem código |
+| UI monolítica em `:app` | `MainViewModel.kt`, `AppShell.kt`, `HistoricoScreen.kt`, `LocalDeviceSection.kt`, `SinalWifiSection.kt`, `SinalCanalSection.kt` e outros acima de 800 linhas — contagem atual em `ARQUITETURA/README.md` §4 |
+| Dependência feature→feature | nenhuma hoje — ver `ARQUITETURA/README.md` §2 |
+| Três mecanismos de feature flag | `:core:featureflags` (14 flags), `FeatureFlagProvider` legado em `:coreNetwork`, e Firebase Remote Config — com colisão de nome entre os dois primeiros |
+| Ausência de teste em pontos sensíveis | `:core:relatorio` (0 testes), `:corePermissions` (0), `:featureWifi` (0) |
+| `:app` sem `androidTest` | Dependências de teste instrumentado declaradas, diretório `app/src/androidTest` inexistente |
+| `:core:diagnostico` não é Kotlin puro | `topology/correlation/TopologyTracer.kt` executa `Runtime.exec("/system/bin/ping")` |
+| Equipamentos com poucos drivers | Fibra: só Nokia G-1425G-B (`:featureFibra`); roteador: só TP-Link Archer C6 (`:featureRouter`). Intelbras tem apenas mapa documental em `technical/INTELBRAS_RX1500_FIELD_MAP.md`, sem código |
 | `MetricClassifier` não usado em `SinalMovelSection.kt`/`SinalMovelClassificacao.kt` | Limiares duplicados em três lugares — issue **#1586** |
 
 ## 10. Referências
@@ -320,6 +320,5 @@ estado estático entre classes (ver GH#1684). Não roda no CI por padrão:
 Equipamento: `technical/INTELBRAS_RX1500_FIELD_MAP.md`, `NOKIA_GPON_FIELD_MAP.md`,
 `TPLINK_ARCHER_ROUTER_FIELD_MAP.md` · Fluxos: `technical/AI_FLOW.md`,
 `PING_EXECUTOR_ARCHITECTURE.md`, `MONITORAMENTO_PASSIVO.md` · Flags:
-`technical/feature-flags-remote-config.md`, `functional/FEATURE_FLAGS.md` · Auditoria de motores:
-`technical/auditoria-motores-diagnostico-e-analise.md` · Worker admin:
+`technical/feature-flags-remote-config.md`, `functional/FEATURE_FLAGS.md` · Worker admin:
 `technical/admin-api-schema.md`.

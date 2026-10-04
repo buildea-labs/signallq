@@ -145,8 +145,8 @@ fun TermosDeUsoScreen(onVoltar: () -> Unit) {
                 TermosSection(
                     titulo = "5. Gratuidade",
                     corpo =
-                        "O SignallQ é oferecido gratuitamente, sem anúncios, sem assinaturas e sem compras " +
-                            "dentro do app. A 7Agents reserva-se o direito de introduzir funcionalidades premium " +
+                        "O SignallQ é oferecido gratuitamente, sem assinaturas e sem compras " +
+                            "dentro do app. O app exibe anúncios do Google AdMob. A 7Agents reserva-se o direito de introduzir funcionalidades premium " +
                             "no futuro, mas as funcionalidades atuais permanecerão gratuitas.",
                     c = c,
                 )

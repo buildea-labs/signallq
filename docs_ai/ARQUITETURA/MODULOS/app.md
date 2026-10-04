@@ -4,7 +4,8 @@ description: "Aplicação Android do SignallQ Consumer — composição de featu
 type: "técnico"
 status: "ativo"
 owner: "Camilo"
-last_updated: "2026-08-19"
+last_updated: "2026-10-04"
+version: "1.1.0"
 ---
 
 # `:app`
@@ -46,11 +47,13 @@ paginação HTML→PDF (`:core:relatorio`) nem o contrato de feature flags remot
 | `project(":featureSpeedtest")` | Feature SpeedTest |
 | `project(":featureDiagnostico")` | Feature Diagnóstico (orquestração local + remota) |
 | `project(":featureFibra")` | Feature Fibra/GPON |
+| `project(":featureRouter")` | Driver de roteador TP-Link Archer C6 (login/leitura no `AppShell`) |
 | `project(":featureHistory")` | Feature Histórico |
 | `project(":featureSettings")` | Feature Ajustes |
 | `project(":core:diagnostico")` | `DiagnosticReport`/`DiagnosticInput`/`DiagnosticStatus` consumidos direto por telas e ViewModels (issue #1157 Fase 1a) |
 | `project(":core:relatorio")` | `exportarHtmlComoPdf` — renderer único de PDF do consumidor (GH#1219) |
 | `project(":core:featureflags")` | `FeatureFlagProvider` + catálogo tipado sobre Firebase Remote Config (issue #1477) |
+| `project(":core:probejogo")` | `SondaGameLiftBeacon` — sonda UDP de rota do Modo gamer |
 
 ### Bibliotecas externas (do catálogo `libs.versions.toml`)
 
@@ -82,69 +85,42 @@ Nenhum. `:app` é o topo do grafo do Consumer — a busca por `project(":app")` 
 | Arquivo / classe | Responsabilidade |
 |---|---|
 | `app/src/main/kotlin/io/signallq/app/SignallQApplication.kt` | `@HiltAndroidApp`, `Configuration.Provider` do WorkManager; inicializa Timber/Crashlytics, feature flags legadas e do novo `FeatureFlagProvider`, coordenador de persistência de speedtest, `AdsFlagsManager` e agendamento de sync com o admin worker |
-| `app/src/main/kotlin/io/signallq/app/MainActivity.kt` | Activity única (`@AndroidEntryPoint`), 640 linhas; monta `SignallQTheme { AppShell(...) }` e trata permissões contextuais |
-| `app/src/main/kotlin/io/signallq/app/MainViewModel.kt` | ViewModel raiz que orquestra os serviços e expõe os `StateFlow` das telas — **2438 linhas** |
-| `app/src/main/kotlin/io/signallq/app/ui/screen/AppShell.kt` | Navegação, bottom bar e composição das telas — 1635 linhas |
-| `app/src/main/kotlin/io/signallq/app/ui/screen/AppShellOverlayRegistry.kt` | Ponto de extensão de overlays (issue #1695, épico #1647) — agrega os `AppShellXxxOverlay.kt` sem exigir editar `AppShell.kt` para plugar overlay novo |
-| `app/src/main/kotlin/io/signallq/app/ui/screen/AppShellFeatureGating.kt` | Aplica o gate de navegação por flag remota nos 9 módulos feature (F4/#1480) |
-| `app/src/main/kotlin/io/signallq/app/di/AppModule.kt` | Módulo Hilt único (393 linhas) — provê tudo, inclusive a lambda `() -> FirebaseRemoteConfig` e o `FeatureFlagProvider` de `:core:featureflags` |
+| `app/src/main/kotlin/io/signallq/app/MainActivity.kt` | Activity única (`@AndroidEntryPoint`); monta `SignallQTheme { AppShell(...) }` e trata permissões contextuais |
+| `app/src/main/kotlin/io/signallq/app/MainViewModel.kt` | ViewModel raiz que orquestra os serviços e expõe os `StateFlow` das telas |
+| `app/src/main/kotlin/io/signallq/app/ui/screen/AppShell.kt` | Navegação, bottom bar e composição das telas |
+| `app/src/main/kotlin/io/signallq/app/ui/screen/AppShellOverlayRegistry.kt` | Ponto de extensão de overlays (issue #1695) — agrega os `AppShellXxxOverlay.kt` sem exigir editar `AppShell.kt`; `AppShellRootRegistry.kt` faz o mesmo para o conteúdo de raiz (ver `technical/appshell-*-registry.md`) |
+| `app/src/main/kotlin/io/signallq/app/ui/screen/AppShellFeatureGating.kt` | Aplica o gate de navegação por flag remota (F4/#1480) |
+| `app/src/main/kotlin/io/signallq/app/di/AppModule.kt` | Módulo Hilt único — provê tudo, inclusive a lambda `() -> FirebaseRemoteConfig` e o `FeatureFlagProvider` de `:core:featureflags` |
 | `app/src/main/kotlin/io/signallq/app/FeatureFlags.kt` | Flags de compilação (`BuildConfig.FEATURE_*`) — mecanismo por build type, distinto das flags remotas |
 | `app/src/main/kotlin/io/signallq/app/featureflags/ConsumerFeatureGateCoordinator.kt` | Deriva `AppShellFeatureFlagsState` reativo a partir do `FeatureFlagProvider` remoto |
 | `app/src/main/kotlin/io/signallq/app/featureflags/FeatureFlagManager.kt` / `FeatureFlagRepository.kt` | Mecanismo legado de flags via HTTP `GET /flags` (SIG-13) |
-| `app/src/main/kotlin/io/signallq/app/ui/relatorio/` (4 arquivos, 349 linhas) | `RelatorioDiagnosticoSnapshot` → `RelatorioDiagnosticoHtmlBuilder` (puro) → `RelatorioDiagnosticoExporter`, que delega a paginação para `:core:relatorio` |
-| `app/src/main/kotlin/io/signallq/app/ads/` (7 arquivos) | `AdSlot`, `AdUnitIds` (real vs teste conforme `-PplayTrack`), `ConsentManager` (UMP), `AdsRemoteConfigRepository` |
+| `app/src/main/kotlin/io/signallq/app/ui/relatorio/` (4 arquivos) | `RelatorioDiagnosticoSnapshot` → `RelatorioDiagnosticoHtmlBuilder` (puro) → `RelatorioDiagnosticoExporter`, que delega a paginação para `:core:relatorio` |
+| `app/src/main/kotlin/io/signallq/app/ads/` (9 arquivos) | `AdSlot`, `AdUnitIds` (real vs teste conforme `-PplayTrack`), `ConsentManager` (UMP), `AdsRemoteConfigRepository` |
 | `app/src/main/kotlin/io/signallq/app/monitoramento/` (7 arquivos) | `MonitoramentoWorker`/`Scheduler`, `AdminSyncWorker`/`Scheduler`, `AnalyticsOutboxProcessor`, `HisteresiHelper` |
-| `app/src/main/kotlin/io/signallq/app/analytics/` (5 arquivos) | `CompositeAnalyticsTracker`, `FirebaseAnalyticsTracker`, `AnalyticsOutboxFunnelTracker`, `DistributionChannel` |
-| `app/src/main/kotlin/io/signallq/app/ui/screen/` | telas e estados da jornada única — inclui `Inicio2Screen.kt`, `SinalCanalSection.kt`, `SinalWifiSection.kt` e os overlays do shell. `SinalScreen.kt` (476) virou scaffold — issue #1660 extraiu as três seções para `SinalWifiSection.kt`/`SinalCanalSection.kt`/`SinalMovelSection.kt` + `SinalSharedComponents.kt`. `DispositivosScreen.kt` virou scaffold — issue #1663 extraiu lista/estados para `DispositivosLista.kt` e sheets de detalhe para `DispositivoDetalheSheet.kt` |
-| `app/src/main/AndroidManifest.xml` | 8 permissões, `FileProvider`, App ID do AdMob, remoção do `WorkManagerInitializer` automático |
+| `app/src/main/kotlin/io/signallq/app/analytics/` (6 arquivos) | `CompositeAnalyticsTracker`, `FirebaseAnalyticsTracker`, `AnalyticsOutboxFunnelTracker`, `DistributionChannel` |
+| `app/src/main/kotlin/io/signallq/app/ui/screen/` | telas e estados da jornada única — inclui `Inicio2Screen.kt`, `SinalCanalSection.kt`, `SinalWifiSection.kt` e os overlays do shell. `SinalScreen.kt` virou scaffold — issue #1660 extraiu as três seções para `SinalWifiSection.kt`/`SinalCanalSection.kt`/`SinalMovelSection.kt` + `SinalSharedComponents.kt`. `DispositivosScreen.kt` virou scaffold — issue #1663 extraiu lista/estados para `DispositivosLista.kt` e sheets de detalhe para `DispositivoDetalheSheet.kt` |
+| `app/src/main/AndroidManifest.xml` | 9 `uses-permission`, `FileProvider`, App ID do AdMob, remoção do `WorkManagerInitializer` automático |
 
-Versão declarada em `android/gradle/libs.versions.toml`: `versionCode = 72`, `versionName = 0.31.0`
-(`compileSdk = 37`, `minSdk = 24`, `targetSdk = 36`).
+Versão e SDKs: `android/gradle/libs.versions.toml` e inventário em `../README.md`.
 
 ## Riscos e dívidas
 
-- **Path físico alinhado ao package `io.signallq.app.*`** — os 150 arquivos `.kt` de `src/main` e
-  os 73 de `src/test` vivem em `io/signallq/app/` desde 2026-08-15 (#1645); migração de 221
-  arquivos legados fisicamente em `io/veloo/app/kotlin/` concluída em uma única PR (§4.1 da higiene).
-- **Arquivos acima de 800 linhas em `src/main`** (contagem real, `wc -l`):
-  `ui/screen/Inicio2Screen.kt`, `MainViewModel.kt` 2438, `ui/screen/AppShell.kt`,
-  `ui/screen/SinalCanalSection.kt` 1215, `ui/screen/SinalWifiSection.kt` 1110,
-  `ui/component/LocalDeviceSection.kt` 1248, `ui/screen/DiagnosticoGuiadoScreen.kt` 916,
-  `ui/screen/SpeedTestScreen.kt` 851, `ui/screen/HistoricoScreen.kt` 815 e
-  `ui/screen/DnsScreen.kt` 815. A issue #1660 (épico #1647)
-  extraiu `ui/screen/SinalScreen.kt` (era 3383 linhas, dívida crítica) em scaffold (476 linhas) +
-  `SinalWifiSection.kt`/`SinalCanalSection.kt`/`SinalMovelSection.kt` (539)/`SinalSharedComponents.kt`
-  (79) — `SinalWifiSection.kt` e `SinalCanalSection.kt` nasceram acima de 800 linhas e são
-  candidatos a nova extração incremental por componente numa fatia futura, não redesign.
-  A issue #1663 (mesmo épico) extraiu `ui/screen/DispositivosScreen.kt` (era 1381 linhas, dívida
-  crítica) em scaffold (168 linhas) + `DispositivosLista.kt` (622) + `DispositivoDetalheSheet.kt`
-  (617) — as duas ficaram abaixo do limiar de 800 linhas, sem exigir extração adicional.
-  `MainViewModel.kt` já é tratado como dívida crítica no próprio
-  código (o KDoc de `ConsumerFeatureGateCoordinator` cita a regra de higiene §4.2: extrair, não
-  adicionar responsabilidade). `AppShell.kt` caiu de 1703 para 1635 linhas com a issue #1695
-  (épico #1647), que criou `AppShellOverlayRegistry.kt` como ponto de extensão de **overlays**
-  (não rota — a navegação entre raízes segue inline) — 8 overlays (Assist, Termos, Novidades,
-  Privacidade, DetalhesTecnicos, SinalWifi, Ping, Dns) migraram para arquivos próprios
-  registrados ali. Só ~15% das ~226 linhas que 5 fatias do épico devolveram a `AppShell.kt`
-  eram bloco de overlay — o resto foi wiring de root content e estado hoisted, que este
-  registro não cobre (ver `docs_ai/technical/appshell-overlay-registry.md`, seção "O que este
-  registro não resolve"). Os demais overlays (Ajustes, Perfil, Ferramentas, Dispositivos,
-  Fibra/EquipamentoInternet, Laudo, SinalCanais, ResultadoVelocidade, DiagnosticoGuiado,
-  ModoGamer) continuam inline — migração é trabalho das fatias futuras que tocarem cada área.
-- **Tamanho geral:** 40017 linhas em `src/main` contra 8637 em `src/test` — o módulo de composição
-  concentra mais código do que qualquer módulo `core`/`feature`.
+- **Arquivos acima de 800 linhas em `src/main`** — `MainViewModel.kt` e `AppShell.kt` acima de 1200
+  (dívida crítica), mais `HistoricoScreen.kt`, `LocalDeviceSection.kt`, `SinalWifiSection.kt`,
+  `SinalCanalSection.kt`, `DiagnosticoGuiadoScreen.kt`, `ResultadoVelocidadeScreen.kt`,
+  `DnsScreen.kt` e `MainActivity.kt`. Contagem atual:
+  `find android/app/src/main -name '*.kt' | xargs wc -l | sort -rn`. Registro por arquivo e regra de
+  extração em `.claude/rules/higiene-e-padronizacao-repositorio.md` §4.
+- **`AppShell.kt`:** os registries de overlay e de root content (#1695) não cobrem o wiring de
+  estado hoisted, que segue no arquivo — ver "O que este registro não resolve" em
+  `technical/appshell-overlay-registry.md`.
 - **Dois sistemas de feature flag remotos convivendo.** `featureflags/FeatureFlagManager` (HTTP,
-  SIG-13, contrato `io.signallq.app.core.network.FeatureFlagProvider`) e o novo
-  `io.signallq.app.core.featureflags.FeatureFlagProvider` (Firebase Remote Config). Nomes de
-  interface idênticos em pacotes diferentes — risco real de import errado. A migração está
-  prevista em F4/#1480 e o único consumidor real do legado
-  (`DiagnosticDivergenceReporter`/shadow mode) já foi migrado na #1497. Some-se a isso o terceiro
+  SIG-13, `io.signallq.app.core.network.FeatureFlagProvider`) e
+  `io.signallq.app.core.featureflags.FeatureFlagProvider` (Firebase Remote Config), com nomes de
+  interface idênticos em pacotes diferentes — risco de import errado. Soma-se um terceiro
   mecanismo, `FeatureFlags.kt` sobre `BuildConfig`.
-- **Sem testes instrumentados.** Existe `src/main` e `src/test`, mas nenhum diretório
-  `src/androidTest` — as dependências `androidTestImplementation` declaradas em
-  `build.gradle.kts` não têm código correspondente.
-- **Segredo de ingest em `BuildConfig`.** `ADMIN_INGEST_KEY` é injetada via `local.properties`/env
-  e acaba como string no APK; o escopo é limitado a `POST /ingest/*`, mas continua sendo material
-  extraível do binário.
-- **`di/AppModule.kt` como módulo Hilt único** (393 linhas) para todo o grafo da aplicação —
-  ponto de acoplamento central entre todos os módulos.
+- **Sem testes instrumentados.** Não há `src/androidTest`; as dependências
+  `androidTestImplementation` declaradas não têm código correspondente.
+- **Segredo de ingest em `BuildConfig`.** `ADMIN_INGEST_KEY` entra via `local.properties`/env e
+  acaba como string no APK; escopo limitado a `POST /ingest/*`, mas extraível do binário.
+- **`di/AppModule.kt` como módulo Hilt único** para todo o grafo — ponto de acoplamento central.

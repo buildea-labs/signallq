@@ -4,22 +4,14 @@ description: "Background monitoring de qualidade de rede (latência, DNS, Wi-Fi)
 type: "técnico"
 status: "ativo"
 owner: "Camilo"
-last_updated: "2026-08-20"
+last_updated: "2026-10-04"
+version: "1.1.0"
 ---
 
 # Monitoramento Passivo — MonitoramentoWorker
 
-**Status:** ativo
-**Última validação:** 2026-08-20 (issue #1666, épico #1647, Task 2.0.18 — contra
-`android/app/src/main/kotlin/io/signallq/app/monitoramento/` e `MonitoramentoSheet.kt`)
-**Fonte de verdade:** código real — `MonitoramentoWorker.kt`, `MonitoramentoScheduler.kt`, `HisteresiHelper.kt`
-**Escopo:** background monitoring de qualidade de rede (latência, DNS, Wi-Fi) e notificações de alerta
-**Responsável:** Camilo (Backend Android)
-
-> Este documento substitui uma versão anterior (v0.16.0) que descrevia um fluxo de 3 fases
-> (Collecting/Thinking/Analyzing) com chamada a IA e uma tabela `AlerteLinkaPulse`. Nenhum dos
-> dois existe no código atual — foram removidos/nunca migrados para o `MonitoramentoWorker`
-> real. A descrição abaixo reflete o worker de fato implementado.
+- **Fonte de verdade:** código — `android/app/src/main/kotlin/io/signallq/app/monitoramento/` (`MonitoramentoWorker.kt`, `MonitoramentoScheduler.kt`, `HisteresiHelper.kt`) e `MonitoramentoSheet.kt`
+- **Escopo:** background monitoring de qualidade de rede (latência, DNS, Wi-Fi) e notificações de alerta
 
 ---
 
@@ -96,8 +88,7 @@ contenção é a histerese por transição de estado.
 uptime/histórico junto com as medições de speedtest completo. `downloadMbps`/`uploadMbps`
 ficam `null` (o monitor não mede throughput, só latência/DNS/RSSI).
 
-Não existe tabela dedicada de alertas (`AlerteLinkaPulse`, citada em versão anterior deste
-documento, não existe no schema atual do Room).
+Não existe tabela dedicada de alertas.
 
 ## 7. Permissões & Constraints
 
@@ -117,21 +108,19 @@ documento, não existe no schema atual do Room).
 
 ## 8. Configuração do usuário
 
-Toggle de monitoramento e notificações vivem em Ajustes/Perfil (overlay `Overlay.Perfil`,
-GH#936 — ver `docs_ai/technical/SCREEN_MAP.md`), não em uma tela dedicada `LinkaPulseScreen`
-(citada em versão anterior deste documento — não existe mais como tela própria).
+Toggle de monitoramento e notificações vivem em Ajustes/Perfil (overlay `Perfil`, ver
+`docs_ai/technical/SCREEN_MAP.md`); não há tela dedicada de monitoramento.
 
 ## 9. Testes
 
 `android/app/src/test/kotlin/io/signallq/app/monitoramento/`:
 `MonitoramentoWorkerHistereseTest.kt` (transições de estado/thresholds) e
-`MonitoramentoWorkerMedicaoTest.kt` (persistência da medição sintética). Não confirmado o
-número exato de casos em cada um — `[a confirmar]` se precisar do total exato.
+`MonitoramentoWorkerMedicaoTest.kt` (persistência da medição sintética).
 
-Issue #1666 (2026-08-20) adicionou `ui/screen/MonitoramentoSheetFrequenciaRealTest.kt` (copy
-honesta de frequência real, com guarda de regressão contra `MonitoramentoScheduler.INTERVALO_MINUTOS`)
-e `ui/screen/HistoricoUptimeWiringCaracterizacaoTest.kt` (religa e caracteriza a renderização real
-de `UptimeGridChart` em `HistoricoScreen.kt` — ver `docs_ai/FUNCIONAL.md` §5.9).
+Em `ui/screen/`: `MonitoramentoSheetFrequenciaRealTest.kt` (copy honesta de frequência real, com
+guarda de regressão contra `MonitoramentoScheduler.INTERVALO_MINUTOS`) e
+`HistoricoUptimeWiringCaracterizacaoTest.kt` (renderização real de `UptimeGridChart` em
+`HistoricoScreen.kt`).
 
 ## 10. Riscos técnicos
 

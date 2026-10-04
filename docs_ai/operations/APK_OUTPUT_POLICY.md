@@ -1,11 +1,17 @@
-# Politica De Saida De APK
+---
+title: "Política de saída de APK"
+description: "Local e nome obrigatórios dos APKs gerados localmente."
+type: "técnico"
+status: "ativo"
+owner: "Camillo"
+last_updated: "2026-10-04"
+version: "1.1.0"
+---
 
-- **Status:** ativo
-- **Última validação:** 2026-08-05 — caminho corrigido para `android/builds/` (o documento omitia o
-  prefixo `android/`); APKs obsoletos da marca Linka (v0.11.x) removidos na mesma revisão
+# Política de saída de APK
+
 - **Fonte de verdade:** este documento (regra de nome/local de artefato); versão real em `android/gradle/libs.versions.toml`
 - **Escopo:** build local e scripts de empacotamento do app Android
-- **Documentos substituídos:** `docs_ai/operations/APK_BUILD.md` (arquivado, duplicava este conteúdo)
 
 Todo APK gerado pelo projeto deve ser arquivado na pasta oficial:
 
@@ -22,7 +28,7 @@ signallq-android-v<versionName>+<versionCode>-<buildType>-<yyyyMMdd-HHmmss>.apk
 Exemplo:
 
 ```text
-android/builds/apk/release/0.23.0/signallq-android-v0.23.0+56-release-20260705-112233.apk
+android/builds/apk/release/1.0.9/signallq-android-v1.0.9+89-release-20261004-120000.apk
 ```
 
 ## Comandos oficiais
@@ -37,8 +43,8 @@ Use estes comandos para gerar APKs arquivados:
 Ou diretamente via Gradle:
 
 ```powershell
-.\gradlew.bat archiveDebugApk
-.\gradlew.bat archiveReleaseApk
+cd android; .\gradlew.bat archiveDebugApk
+cd android; .\gradlew.bat archiveReleaseApk
 ```
 
 ## Regras

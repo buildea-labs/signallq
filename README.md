@@ -15,13 +15,15 @@ App Android de **diagnóstico de conectividade** com IA — analisa Wi-Fi, fibra
 - **DI** Hilt · **Persistência** Room (`SignallQDatabase`) + DataStore · **Background** WorkManager (`MonitoramentoWorker`)
 - **IA** Cloudflare Worker (`integrations/cloudflare/ai-diagnosis-worker`), URL via `BuildConfig.AI_WORKER_URL` — provider primário Gemini 2.0 Flash (quando `GEMINI_API_KEY` configurada), fallback Qwen3 30B MoE FP8 (Cloudflare Workers AI)
 - **Analytics** Firebase Analytics + Crashlytics
-- minSdk 24 · target/compileSdk 36 · JVM 17 (alvo de build) · CI roda em Java 21
+- minSdk/targetSdk/compileSdk e versões em `android/gradle/libs.versions.toml` · JVM 17 (build e CI)
 
-## Arquitetura (16 módulos Gradle)
+## Arquitetura
 
-- **app** — shell, navegação (`AppShell.kt`, 5 abas: Início, Velocidade, Sinal, Histórico, Ferramentas), DI
-- **core** (6): `coreNetwork`, `coreDatabase`, `coreDatastore`, `coreTelephony`, `corePermissions`, `coreRecommendation`
-- **feature** (9): `featureHome`, `featureSpeedtest`, `featureWifi`, `featureDevices`, `featureDns`, `featureFibra`, `featureDiagnostico`, `featureHistory`, `featureSettings`
+Módulos Gradle listados em `android/settings.gradle.kts` (fonte de verdade); visão por módulo em [`docs_ai/ARQUITETURA/`](docs_ai/ARQUITETURA/README.md).
+
+- **app** — shell, navegação por abas (Início, Velocidade, Histórico, Ferramentas; `AppShellNavigation.kt`), DI
+- **core** — infraestrutura e regras compartilhadas (rede, banco, datastore, telefonia, permissões, recomendação, diagnóstico, relatório, NDS, sonda de jogo, feature flags)
+- **feature** — uma por domínio (home, speedtest, wifi, devices, dns, fibra, router, diagnostico, history, settings)
 
 Features são independentes entre si (sem dependência cruzada `:feature*` → `:feature*`).
 
@@ -38,25 +40,17 @@ cd android && ./gradlew test
 cd android && ./gradlew ktlintCheck detekt
 ```
 
-Requer JDK 17+ e o `app/google-services.json` (já versionado).
+Requer JDK 17 e o `android/app/google-services.json` (já versionado).
 
 ## Release (resumo)
 
-> Checklist completo e obrigatório na skill `checar-release` (`.claude/skills/checar-release/`).
-> Nunca rodar `assembleRelease` sem `clean` + `--no-build-cache` (cache já causou build
-> desatualizado no Firebase). Publicação exige aprovação explícita do Luiz (ver `AGENTS.md`).
+Fluxo completo em [`docs_ai/operations/RELEASE.md`](docs_ai/operations/RELEASE.md) e checklist na skill `checar-release`. Em resumo: bump de `versionCode` em `libs.versions.toml` + `CHANGELOG.md`, depois `git tag vX.Y.Z && git push origin vX.Y.Z` dispara `release.yml` (publica na trilha `beta`). Produção é disparo manual do mesmo workflow. Publicação exige aprovação explícita do Luiz (ver `AGENTS.md`).
 
-```bash
-git push origin main
-cd android && ./gradlew clean assembleRelease --no-build-cache
-cd android && ./gradlew appDistributionUploadRelease
-```
-
-Worker Cloudflare: havendo mudança em `integrations/cloudflare/*/src/`, `npx wrangler deploy` antes do commit.
+Worker Cloudflare: mudança em `integrations/cloudflare/<worker>/src/` é deployada à parte com `npx wrangler deploy` na pasta do worker.
 
 ## CI
 
-`.github/workflows/quality.yml` roda em todo PR/push para `main`: **detekt**, **ktlint**, **testes unitários** e **build debug**.
+`.github/workflows/android-ci.yml` roda em PR/push para `main` (quando `android/` muda): **ktlint**, **detekt**, **testes unitários** e **build debug**. `docs-ci.yml` valida a documentação. Detalhes em [`docs_ai/operations/ci-cd.md`](docs_ai/operations/ci-cd.md).
 
 ## Subprojetos no repositório
 
@@ -68,10 +62,6 @@ Worker Cloudflare: havendo mudança em `integrations/cloudflare/*/src/`, `npx wr
 
 O painel Admin (React/Vite/TS) e o site/PWA pertencem aos repositórios `buildea-admin` e
 `signallq-web`, respectivamente (ver ADR-016) — não vivem neste repositório.
-
-## Roadmap de lançamento (Play Store — alvo 07/08/2026)
-
-Planejamento de Escopo → Desenvolvimento & Documentação → Firebase Beta Testing → Play Store (Teste Interno) → Preparação para Lançamento → Lançamento. Acompanhamento no Linear (time SignallQ).
 
 ## Documentação
 

@@ -75,7 +75,7 @@ data class DiagnosticReport(
      *  (nunca recalculado aqui). Permite a quem consome este relatório (Laudo/PDF,
      *  histórico, compartilhamento) confirmar que está combinando dados da MESMA
      *  execução, nunca "Frankenstein" de execuções diferentes (ver P0-3,
-     *  `docs_ai/ARQUITETURA/AUDITORIA_1228_FASE0_INVENTARIO_COMPLETO.md`). */
+     *  auditoria #1228, Fase 0). */
     val executionId: String = "",
     /** GH#1228 (Fase 3) — versão canônica do conjunto de regras usado por este relatório
      *  (ver [DiagnosticRulesVersion]). Sempre [DiagnosticRulesVersion.CURRENT] quando gerado

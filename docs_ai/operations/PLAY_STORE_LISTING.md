@@ -1,13 +1,16 @@
+---
+title: "Descrição da Play Store"
+description: "Copy oficial do listing do SignallQ na Play Console."
+type: "referência"
+status: "ativo"
+owner: "Cora"
+last_updated: "2026-10-04"
+version: "1.2.0"
+---
+
 # Descrição Play Store — SignallQ
 
-- **Status:** ativo
-- **Última validação:** 2026-07-23
 - **Escopo:** copy oficial do listing na Play Console
-
-> **Verificado em 2026-07-23:** mesma apuração de `docs_ai/operations/FAQ_USERS.md` — AdMob está
-> integrado no código (issue #555) mas com a chave mestra do Remote Config desligada por padrão até
-> Luiz criar as chaves no Firebase; nenhum usuário vê anúncio hoje. **O texto abaixo é verdade no
-> estado atual.** Atualizar quando as chaves forem ligadas — não antes.
 
 ## Descrição Curta (máx. 80 caracteres)
 
@@ -41,7 +44,7 @@ Todas as suas medições ficam salvas para você acompanhar a evolução da sua 
 
 PRIVACIDADE
 
-O SignallQ não coleta dados de identificação pessoal (nome, localização, contatos, IMEI). Para estabilidade do app, usamos Firebase Crashlytics (relatórios de falha). Mediante seu consentimento — que você concede na primeira abertura e pode revisar a qualquer momento em Ajustes > Privacidade —, também usamos Firebase Analytics para eventos de uso e resultados anônimos de diagnóstico (velocidade, latência, sinal). O histórico completo dos seus diagnósticos fica salvo apenas no seu aparelho. Sem venda de dados, sem anúncios.
+O SignallQ não coleta dados de identificação pessoal (nome, localização, contatos, IMEI). Para estabilidade do app, usamos Firebase Crashlytics (relatórios de falha). Mediante seu consentimento — que você concede na primeira abertura e pode revisar a qualquer momento em Ajustes > Privacidade —, também usamos Firebase Analytics para eventos de uso e resultados anônimos de diagnóstico (velocidade, latência, sinal). O histórico completo dos seus diagnósticos fica salvo apenas no seu aparelho. Sem venda de dados. O app exibe anúncios do Google AdMob, que usam o identificador de publicidade do Android (redefinível nas configurações do aparelho).
 
 GRATUITO
 

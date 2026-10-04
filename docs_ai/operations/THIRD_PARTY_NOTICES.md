@@ -1,7 +1,15 @@
+---
+title: "Third-Party Notices"
+description: "Licenças de bibliotecas de terceiros usadas pelo módulo featureDevices."
+type: "técnico"
+status: "ativo"
+owner: "Camillo"
+last_updated: "2026-10-04"
+version: "1.1.0"
+---
+
 # Third-Party Notices
 
-- **Status:** ativo
-- **Última validação:** 2026-07-23 (versões conferidas contra `android/gradle/libs.versions.toml` e `android/feature/devices/build.gradle.kts`)
 - **Escopo:** licenças de terceiros usadas pelo módulo `featureDevices`
 
 Este arquivo lista as bibliotecas de código aberto utilizadas pelo SignallQ com suas

@@ -2,14 +2,14 @@ openapi: 3.0.3
 info:
   title: SignallQ Admin Console API
   description: API endpoints for consolidating network telemetry, AI diagnostics, and app store metrics inside the SignallQ Admin dashboard.
-  version: 2.1.0
+  version: 2.2.0
   contact:
     name: SignallQ Team
     url: https://signallq.com
   license:
     name: Internal
 servers:
-  - url: https://api.signallq.internal
+  - url: https://signallq-admin.giammattey-luiz.workers.dev
     description: Production Admin Server (no /v1 prefix in actual implementation)
 tags:
   - name: auth
@@ -25,7 +25,7 @@ x-path-structure: |
   ## API Structure (v2.0.0)
 
   ### Authentication Routes
-  - /auth/* — User authentication and session management
+  - /admin/auth/* — User authentication and session management
 
   ### Data Ingestion Routes (App → Backend)
   - /ingest/* — App measurements and analytics (Bearer INGEST_KEY, write-only)
@@ -63,10 +63,10 @@ x-path-structure: |
   ### Health Check
   - /health — Service health (legacy ADMIN_SECRET)
 
-  **Note**: No /v1 prefix in actual Worker implementation. Use /admin/*, /auth/*, /ingest/* directly.
+  **Note**: No /v1 prefix in actual Worker implementation. Use /admin/*, /admin/auth/*, /ingest/* directly.
 
 paths:
-  /auth/login:
+  /admin/auth/login:
     post:
       summary: Login with email and password
       operationId: login
@@ -118,7 +118,7 @@ paths:
         '429':
           $ref: '#/components/responses/429Error'
 
-  /auth/logout:
+  /admin/auth/logout:
     post:
       summary: Logout and revoke session
       operationId: logout
@@ -144,7 +144,7 @@ paths:
         '401':
           $ref: '#/components/responses/401Error'
 
-  /auth/me:
+  /admin/auth/me:
     get:
       summary: Get current authenticated user
       operationId: getMe
@@ -169,7 +169,7 @@ paths:
         '401':
           $ref: '#/components/responses/401Error'
 
-  /auth/create-user:
+  /admin/auth/users:
     post:
       summary: Create a new admin user (admin-only)
       operationId: createUser
@@ -214,7 +214,7 @@ paths:
         '403':
           $ref: '#/components/responses/403Error'
 
-  /auth/change-password:
+  /admin/auth/password:
     post:
       summary: Change password for current user
       operationId: changePassword
@@ -446,7 +446,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/DiagnosticsMetricsResponse'
 
-  /admin/metrics/networks:
+  /admin/metrics/network:
     get:
       summary: Aggregates regarding connection medium, SSID features, and physical attenuation
       tags:
@@ -1778,10 +1778,10 @@ components:
         HTTPOnly session cookie (SIG-136).
 
         **Authentication Flow**:
-        1. POST /auth/login with email + password
+        1. POST /admin/auth/login with email + password
         2. Response includes Set-Cookie with 7-day session token
         3. Subsequent requests: browser automatically sends session cookie
-        4. POST /auth/logout to revoke session
+        4. POST /admin/auth/logout to revoke session
 
         **Password Security**: PBKDF2-SHA256 (100k iterations, pepper from ADMIN_AUTH_PEPPER)
 
@@ -2412,67 +2412,22 @@ components:
 x-changelog: |
   ## Version History
 
-  ### v2.1.0 (26.07.2026) — Refs #1446
-  - **Added**: 8 endpoints under /admin/diagnostic/* — transparent proxy to signallq-diagnostic-worker
-    via Cloudflare service binding, authenticated with this worker's own cookie session (no second
-    login for the Console). Full schemas live in ./signallq-diagnostic-worker.yaml — referenced via
-    external $ref, not duplicated here.
+  ### v2.2.0 (2026-10-04)
+  - **Fixed**: paths aligned with the worker code (src/index.ts): auth routes are served under /admin/auth/* (users and password, not create-user and change-password), /admin/metrics/networks is /admin/metrics/network, and the server URL is the real workers.dev host.
+  - **Known gaps** (routes in code without schema here): see "Mapa de rotas" in docs_ai/technical/admin-api-schema.md.
 
-  ### v2.0.0 (27.06.2026) — SIG-166, SIG-167, SIG-168, SIG-169
+  ### v2.1.0 (2026-07-26) — Refs #1446
+  - **Added**: /admin/diagnostic/* proxy to signallq-diagnostic-worker (schemas in ./signallq-diagnostic-worker.yaml).
 
-  #### Phase 1: Endpoint Documentation (SIG-166)
-  - **Added**: 22+ missing endpoints
-    - All /auth/* endpoints (5): login, logout, me, create-user, change-password
-    - All /ingest/* endpoints (3): diagnostic, ai-usage, analytics
-    - All /admin/metrics/* endpoints (12+): ai-costs, ai-providers, ai-usage/timeline, timeline, alerts, top-issues, etc.
-    - All /admin/analytics/* endpoints (2): product, battery
-    - All /admin/integrations/firebase/* endpoints (6): analytics, crashlytics, versions, crash-issues, sync
-    - /admin/diagnostics/intelligence, /admin/alerts/*, /admin/feature-flags/*, /health, PUT /admin/settings
-
-  #### Phase 2: Authentication Documentation (SIG-167)
-  - **Added**: Complete auth documentation
-    - securitySchemes: cookieAuth (session), bearerAuth (ingest), adminSecretAuth (legacy)
-    - Password hashing: PBKDF2-SHA256 (100k iterations)
-    - Rate limiting: 5 attempts / 15 minutes
-    - Firebase service account JWT flow
-
-  #### Phase 3: Firebase Integration (SIG-169)
-  - **Enhanced**: Firebase endpoints with complete schemas
-    - GET /admin/integrations/firebase/status — connection health
-    - GET /admin/integrations/firebase/analytics — GA4 metrics (7d)
-    - GET /admin/integrations/firebase/crashlytics — crash summary (7d)
-    - GET /admin/integrations/firebase/versions — version distribution (30d)
-    - GET /admin/integrations/firebase/crash-issues — grouped crashes (30d)
-    - POST /admin/integrations/firebase/sync — manual sync trigger
-  - **Documented**: BigQuery queries, service account auth, error responses
-
-  #### Phase 4: Path Consolidation (SIG-168)
-  - **Added**: Consolidated paths for analytics/reporting
-    - /admin/metrics/intelligence — consolidate from /admin/diagnostics/intelligence
-    - /admin/metrics/analytics/product — consolidate from /admin/analytics/product
-    - /admin/metrics/analytics/battery — consolidate from /admin/analytics/battery
-  - **Deprecated** (backward compatible until v3.0.0):
-    - /admin/diagnostics/intelligence (use /admin/metrics/intelligence)
-    - /admin/analytics/product (use /admin/metrics/analytics/product)
-    - /admin/analytics/battery (use /admin/metrics/analytics/battery)
-  - **Clarified**: API structure (analytics/reporting under /admin/metrics/*, business logic separate)
-
-  #### General Changes
-  - **Changed**: version → 2.0.0
-  - **Removed**: /v1 prefix (not in actual implementation; use /admin/*, /auth/*, /ingest/* directly)
-  - **Documented**: Complete path structure and security model
-
-  ### v1.0.0 (Initial)
-  - 25 basic endpoints
-  - Incomplete auth documentation
-  - Missing 17+ endpoints
+  ### v2.0.0 (2026-06-27)
+  - Documented /auth, /ingest, /admin/metrics, /admin/integrations/firebase; consolidated analytics paths under /admin/metrics/*; removed the /v1 prefix.
 
 x-implementation-notes: |
   ## Implementation Notes
 
-  - **No version prefix**: Actual Worker uses /admin/*, /auth/*, /ingest/* directly (no /v1)
+  - **No version prefix**: Actual Worker uses /admin/*, /admin/auth/*, /ingest/* directly (no /v1)
   - **Auth**: 3 distinct schemes (session for /admin/*, Bearer for /ingest/*, Bearer legacy for /health)
-  - **Rate limiting**: Applied to /auth/* endpoints only (IP-based, 5 attempts/15min)
+  - **Rate limiting**: Applied to /admin/auth/* endpoints only (IP-based, 5 attempts/15min)
   - **INGEST_KEY scope**: Write-only /ingest/* (cannot read admin data, reduces APK compromise blast radius)
   - **Database**: D1 (Cloudflare) for admin data, Firebase for analytics
   - **Async operations**: Some endpoints like /admin/integrations/firebase/sync are fire-and-forget

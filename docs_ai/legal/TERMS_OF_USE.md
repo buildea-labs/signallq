@@ -1,6 +1,16 @@
+---
+title: "Termos de Uso — SignallQ"
+description: "Termos de uso do aplicativo SignallQ, espelhados na tela Termos de Uso do app."
+type: "referência"
+status: "ativo"
+owner: "Luiz Giammattey"
+last_updated: "2026-10-04"
+version: "1.1.0"
+---
+
 # Termos de Uso — SignallQ
 
-**Última atualização:** 28 de junho de 2026
+**Última atualização:** 4 de outubro de 2026
 
 ---
 
@@ -42,7 +52,7 @@ Para problemas persistentes, entre em contato com sua operadora ou provedor de i
 
 ## 5. Gratuidade
 
-O SignallQ é oferecido gratuitamente, sem anúncios, sem assinaturas e sem compras dentro do app. A 7Agents reserva-se o direito de introduzir funcionalidades premium no futuro, mas as funcionalidades atuais permanecerão gratuitas.
+O SignallQ é oferecido gratuitamente, sem assinaturas e sem compras dentro do app. O app exibe anúncios do Google AdMob. A 7Agents reserva-se o direito de introduzir funcionalidades premium no futuro, mas as funcionalidades atuais permanecerão gratuitas.
 
 ## 6. Disponibilidade
 

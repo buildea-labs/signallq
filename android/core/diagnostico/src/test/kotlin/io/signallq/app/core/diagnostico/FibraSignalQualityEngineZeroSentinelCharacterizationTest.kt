@@ -20,8 +20,8 @@ import org.junit.Test
  * como se o dado nunca tivesse sido coletado.
  *
  * Resultado: o mesmo sentinela de "sem dado" vira "ruim" (crítico, com recomendacao) num
- * caminho e "nenhum achado" (silencio) no outro -- cenario 16 da Parte 5 do documento
- * `docs_ai/ARQUITETURA/AUDITORIA_1228_FASE0_INVENTARIO_COMPLETO.md`, achado P0-7.
+ * caminho e "nenhum achado" (silencio) no outro -- cenario 16 da auditoria #1228 (Fase 0)
+ * achado P0-7.
  *
  * Este teste NAO decide qual comportamento e o correto -- so congela o que existe hoje,
  * para que uma consolidacao futura (fora do escopo desta fatia) precise decidir

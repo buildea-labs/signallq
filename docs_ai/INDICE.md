@@ -10,7 +10,7 @@ last_updated: "2026-08-15"
 # Índice da documentação
 
 **111 documentos.** Escopo: app consumer Android e backend Cloudflare, mais a foundation do produto
-Linka em preparação (`foundation-linka/`, ver seção própria abaixo). Perímetro e o que saiu em
+Perímetro e o que saiu em
 2026-08-06 e 2026-08-15 estão em [`README.md`](README.md).
 
 > ✅ **Canônicos regenerados do código em 2026-08-06 (PR 2).** `TECNICO.md` e
@@ -44,7 +44,6 @@ Linka em preparação (`foundation-linka/`, ver seção própria abaixo). Perím
 | [FUNCIONAL.md](FUNCIONAL.md) | ✅ reescrito do código · 4 raízes, 16 overlays, 77 citações de código |
 | [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md) | ✅ tokens conferidos 1 a 1 em `SignallQTheme.kt` |
 | [RELEASES.md](RELEASES.md) | não regenerado — histórico de releases, sai do git |
-| [plano-execucao-consumer-consolidado-2026-08-05.md](plano-execucao-consumer-consolidado-2026-08-05.md) | plano ativo, fila do Consumer em 7 ondas |
 
 ## Arquitetura por módulo — `ARQUITETURA/MODULOS/`
 
@@ -63,14 +62,12 @@ Também em `ARQUITETURA/`: `AUDITORIA_1228_FASE0_INVENTARIO_COMPLETO.md`.
 
 ## Contratos — `CONTRATOS/`
 
-7 contratos OpenAPI 3.0.3, **122 endpoints** (`CONTRATOS/openapi/`):
+5 contratos OpenAPI 3.0.3, **108 endpoints** (`CONTRATOS/openapi/`):
 
 | Contrato | Versão | Paths |
 |---|---|---:|
-| `signallq-admin-api.yaml` | 2.1.0 | 59 |
+| `signallq-admin-api.yaml` | 2.2.0 | 59 |
 | `signallq-diagnostic-worker.yaml` | 1 | 43 |
-| `signallq-integrations-api.yaml` | 1.0.0 | 9 |
-| `signallq-analytics-events.yaml` | 1.0.0 | 5 |
 | `ai-diagnosis-worker.yaml` | 2 | 2 |
 | `game-latency-probe-worker.yaml` | 1 | 2 |
 | `signallq-privacy-worker.yaml` | 1 | 2 |
@@ -109,70 +106,40 @@ e `017_gh1341_google_play_reviews.sql`; o cronograma de lançamento vive na issu
 
 > Próximo número livre de ADR: **017**.
 
-## Foundation Linka — `foundation-linka/` (3)
+## Operações — `operations/` (18)
 
-Material provisório do produto Linka (ADR-016), preparado na Fase 8 do épico
-[#1623](https://github.com/buildea-labs/signallq/issues/1623) para migrar quando o repositório
-`buildea-labs/linka` for criado. Nada aqui executa neste repo — é template e checklist.
+Release e build: `RELEASE.md`, `APK_OUTPUT_POLICY.md`, `VERSIONING.md`, `SIGNING.md`, `ci-cd.md`,
+`SCRIPTS.md`. Incidente e continuidade: `HOTFIX_PROCEDURE.md`, `ROLLBACK_PLAN.md`,
+`INCIDENTE_BYPASS_BLOQUEIO_SEGURANCA_2026-07-20.md`, `MAINTENANCE_PLAN.md`. Qualidade e loja:
+`DEVICE_TEST_MATRIX.md`, `MANIFEST_AUDIT.md`, `PLAY_STORE_LISTING.md`, `ENVIRONMENTS.md`,
+`INFRASTRUCTURE_COSTS.md`. Processo: `PROCESSO_PR_E_AGENTES_2026-07-16.md`, `FAQ_USERS.md`,
+`THIRD_PARTY_NOTICES.md`.
 
-`README.md` (propósito da pasta e instruções de migração) · `AGENTS.md.template` (template do
-`AGENTS.md` do repo Linka — extensão `.md.template`, não conta na contagem de documentos) ·
-`squad-template.md` (rascunho das 3 personas do squad Linka) ·
-`skills-apple-checklist.md` (skills Apple a criar no repo novo).
+## Referências técnicas — `technical/` (15)
 
-## Operações — `operations/` (26)
-
-Release e build: `RELEASE.md`, `DEPLOY.md`, `GuiaReleaseBuild.md`, `APK_OUTPUT_POLICY.md`,
-`VERSIONING.md`, `SIGNING.md`, `ci-cd.md`, `SCRIPTS.md`.
-Incidente e continuidade: `HOTFIX_PROCEDURE.md`, `ROLLBACK_PLAN.md`, `ROLLOUT_TRANSITION.md`,
-`HYPERCARE_PLAN.md`, `INCIDENTE_BYPASS_BLOQUEIO_SEGURANCA_2026-07-20.md`, `MAINTENANCE_PLAN.md`.
-Qualidade e lançamento: `GO_NOGO_CHECKLIST.md`, `BETA_CRITERIA.md`, `DEVICE_TEST_MATRIX.md`,
-`MANIFEST_AUDIT.md`, `PLAY_STORE_LISTING.md`, `ENVIRONMENTS.md`, `INFRASTRUCTURE_COSTS.md`.
-Processo: `PROCESSO_PR_E_AGENTES_2026-07-16.md`, `WORKFLOW_BOARD.md`, `FAQ_USERS.md`,
-`THIRD_PARTY_NOTICES.md`, `RUNBOOK_LAUNCH.md`.
-
-> Apenas `RELEASE.md` teve as referências conferidas (2026-08-05). Os demais estão marcados "ativo"
-> sem histórico de execução. Consolidação de 26 → ~12 fica para o PR 2.
-
-## Referências técnicas — `technical/` (16)
-
-`admin-api-schema.md` (schema do worker `signallq-admin`, validado 2026-08-04) ·
-`analytics-events.md` · `analytics-events-schema.md` · `AI_FLOW.md` ·
+`admin-api-schema.md` · `analytics-events.md` · `analytics-events-schema.md` · `AI_FLOW.md` ·
 `PING_EXECUTOR_ARCHITECTURE.md` · `MONITORAMENTO_PASSIVO.md` · `feature-flags-remote-config.md` ·
-`auditoria-motores-diagnostico-e-analise.md` · `SCREEN_MAP.md` ·
-`PARIDADE_REC_WORKER_2026-07-26.md` · `P2_AMBIENTE_D1_ADMIN_SEPARACAO.md` ·
-`INTELBRAS_RX1500_FIELD_MAP.md` · `NOKIA_GPON_FIELD_MAP.md` · `TPLINK_ARCHER_ROUTER_FIELD_MAP.md`
-· `MATRIZ_DIAGNOSTICO_2026-07-03.xlsx` · `appshell-overlay-registry.md` (padrão de extensão de
-overlays do `AppShell.kt`, issue #1695) · `appshell-root-content-registry.md` (padrão irmão para
-root content/raízes, issue #1698 — cobre os ~85% do crescimento que o de overlays não cobria).
+`SCREEN_MAP.md` · `PARIDADE_REC_WORKER_2026-07-26.md` · `P2_AMBIENTE_D1_ADMIN_SEPARACAO.md` ·
+`INTELBRAS_RX1500_FIELD_MAP.md` · `NOKIA_GPON_FIELD_MAP.md` · `TPLINK_ARCHER_ROUTER_FIELD_MAP.md` ·
+`MATRIZ_DIAGNOSTICO_2026-07-03.xlsx` · `appshell-overlay-registry.md` ·
+`appshell-root-content-registry.md`.
 
-## Funcional pontual — `functional/` (4)
+## Funcional pontual — `functional/` (3)
 
-`FEATURE_FLAGS.md` · `DIAGNOSTICO_GUIADO_MODO_GAMER_SPEC.md` ·
-`JORNADA_ANDROID_GUIADA_2_SPEC.md` (draft da jornada futura orientada por sintomas) ·
-`WIFI_CASA_MAPEAMENTO_SPEC.md` (ativo — evolução de "Encontrar um bom lugar" para mapeamento de
-cômodos com grid 2D e comparação Antes×Depois de reposicionamento de roteador/mesh, implementada).
+`FEATURE_FLAGS.md` · `JORNADA_ANDROID_GUIADA_2_SPEC.md` (jornada futura orientada por sintomas) ·
+`WIFI_CASA_MAPEAMENTO_SPEC.md` (implementada).
 
-## Design — `design-system/` (12)
+## Design — `design-system/` (5)
 
-Decisões de design de 2026-07: alinhamento TOBE, cores do console, container de logo, topbar padrão,
-renomeação SignallQ Design, separação DS/protótipos, três seções do console, tokens MD3, plano de
-aplicação, auditoria de telas, endosso de marca. Conteúdo implementado no Android consolidado em
-`DESIGN_SYSTEM.md`; direção futura compartilhada em `SIGNALLQ_DESIGN_SYSTEM_2_SPEC.md` (draft).
+`SIGNALLQ_DESIGN_SYSTEM_2_SPEC.md` (direção futura, draft) · `SPEC_BRAND_ENDORSEMENT_BY_7A_2026-07-26.md` ·
+`DECISAO_ALINHAMENTO_TOBE_2026-07-13.md` · `DECISAO_CONTAINER_LOGO_MARCA_2026-07-17.md` ·
+`DECISAO_SEPARACAO_DS_PROTOTIPOS_2026-07-18.md`. O Android implementado vive em `DESIGN_SYSTEM.md`.
 
-## Protótipos — `prototypes/` (0 documentos na raiz; 3 pacotes)
+## Protótipos — `prototypes/` (2 pacotes)
 
-`signallq-android-2-0/` — **protótipo navegável da Jornada Android 2.0** (`README.md` ·
-`COVERAGE.md` · `NAVIGATION_AUDIT.md` · `brand-spec.md` + `index.html`). Referência visual e de
-navegação do épico #1647, contra a qual cada fatia é comparada. Versionado em 2026-08-16; antes
-disso existia só numa máquina, fora de repositório.
-
-`signallq-design-system-2-board/README.md` — prancha visual de foundations e componentes do
-Design System 2.0.
-
-`open-design-signallq-android-v2/README.md` · `PROMPT_INICIAL.md` ·
-`CHECKLIST_REVISAO.md`. Pacote operacional para gerar e revisar a primeira rodada no Open Design;
-não substitui as especificações canônicas.
+`signallq-android-2-0/` — protótipo navegável da Jornada Android 2.0 (`README.md` · `COVERAGE.md` ·
+`brand-spec.md` + `index.html`), referência visual do épico #1647.
+`signallq-design-system-2-board/README.md` — prancha visual de foundations e componentes do DS 2.0.
 
 ## Legal — `legal/` (2) · **não editar sem revisão**
 

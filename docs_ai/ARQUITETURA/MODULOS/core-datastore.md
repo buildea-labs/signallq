@@ -4,7 +4,8 @@ description: "Preferências do app em DataStore Preferences e credenciais do mod
 type: "técnico"
 status: "ativo"
 owner: "Camilo"
-last_updated: "2026-08-15"
+last_updated: "2026-10-04"
+version: "1.1.0"
 ---
 
 # `:coreDatastore`
@@ -43,8 +44,8 @@ Nenhuma dependência de outro módulo do monorepo.
 
 | Arquivo/classe | Responsabilidade |
 |---|---|
-| `src/main/kotlin/io/signallq/app/core/datastore/PreferenciasAppRepository.kt` (694 linhas) | Repository único de preferências sobre DataStore (`name = "linkaPreferencias"`); implementa `FeatureFlagStore` |
-| `src/main/kotlin/io/signallq/app/core/datastore/CredenciaisModemStore.kt` (132 linhas) | usuário/senha/BSSID vinculado do modem em `EncryptedSharedPreferences` (AES-256 GCM via AndroidKeyStore), arquivo `signallq_modem_credentials` |
+| `src/main/kotlin/io/signallq/app/core/datastore/PreferenciasAppRepository.kt` | Repository único de preferências sobre DataStore (`name = "linkaPreferencias"`); implementa `FeatureFlagStore` |
+| `src/main/kotlin/io/signallq/app/core/datastore/CredenciaisModemStore.kt` | usuário/senha/BSSID vinculado do modem em `EncryptedSharedPreferences` (AES-256 GCM via AndroidKeyStore), arquivo `signallq_modem_credentials` |
 | `src/main/kotlin/io/signallq/app/core/datastore/FeatureFlagStore.kt` | contrato mínimo (`salvarFeatureFlags`/`buscarFeatureFlags`), isolado para permitir fake sem `Context` |
 | `src/main/kotlin/io/signallq/app/core/datastore/CoreDatastoreModulo.kt` | fábrica manual `criarPreferenciasAppRepository(context)` |
 | `src/main/kotlin/io/signallq/app/core/datastore/ConnectionProfilePersistido.kt` | modelo serializado do perfil de conexão persistido |
@@ -54,9 +55,8 @@ O `CredenciaisModemStore` tem fallback explícito para `SharedPreferences` em cl
 
 ## Riscos e dívidas
 
-- **`PreferenciasAppRepository.kt` com 694 linhas** (abaixo do limite de 800, mas é um "god repository"): concentra dezenas de chaves heterogêneas — monitoramento, modem, tema, perfil do usuário, operadora/região, onboarding, consentimento LGPD, dismisses de sheets de permissão e feature flags. Candidato natural a fatiamento por domínio.
+- **`PreferenciasAppRepository.kt` é um "god repository"** (perto do limite de 800 linhas): concentra dezenas de chaves heterogêneas — monitoramento, modem, tema, perfil do usuário, operadora/região, onboarding, consentimento LGPD, dismisses de sheets de permissão e feature flags. Candidato natural a fatiamento por domínio.
 - **Nomes legados em produção:** o DataStore chama-se `linkaPreferencias`. Renomear exige migração de dados.
-- **Path físico alinhado ao package `io.signallq.app.*`** — migração de `io/signallq/app/kotlin/` concluída em 2026-08-15 (#1645).
-- **Cobertura de teste baixa:** 1 único arquivo de teste (`ConnectionProfilePersistidoTest`) para 916 linhas de `src/main`. Nem `PreferenciasAppRepository` nem `CredenciaisModemStore` — o componente que lida com credenciais — têm teste próprio.
+- **Cobertura de teste baixa:** 1 único arquivo de teste (`ConnectionProfilePersistidoTest`). Nem `PreferenciasAppRepository` nem `CredenciaisModemStore` — o componente que lida com credenciais — têm teste próprio.
 - **Chave plaintext legada** `gatewaySessionBssid` ainda declarada no repository, mantida só para migração única (GH#530); precisa de data de remoção.
 - **Fallback sem criptografia** no `CredenciaisModemStore` é acionado por `catch (_: Exception)` genérico: uma falha inesperada do KeyStore em device real degradaria silenciosamente para armazenamento em claro.
