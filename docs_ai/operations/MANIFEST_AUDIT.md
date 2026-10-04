@@ -1,16 +1,21 @@
+---
+title: "Auditoria de segurança do AndroidManifest"
+description: "Inventário de permissões, componentes exportados, backup e network security config do app Android."
+type: "técnico"
+status: "ativo"
+owner: "Camillo"
+last_updated: "2026-10-04"
+version: "1.2.0"
+---
+
 # Auditoria de Seguranca — AndroidManifest.xml
 
-- **Status:** ativo
-- **Última validação:** 2026-07-23 (achados originais de 2026-06-28, contagem de módulos corrigida)
-- **Fonte de verdade:** `android/settings.gradle.kts` (16 módulos: `:app` + 6 core + 9 feature)
-- **Escopo:** manifesto principal + manifestos dos 15 módulos de biblioteca
+- **Fonte de verdade:** `AndroidManifest.xml` de `:app` e dos módulos em `android/` (`settings.gradle.kts` lista os módulos)
+- **Escopo:** manifesto principal + manifestos dos módulos de biblioteca; achados originais de 2026-06-28, revalidados em 2026-10-04 contra permissões, `allowBackup`, `exported` e `network_security_config.xml`
 
 ## Resumo
 
-Auditoria do manifesto principal e dos 15 modulos de biblioteca (9 feature + 6 core — `core/recommendation`,
-issue #790, nasceu depois da auditoria original de 2026-06-28 e foi conferido agora: manifesto
-vazio, sem permissão adicional, mesmo padrão dos outros core sem telephony). Nenhuma vulnerabilidade
-encontrada nesta revisão. O manifesto segue as melhores praticas de seguranca Android.
+Auditoria do manifesto principal e dos manifestos dos módulos de biblioteca (10 feature, `core/*` com manifesto: database, datastore, network, permissions, probejogo, recommendation, telephony). Os módulos `core:relatorio`, `core:diagnostico`, `core:featureflags` e `core:nds` não têm manifesto próprio. Nenhuma vulnerabilidade encontrada. O manifesto segue as boas práticas de segurança Android.
 
 ---
 
@@ -44,11 +49,11 @@ Todas declaradas em `android/app/src/main/AndroidManifest.xml`, exceto `READ_PHO
 | `androidx.core.content.FileProvider` | Provider | `false` | Compartilhamento de laudos via URI. Authorities: `${applicationId}.fileprovider` |
 | `androidx.startup.InitializationProvider` | Provider | `false` | Desabilita auto-init do WorkManager. Authorities: `${applicationId}.androidx-startup` |
 
-### Modulos Feature (9)
+### Modulos Feature (10)
 
-Todos os 9 modulos feature (`devices`, `diagnostico`, `dns`, `fibra`, `history`, `home`, `settings`, `speedtest`, `wifi`) possuem manifestos vazios (`<manifest />`). Nenhum componente exportado, nenhuma permissao adicional.
+Todos os modulos feature (`devices`, `diagnostico`, `dns`, `fibra`, `history`, `home`, `router`, `settings`, `speedtest`, `wifi`) possuem manifestos vazios (`<manifest />`). Nenhum componente exportado, nenhuma permissao adicional.
 
-### Modulos Core (6)
+### Modulos Core com manifesto (7)
 
 | Modulo | Conteudo |
 |---|---|
@@ -56,7 +61,8 @@ Todos os 9 modulos feature (`devices`, `diagnostico`, `dns`, `fibra`, `history`,
 | `core/datastore` | Manifesto vazio |
 | `core/network` | Manifesto vazio |
 | `core/permissions` | Manifesto vazio |
-| `core/recommendation` | Manifesto vazio (conferido em 2026-07-23) |
+| `core/probejogo` | Manifesto vazio |
+| `core/recommendation` | Manifesto vazio |
 | `core/telephony` | Declara `READ_PHONE_STATE` com documentacao detalhada de privacidade |
 
 ---

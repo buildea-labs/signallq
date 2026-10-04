@@ -1,96 +1,125 @@
+---
+title: "Custos de infraestrutura"
+description: "Inventário verificado dos recursos de infraestrutura do SignallQ e estimativas de custo (valores monetários e limites de plano não verificados no repositório)."
+type: "técnico"
+status: "ativo"
+owner: "Camillo"
+last_updated: "2026-10-04"
+version: "1.2.0"
+---
+
 # Custos de Infraestrutura — SignallQ
 
-- **Status:** ativo
-- **Última validação:** 2026-07-23 (revisão obrigatória a cada milestone)
-- **Fonte de verdade:** `integrations/cloudflare/*/wrangler.toml` (workers reais), Cloudflare Dashboard (uso real)
-- **Escopo:** custo de infraestrutura por serviço/fase
+- **Fonte de verdade do inventário:** `integrations/cloudflare/*/wrangler.toml`, `android/gradle/libs.versions.toml`, `android/app/build.gradle.kts`, `.github/workflows/`
+- **Fonte de verdade de uso e cobrança real:** painéis Cloudflare, Firebase/Google Cloud, Play Console e GitHub (não acessíveis pelo repositório)
+- **Escopo:** o que existe de infraestrutura, o que deliberadamente não existe, e estimativa de custo
 
-## Resumo
+> **Legenda:** ✅ comprovado no repositório · ⚠️ NÃO VERIFICADO (limite/preço de plano, estimativa de uso ou valor monetário; conferir no painel antes de decidir qualquer coisa). Nenhum plano pago está declarado no repositório; "free tier" aqui é o plano presumido, não comprovado.
 
-O SignallQ opera **inteiramente em free tiers** na fase atual. Custos reais surgem apenas com escala de usuários ou publicação na Play Store.
+## 1. Inventário de recursos
 
-## Serviços e Limites
+### Cloudflare Workers (5 neste repositório) ✅
 
-### Cloudflare Workers (Free)
+| Worker (`name` no wrangler) | Pasta | D1 | Cron | Outros bindings |
+|---|---|---|---|---|
+| `signallq-admin` | `signallq-admin-worker` | `signallq-admin-db` (`DB`) | `*/15 * * * *` (snapshot de latência/uptime) e `0 6 * * *` (sync de telemetria, hoje desligado por `FIREBASE_SYNC_ENABLED="false"`) | service binding `DIAGNOSTIC_WORKER` → `signallq-diagnostic` |
+| `signallq-diagnostic` | `signallq-diagnostic-worker` | `signallq-diagnostic-db` (`DB`) | `0 * * * *` (de hora em hora) | `observability` habilitada |
+| `linka-ai-diagnosis-worker` | `ai-diagnosis-worker` | — | — | `[ai]` binding `AI` (Workers AI); service binding `ADMIN_WORKER` → `signallq-admin` |
+| `signallq-game-latency-probe` | `game-latency-probe-worker` | — | — | — |
+| `signallq-privacy` | `signallq-privacy-worker` | — | — | — |
 
-| Recurso | Limite Free | Uso Estimado (1k usuários) | Risco |
+Workers consumidos pelo app mas **fora deste repositório**: `linka-assist-relay` (status de serviço) e `network-diagnostics-service` (módulo `:core:nds`), ambos na conta `buildealabs`. Custo deles não é coberto aqui.
+
+### O que NÃO existe ✅
+
+- **KV, R2, Queues, Durable Objects:** nenhum binding em nenhum `wrangler.toml`. R2 foi descartado em 2026-07-14 por decisão de produto (exigiria cartão cadastrado na Cloudflare); logos de operadora ficam em BLOB base64 no D1 (`provider_assets`).
+- **BigQuery / export GA4:** nunca criado. O projeto Firebase `signallq-app` está sem billing por decisão do Luiz; a perna de sync está desligada (`FIREBASE_SYNC_ENABLED="false"`).
+- **Firebase Cloud Storage, Firestore, Auth, Messaging, Performance:** nenhuma dependência no Gradle.
+- **Deploy do site/PWA em Cloudflare Pages a partir deste repositório:** workflows `site-deploy` e `pages-deploy` estão `.disabled` (o de Pages desativado em 2026-07-16). Site e painel vivem em `signallq-web` e `buildea-admin`.
+
+### Cloudflare D1 (2 bancos) ✅
+
+`signallq-admin-db` e `signallq-diagnostic-db`. Tamanho real, linhas lidas/escritas e plano: ⚠️ ver painel.
+
+### IA ✅ (configuração) / ⚠️ (custo)
+
+- **Provider primário:** Google Gemini via API (`generativelanguage.googleapis.com`), modelo `gemini-flash-latest` (alias móvel), ativo só quando a secret `GEMINI_API_KEY` está configurada (`ai-diagnosis-worker/src/providers.ts`). Se o alias passar a resolver para um modelo pago, o custo muda sem alteração no repositório.
+- **Fallback:** `@cf/qwen/qwen3-30b-a3b-fp8` (`AI_MODEL`) via Workers AI. Política do projeto: Llama/Meta não é configurado. Sem os dois, o app usa fallback local sem IA externa.
+- Se a secret existe de fato no ambiente de produção e qual tier a chave Gemini usa: ⚠️ ver painel Cloudflare (secrets) e Google AI Studio.
+
+### Firebase (projeto `signallq-app`) ✅
+
+| Serviço | Evidência |
+|---|---|
+| Crashlytics | `libs.firebase.crashlytics`; mapping enviado no `release.yml` |
+| Analytics | `libs.firebase.analytics`; propriedade GA4 `543555227` configurada no admin worker |
+| Remote Config | `libs.firebase.config` em `:app` e `:core:featureflags`; chaves de anúncios (`ads_native_enabled` + por tela) |
+| App Distribution | workflow `firebase-distribution.yml` (disparo manual, secret `FIREBASE_TOKEN`) |
+
+Plano (Spark/Blaze) do projeto: ⚠️ não declarado no repositório; as notas do `wrangler.toml` indicam "Sandbox, sem billing", conferir no Firebase Console.
+
+### Anúncios (AdMob) ✅
+
+`play-services-ads` + `user-messaging-platform` (UMP/consentimento) em `:app`. Anúncios nativos controlados por Remote Config; `-PadsEnabled=true` só é aceito pelo `release.yml` com `playTrack=production`. Receita e estado da conta AdMob: ⚠️ ver painel AdMob.
+
+### Google Play ✅ / ⚠️
+
+Publicação por `release.yml` (trilha padrão `beta`) e `promote-release.yml`, via secret `PLAY_SERVICE_ACCOUNT_JSON`. Taxa da conta de desenvolvedor (US$ 25, único) e câmbio (R$ ~130): ⚠️ não verificado, estimativa antiga.
+
+### GitHub Actions ✅ / ⚠️
+
+Workflows ativos: `android-ci`, `docs-ci`, `release`, `promote-release`, `firebase-distribution`, `auto-move-board`, `auto-update-branch`. Minutos consumidos por mês e se o repositório é privado no plano gratuito: ⚠️ ver Settings > Billing (a estimativa "~200 min/mês" do doc anterior não tinha fonte).
+
+## 2. Limites de plano e estimativas — ⚠️ NÃO VERIFICADO
+
+Os valores abaixo vieram da versão anterior deste documento (estimativas de 2026-07). Não há medição, fatura nem dado de painel no repositório que os confirme. Limites de planos mudam; confira na página oficial de cada fornecedor.
+
+| Recurso | Limite presumido (plano gratuito) | Uso estimado (1k usuários) | Estado |
 |---|---|---|---|
-| Requests/dia | 100.000 | ~5.000 | Baixo |
-| CPU time/invocation | 10ms | ~3-5ms | Baixo |
-| Workers ativos | 10 | 5 (ai-diagnosis, admin, diagnostic, privacy, game-latency-probe) | Baixo |
+| Workers requests/dia | 100.000 | ~5.000 | ⚠️ |
+| Workers CPU por invocação | 10 ms | ~3–5 ms | ⚠️ |
+| D1 rows lidas/dia | 5.000.000 | ~50.000 | ⚠️ |
+| D1 rows escritas/dia | 100.000 | ~5.000 | ⚠️ |
+| D1 armazenamento | 5 GB | ~100 MB | ⚠️ |
+| Workers AI neurons/dia | 10.000 | ~300 neurons/request no fallback Qwen | ⚠️ |
 
-### Cloudflare D1 (Free)
+Crons somam 96 execuções/dia no admin (15 min) + 1 + 24 no diagnostic, contados nas requisições do Workers ✅ (conta, não limite).
 
-| Recurso | Limite Free | Uso Estimado (1k usuários) | Risco |
-|---|---|---|---|
-| Rows read/dia | 5.000.000 | ~50.000 | Baixo |
-| Rows written/dia | 100.000 | ~5.000 | Baixo |
-| Storage | 5 GB | ~100 MB | Baixo |
+## 3. Custo total estimado — ⚠️ NÃO VERIFICADO
 
-### Cloudflare AI (Workers AI)
-
-| Recurso | Limite Free | Uso Estimado | Risco |
-|---|---|---|---|
-| Neurons/dia | 10.000 | Variável por modelo | Baixo (só quando cai pro fallback) |
-| Provider primário | Gemini 2.0 Flash (Google, quando `GEMINI_API_KEY` setada) | Free tier separado do Cloudflare | Baixo |
-| Fallback | Qwen3 30B MoE FP8 (Cloudflare Workers AI) | ~300 neurons/request | Médio se Gemini cair com frequência |
-
-**Alerta:** a maioria das requisições vai pro Gemini (primário); Qwen3/Cloudflare só entra em neurons quando o Gemini falha ou a secret não está configurada. Se o fallback passar a ser acionado com frequência (ex.: rate limit do Gemini), monitorar consumo de neurons via Admin Panel — Qwen3 30B consome mais neurons que modelos menores.
-
-### Firebase (Spark — Free)
-
-| Recurso | Limite Free | Uso Estimado (1k usuários) | Risco |
-|---|---|---|---|
-| Crashlytics | Ilimitado | N/A | Nenhum |
-| Analytics | Ilimitado | N/A | Nenhum |
-| App Distribution | Ilimitado (testers) | ~20 testers | Nenhum |
-| Cloud Storage | 5 GB | Não usado | Nenhum |
-
-### Google Play Console
-
-| Item | Custo | Recorrência |
+| Fase | Custo mensal | Notas |
 |---|---|---|
-| Conta de desenvolvedor | $25 (R$~130) | Único |
-| Listagem | Grátis | — |
-| Play App Signing | Grátis | — |
+| Atual (app em `beta`) | R$ 0 presumido | Nenhum plano pago declarado no repositório; conferir faturas |
+| ~5k usuários | R$ 0–50 | Estimativa de 2026-07, sem base de medição |
+| 10k+ usuários | R$ 50–200 | Estimativa de 2026-07; cogita Workers Paid (US$ 5/mês, preço não verificado) |
 
-### GitHub
+Novo custo recorrente, fornecedor pago ou billing em projeto hoje sem billing exige aprovação explícita do Luiz (AGENTS.md §10).
 
-| Recurso | Limite Free | Uso |
-|---|---|---|
-| Repositórios privados | Ilimitado | 1 (monorepo) |
-| Actions (CI/CD) | 2.000 min/mês | ~200 min/mês estimado |
-| Storage | 500 MB (packages) | Não usado |
+## 4. Gatilhos de upgrade — ⚠️ limiares presumidos, não verificados
 
-## Custo Total Estimado
+| Gatilho | Ação |
+|---|---|
+| ~80% das requisições/dia do Workers | Avaliar Workers Paid |
+| ~80% dos neurons/dia | Reduzir uso do fallback Qwen ou migrar plano |
+| ~80% das leituras D1/dia | Avaliar plano pago do D1 |
+| Consumo de minutos do GitHub Actions próximo do limite | Otimizar CI |
 
-| Fase | Custo Mensal | Notas |
-|---|---|---|
-| **Desenvolvimento (atual)** | R$ 0 | Tudo em free tier |
-| **Beta Fechado (M2)** | R$ 0 | ~50 usuários, dentro dos limites |
-| **Play Store (M3)** | R$ 130 (único) | Conta Google Play |
-| **Open Beta (M4, ~500 users)** | R$ 0 | Provável dentro dos limites |
-| **Produção (M5, ~5k users)** | R$ 0 - R$ 50/mês | Workers AI pode exceder free tier |
-| **Escala (10k+ users)** | R$ 50 - R$ 200/mês | Workers Paid ($5/mês) + D1 + AI |
+## 5. Monitoramento
 
-## Gatilhos de Upgrade
+- **Uso Cloudflare no app admin:** `GET /admin/cloudflare-usage` (exige secret `CLOUDFLARE_API_TOKEN` com escopo Account Analytics: Read; sem ela responde "não disponível" em vez de inventar número).
+- **Uso de IA:** `GET /admin/metrics/ai-usage`. **Inteligência de diagnóstico:** `GET /admin/diagnostics/intelligence`.
+- **Consoles:** Cloudflare Dashboard, Firebase Console (Crashlytics/Analytics), Play Console, AdMob, GitHub Settings > Billing.
 
-| Gatilho | Ação | Custo |
-|---|---|---|
-| >80k requests/dia Workers | Upgrade para Workers Paid | $5/mês |
-| >8k neurons/dia AI | Reduzir modelo ou upgrade | $5-20/mês |
-| >4M rows read/dia D1 | Upgrade D1 | $0.001/M reads |
-| >1.5k min/mês GitHub Actions | Upgrade ou otimizar CI | $4/mês |
+## 6. Decisões registradas
 
-## Monitoramento
+1. **Sem banco pago:** D1 atende; sem Supabase, PlanetScale ou similar.
+2. **Sem R2:** descartado em 2026-07-14 (ver acima).
+3. **Sem billing no Firebase/GCP:** decisão do Luiz, motivo da perna GA4→BigQuery desligada (reativar exige billing, vínculo GA4→BigQuery e `FIREBASE_SYNC_ENABLED="true"`).
+4. **IA:** Gemini primário e Qwen3 30B fallback; ver `docs_ai/TECNICO.md`.
 
-- **Cloudflare Dashboard:** Workers analytics, D1 metrics, AI usage
-- **SignallQ Admin Panel:** `/admin/ai-usage`, `/admin/diagnostics/intelligence`
-- **Firebase Console:** Crashlytics, Analytics
-- **GitHub:** Actions usage em Settings > Billing
+## 7. Pendências de checagem pelo Luiz (painéis)
 
-## Decisões Registradas
-
-1. **Modelo AI:** Qwen3 30B escolhido por qualidade de resposta em PT-BR. Se custo escalar, considerar downgrade para modelo menor. *(Atualização: Gemini 2.0 Flash passou a ser o provider primário quando `GEMINI_API_KEY` está configurada; Qwen3 é o fallback — ver `docs_ai/TECNICO.md`.)*
-2. **Sem banco pago:** D1 (SQLite) atende a necessidade. Sem Supabase, PlanetScale ou similar.
-3. **Sem CDN adicional:** Cloudflare já serve como CDN para Workers e pages.
+- **Cloudflare:** plano da conta (Free ou Paid); uso real de requests, D1 (linhas e tamanho) e neurons; se a secret `GEMINI_API_KEY` está de fato configurada no `linka-ai-diagnosis-worker`; se `CLOUDFLARE_API_TOKEN` foi criado; se `linka-assist-relay` e `network-diagnostics-service` estão na mesma conta e plano.
+- **Firebase / Google Cloud:** plano do projeto `signallq-app`; tier da chave Gemini; se existe algum custo de Crashlytics/Analytics/Remote Config.
+- **Play Console / AdMob:** custo e estado da conta; receita de anúncios.
+- **GitHub:** minutos de Actions consumidos e plano do repositório.

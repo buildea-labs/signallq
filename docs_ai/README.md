@@ -47,13 +47,12 @@ O `signallq-admin-worker` é **deste** repositório, embora o painel Admin que o
 | [`POSICIONAMENTO_PRODUTO.md`](./POSICIONAMENTO_PRODUTO.md) | Diretriz obrigatória de produto para Android e Web/PWA |
 | [`design-system/SIGNALLQ_DESIGN_SYSTEM_2_SPEC.md`](./design-system/SIGNALLQ_DESIGN_SYSTEM_2_SPEC.md) | Direção futura de identidade e experiência compartilhada (draft) |
 | [`functional/JORNADA_ANDROID_GUIADA_2_SPEC.md`](./functional/JORNADA_ANDROID_GUIADA_2_SPEC.md) | Arquitetura futura da jornada Android orientada por sintomas (draft) |
-| [`prototypes/open-design-signallq-android-v2/`](./prototypes/open-design-signallq-android-v2/) | Pacote para gerar e revisar o primeiro protótipo Android 2.0 no Open Design |
 | [`FUNCIONAL.md`](./FUNCIONAL.md) | O que o app faz — navegação, telas, funcionalidades, permissões |
 | [`TECNICO.md`](./TECNICO.md) | Como é construído — stack, build, Workers, persistência, analytics, segurança |
 | [`DESIGN_SYSTEM.md`](./DESIGN_SYSTEM.md) | Cores, tipografia, espaçamento, componentes, tokens |
 | [`ARQUITETURA/README.md`](./ARQUITETURA/README.md) | Visão de sistema e dependências entre módulos |
 | [`ARQUITETURA/MODULOS/`](./ARQUITETURA/MODULOS/) | Um documento por módulo Gradle |
-| [`CONTRATOS/openapi/`](./CONTRATOS/openapi/) | 7 contratos OpenAPI 3.0 · 122 endpoints |
+| [`CONTRATOS/openapi/`](./CONTRATOS/openapi/) | 5 contratos OpenAPI 3.0 · 108 endpoints |
 | [`CONTRATOS/schemas/`](./CONTRATOS/schemas/) | Índice dos schemas reais (Room, D1) |
 | [`RELEASES.md`](./RELEASES.md) | Histórico de releases |
 | [`INDICE.md`](./INDICE.md) | Mapa completo com status e responsável |
@@ -63,7 +62,6 @@ O `signallq-admin-worker` é **deste** repositório, embora o painel Admin que o
 | Pasta | Conteúdo |
 |---|---|
 | `decisions/` | ADRs (`ADR-001`…`ADR-013`) e decisões de negócio — **preservados, não regeneráveis** |
-| `foundation-linka/` | Material provisório do produto Linka (ADR-016) — migra para o repo `buildea-labs/linka` quando ele nascer |
 | `operations/` | Runbooks: release, deploy, hotfix, rollback, assinatura, custos |
 | `technical/` | Referências técnicas pontuais: schema da Admin API, mapas de campo de equipamento (Intelbras, Nokia, TP-Link), fluxo de IA, ping executor |
 | `functional/` | Specs funcionais que não migraram para `FUNCIONAL.md` |
@@ -87,7 +85,7 @@ Removidos da árvore; recuperáveis via git a partir do commit `10b2f05d` (instr
 | `_archive/` | 100 | Git já é o arquivo; a pasta poluía toda busca com versões substituídas |
 | `plataforma/` (pacote v5, docs 00–07) | 10 | Descrevia monorepo `signallq-platform` que não existe, Admin que saiu do repo e inventário defasado. A paleta que ele prescrevia está implementada e conferida no código |
 | `ai/` | 8 | Fluxo de trabalho de agente, não documentação de produto → movido para `.claude/fluxos/` |
-| `plano-execucao-consumer-2026-08-05.md` | 1 | Superado no mesmo dia pela versão consolidada v2, que permanece |
+| `plano-execucao-consumer-2026-08-05.md` | 1 | Superado pela versão consolidada v2, também removida em 2026-10-04 (fila entregue) |
 | `AUDIT_REPORT_2026-08-05.md` | 1 | Continha afirmações derrubadas pela validação contra código de 2026-08-06 |
 | `design-system/_archive/` | 1 | Mesma regra do `_archive/` |
 

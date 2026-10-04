@@ -1,50 +1,25 @@
 ---
 title: "Paridade REC-01..REC-14 — motor local vs worker"
-description: "Paridade entre as 14 regras REC-01..REC-14 do motor local (Kotlin, featureDiagnostico) e o ruleset do signallq-diagnostic-worker."
+description: "Rastreabilidade entre as 14 regras REC-01..REC-14 do motor local (Kotlin, featureDiagnostico) e o ruleset do signallq-diagnostic-worker."
 type: "técnico"
 status: "ativo"
-owner: "Camilo"
-last_updated: "2026-07-26"
+owner: "Ramon"
+last_updated: "2026-10-04"
+version: "1.1.0"
 ---
 
-status: ativo
-última validação: 2026-07-26
-fonte de verdade: este arquivo
-escopo: paridade entre as 14 regras REC-01..REC-14 do motor local (Kotlin, `featureDiagnostico`) e o
-ruleset declarativo/derivado do `signallq-diagnostic-worker` (fallback `BUNDLED_LOCAL` de #952)
-responsável: Camilo (issue #1442, parte de #952)
+# Paridade REC-01..REC-14 (Kotlin) × worker (`signallq-diagnostic-worker`)
 
-# Paridade REC-01..REC-14 (Kotlin) x worker (`signallq-diagnostic-worker`)
+**Fonte de verdade:** `RecomendacaoPraticaEngine.kt` (`android/feature/diagnostico/src/main/kotlin/io/signallq/app/feature/diagnostico/`, casos dourados em `RecomendacaoPraticaEngineTest.kt`) e, no worker, `src/bundled-ruleset.ts` + `evaluateDerivedFindings` em `src/diagnostic-engine.ts`.
+**Origem:** issue #1442 (parte de #952). Nenhuma regra nova foi criada no worker para fechar lacunas; elas são base para decisão de produto (estender `DiagnosticSnapshot` ou aceitar a divergência).
+**Ressalva de validação:** a tabela abaixo foi montada em 2026-07-26. Em 2026-10-04 foram reconferidos só os caminhos, os ids de regra do worker e a existência da suíte `rec-parity.test.ts`; thresholds e condições por linha **não foram revalidados** contra o código atual — recruze antes de agir sobre uma linha.
 
-## Contexto
+## Como o worker avalia
 
-`RecommendationEngine.kt` (`android/feature/diagnostico/src/main/kotlin/io/signallq/app/feature/diagnostico/RecommendationEngine.kt`)
-gera 14 regras de recomendação prática (REC-01..REC-14), congeladas como casos dourados em
-`RecommendationEngineTest.kt` (`android/feature/diagnostico/src/test/kotlin/io/signallq/app/feature/diagnostico/RecommendationEngineTest.kt`,
-756 linhas, 33 testes).
+1. **Regras declarativas** de `bundled-ruleset.ts` (`getBundledRuleset()`), avaliadas por `evaluateRule`/`evaluateGroup`.
+2. **Findings derivados** (`evaluateDerivedFindings`): lógica em código para canal Wi-Fi congestionado, degradação histórica e `DECISAO-GW-01/02`. Contam para a paridade.
 
-O worker expõe dois mecanismos de avaliação, ambos relevantes para a paridade:
-
-1. **Regras declarativas** de `bundled-ruleset.ts` (`getBundledRuleset()`), avaliadas por
-   `evaluateRule`/`evaluateGroup` em `diagnostic-engine.ts`.
-2. **Findings derivados** (`evaluateDerivedFindings`, mesmo arquivo) — lógica de código direta
-   (não declarativa) que cobre canal Wi-Fi congestionado, degradação histórica e as decisões
-   `DECISAO-GW-01/02` de operadora/gateway. Não estão em `bundled-ruleset.ts`, mas fazem parte do
-   motor do worker e contam para efeito de paridade.
-
-Em ambos os casos, o `id` retornado no payload de `/diagnostic/evaluate` (arrays `wifiResultados`,
-`internetResultados` etc., ver `diagnostic-report.ts`) é o `matchedRuleId` — para regra declarativa,
-o próprio `ruleId`; para finding derivado, o id sintético (ex. `derived_decisao_gw_02`).
-
-## Correção em relação ao corpo original de #1442
-
-O corpo da issue cita `internet_download_unavailable`, `packet_loss_critical`, `upload_zero` como
-exemplos de regras "próprias" do worker sem rastreabilidade — verificado: nenhuma dessas três é
-equivalente a nenhuma REC-0X (não existe REC sobre "internet indisponível" ou "upload zero" no
-motor Kotlin — são regras legítimas do worker sem correspondente local, fora do escopo desta
-paridade). Também citado no corpo: worker roda em Vitest — **incorreto**, o `package.json` do
-worker usa `node --test` (`"test": "node --test"`), não Vitest. A suíte cruzada desta task usa
-`node:test`, seguindo o padrão já existente em `test/index.test.ts`.
+O `id` devolvido em `/diagnostic/evaluate` é o `matchedRuleId` (o `ruleId` da regra declarativa, ou um id sintético como `derived_decisao_gw_02`). Regras do worker sem REC correspondente (`internet_download_unavailable`, `packet_loss_critical`, `upload_zero`) são legítimas e estão fora desta paridade.
 
 ## Tabela de rastreabilidade
 
@@ -74,23 +49,6 @@ worker usa `node --test` (`"test": "node --test"`), não Vitest. A suíte cruzad
 - **Pendente (sem equivalente algum):** REC-04 (campos ausentes no snapshot), REC-12 (arquitetura —
   meta-regra sobre findings agregados), REC-13 (subsistema separado, fora de escopo por design).
 
-Nenhuma regra nova foi inventada no worker para fechar essas lacunas — fora de escopo desta task
-(#1442, ver critério de aceite "nenhuma regra remota nova inventada"). As lacunas PARCIAL/PENDENTE
-ficam registradas aqui como base para decisão de produto futura (estender `DiagnosticSnapshot` com
-os campos faltantes, ou aceitar a divergência documentada).
+## Suíte cruzada
 
-## Suíte de teste cruzada
-
-`integrations/cloudflare/signallq-diagnostic-worker/test/rec-parity.test.ts` reaproveita os cenários
-de entrada dos casos dourados de `RecommendationEngineTest.kt` (mesmos números/limiares, traduzidos
-para o formato `DiagnosticSnapshot`) e testa contra `evaluateSnapshot`/`/diagnostic/evaluate` do
-worker. Cobertura da suíte:
-
-- Casos **COBERTA**/**PARCIAL com condição equivalente testável** (REC-05, REC-08, REC-11, REC-07,
-  REC-14, REC-02, REC-03): teste positivo (dispara) e negativo (não dispara) usando os mesmos
-  limiares de fronteira do Kotlin, quando aplicável ao worker.
-- Casos **PARCIAL com lógica muito diferente** (REC-01, REC-06, REC-09, REC-10): teste cobre só o
-  cenário onde as duas implementações convergem (ambas disparam ou ambas não disparam) — divergência
-  de threshold fica documentada na tabela acima, não testada como bug.
-- Casos **PENDENTE** (REC-04, REC-12, REC-13): sem teste cruzado — não há equivalente no worker para
-  comparar. Comentário no arquivo de teste referencia esta tabela.
+`integrations/cloudflare/signallq-diagnostic-worker/test/rec-parity.test.ts` (`node:test`; o worker não usa Vitest) reaproveita os cenários dos casos dourados do Kotlin contra `evaluateSnapshot`. Cobre positivo e negativo para as linhas **COBERTA** e as **PARCIAL** com condição testável (REC-05, 08, 11, 07, 14, 02, 03) e só os cenários de convergência para REC-01, 06, 09, 10; **PENDENTE** (REC-04, 12, 13) não tem teste.

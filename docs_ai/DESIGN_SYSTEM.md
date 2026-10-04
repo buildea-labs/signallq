@@ -1,884 +1,246 @@
 ---
 title: "Design System — SignallQ consumer"
-description: "Cores, tipografia, espaçamento, componentes e tokens do app Android consumer"
+description: "Cores, tipografia, espaçamento, profundidade, componentes e regras do app Android consumer, derivados do código"
 type: "técnico"
 status: "ativo"
 owner: "Camilo"
-last_updated: "2026-08-20"
+last_updated: "2026-10-04"
+version: "2.0.0"
 ---
 
 # Design System — SignallQ (Android, consumer)
 
-- **Status:** ativo
-- **Última validação contra código:** 2026-08-20 — foundations 2.0 implementados como camada de
-  compatibilidade na issue #1649: pares claro/escuro, preto-base, superfícies de card, scrim,
-  escala 4–64 dp, shapes, state layers, elevação tonal e movimento. A migração das telas continua
-  incremental. A issue #1650 adiciona uma biblioteca central opt-in de controles, contêineres,
-  feedback e estados de tela; a issue #1672 (Task 2.0.24) expandiu o banner offline de
-  `DispositivosScreen` (piloto único da #1663) para também cobrir `SinalScreen`. Este registro não
-  declara jornadas nem consumidores legados integralmente migrados.
 - **Fonte de verdade:** o *código* — `android/app/src/main/kotlin/io/signallq/app/ui/SignallQTheme.kt`
-  (`LkColors`, `LkTokens`, `LkSpacing`, `LkRadius`, `LkStateLayer`, `LkElevation`, `LkMotion`,
-  shapes e `signallQTypography`). Este documento é derivado
-  dele. Não-negociáveis de produto ficam em `.claude/CLAUDE.md`, seção "Design System"
-- **Escopo:** app Android SignallQ consumer (`io.signallq.app`). Não cobre SignallQ Pro — produto
-  descontinuado permanentemente (ADR-016); docs e skill de design própria (`#0B6CFF`) removidos do
-  repositório na Fase 4b do épico #1623 — nem o painel Admin, que vive no repositório `buildea-admin`
-- **Responsável:** Camilo (implementação Android). O papel de design não tem titular desde
-  2026-07-25 (decisão de squad registrada nessa data; documento removido em `docs_ai/decisions/`
-  na Fase 4d do épico #1623 — git preserva)
-- **Documentos substituídos:** consolidou `COLORS.md`, `COMPONENTS_ANDROID.md`, `DESIGN_TOKENS.md`,
-  `MD3_GUIDELINES.md`, `SPACING.md` e `TYPOGRAPHY.md`, removidos da árvore em 2026-08-06
-  (recuperáveis em `git show 10b2f05d:docs_ai/_archive/2026-07-16_COLORS.md` e equivalentes)
-
----
-
-## Índice
-
-1. Princípios
-2. Cores e nomenclatura semântica
-3. Tipografia
-4. Espaçamento e grid
-5. Raios, bordas e "quando usar o quê"
-6. Profundidade e hierarquia de superfícies (4 níveis)
-7. Biblioteca de componentes
-8. Estados e variantes
-9. Regras de gráficos
-10. Conteúdo simulado (anúncio nativo / ofertas)
-11. Acessibilidade
-12. Responsividade
-13. Governança
-14. Mapeamento Jetpack Compose
-15. Ícones
-16. Dark mode
-17. Copy e regras de texto
-18. Localização dos tokens no código
-19. Outras fontes do design system (não duplicar)
-20. Histórico de divergências corrigidas
+  (`LkColors`, `LkTokens`, `LkSpacing`, `LkRadius`, `LkStateLayer`, `LkElevation`, `LkMotion`, shapes
+  e `signallQTypography`) e `ui/component/`. Este documento é derivado deles; em divergência, o código vence.
+- **Escopo:** app Android SignallQ consumer (`io.signallq.app`). Não cobre o Admin (`buildea-admin`)
+  nem o site/PWA (`signallq-web`); o SignallQ Pro foi descontinuado (ADR-016).
+- **Direção futura (draft, não implementada):** `docs_ai/design-system/SIGNALLQ_DESIGN_SYSTEM_2_SPEC.md`.
+  Os foundations 2.0 já existem em código como camada de compatibilidade (pares claro/escuro,
+  preto-base, superfícies de card, escala 4–64 dp, shapes, state layers, elevação tonal e movimento);
+  a migração das telas é **incremental** — este registro não declara nenhuma jornada integralmente migrada.
+- **Outros artefatos de design:** `DESIGN.md` e `PRODUCT.md` (raiz do repositório, formato `impeccable`,
+  North Star "The Calm Translator"), skill `.claude/skills/SignallQ-design/`, pacote React
+  `packages/design-system/` (espelho para protótipos; não é o app). Não duplicar conteúdo deles aqui.
+- **Documentos substituídos:** consolidou `COLORS`, `COMPONENTS_ANDROID`, `DESIGN_TOKENS`,
+  `MD3_GUIDELINES`, `SPACING` e `TYPOGRAPHY` (removidos em 2026-08-06; recuperáveis em
+  `git show 10b2f05d:docs_ai/_archive/2026-07-16_COLORS.md` e equivalentes).
 
 ---
 
 ## 1. Princípios
 
-- **Material 3** via `MaterialTheme` padrão do Jetpack Compose (`androidx.compose.material3`),
-  sem sobrescrita de shapes/componentes MD3 custom.
-- **Cor de marca fixa** — `lightColorScheme`/`darkColorScheme` com acento fixo, **sem dynamic
-  color** do sistema (não deriva do wallpaper).
-- **Flat, elevação tonal** — sem sombra dura isolada; profundidade vem primariamente de tint de
-  superfície (`surfaceContainer*`), sombra é reforço discreto (ver seção 6).
-- **Profundidade comunica hierarquia e interação, nunca decoração.** Um card não deve parecer
-  elevado se não for interativo ou prioritário.
-- **Métrica crua sempre acompanhada de veredito humano** — nenhum número solto na UI; sempre
-  junto de um veredito (Excelente/Bom/Regular/Fraco/Forte).
-- **Copy em PT-BR, com "você"** — sentence case em títulos, UPPERCASE em overlines, sem emoji.
-  Separador inline padrão: ponto médio (`·`).
-- **Superfície SignallQ (IA) descontinuada no To-Be** — não implementar rota ou componente novo
-  para essa superfície (ver seção 16).
+- **Material 3** via `MaterialTheme` (`androidx.compose.material3`); `MaterialTheme.shapes` é alimentado por `LkRadius`.
+- **Cor de marca fixa** — `lightColorScheme`/`darkColorScheme` com acento fixo, **sem dynamic color**.
+- **Flat, elevação tonal** — profundidade vem de tint de superfície (`surfaceContainer*`, `cardSurface*`); sombra é reforço discreto.
+- **Profundidade comunica hierarquia e interação, nunca decoração.**
+- **Métrica crua sempre com veredito humano** — nenhum número solto (Excelente/Bom/Regular/Fraco/Forte).
+- **Copy em PT-BR com "você"** — sentence case em títulos, UPPERCASE só em overlines, sem emoji, separador inline `·`.
+- **Sem superfície de chat/IA conversacional** — descontinuada por decisão de produto; não criar rota nem componente novo para ela.
 
 ---
 
-## 2. Cores e nomenclatura semântica
+## 2. Cores
 
-**Fonte de verdade dos valores:** `SignallQTheme.kt` — objeto `LkColors`. Confirmado em código:
-os hex abaixo já estão implementados, não são meta futura.
+Valores em `LkColors` (objetos `Light` e `Dark`); `LocalLkTokens.current` e `MaterialTheme.colorScheme` são os pontos de consumo. Tabela completa: ler o código.
 
-Os nomes abaixo são **aliases documentais** (`color.grupo.papel`) para os hex já existentes —
-não são um novo sistema de tokens, servem para falar do mesmo valor de forma inequívoca em
-qualquer artefato (doc, protótipo, review).
+| Papel | Claro | Escuro | Uso |
+|---|---|---|---|
+| `primary` | `#5B21D6` | `#D0BCFF` | CTA primário, seleção, navegação ativa, marca |
+| `secondary` | `#2851B8` (azul fixo, não deriva do primary) | `#AAC7FF` | Informação categorizada (rede móvel, DNS), links secundários |
+| `success` | `#146C2E` | `#83DA99` | Conexão boa, teste OK |
+| `warning` | `#8A5000` | `#FFB870` | Alerta moderado, veredito Regular |
+| `error` | `#BA1A1A` | `#FFB4AB` | Falha crítica, veredito Fraco/Crítico |
+| `surface` | `#FFFFFF` | `#000000` | Nível 0 — fundo da tela |
+| `cardSurface` | `#F7F7F8` | `#161616` | Nível 1 — card necessário |
+| `cardSurfaceElevated` | `#EEEEF0` | `#222222` | Card elevado / conteúdo interno |
+| `surfaceContainer` | `#F1F1F2` | `#1E1E1E` | Conteúdo agrupado |
+| `surfaceContainerHigh` | `#E8E8EA` | `#2A2A2A` | Interativo/destacado |
+| `surfaceContainerHighest` | `#DEDEE1` | `#333333` | Sobreposto (sheets, dialogs) |
+| `onSurface` / `onSurfaceVariant` | `#1C1C1F` / `#48484D` | `#F5F2F7` / `#CAC4D0` | Texto |
+| `outline` / `outlineVariant` | `#73737A` / `#C8C8CD` | `#948F99` / `#49454F` | Contornos funcionais, divisores |
+| `scrim` | `#80000000` | `#99000000` | Fundo de dialog/sheet modal |
+| `phaseLatencia` / `phaseDownload` / `phaseUpload` | `#2563EB` / `#146C2E` / `#8A5000` | `#AAC7FF` / `#83DA99` / `#FFB870` | Fases do SpeedTest |
 
-### Marca (`color.brand.*`)
+Cada papel tem o par `on*` e, para status, `*Container`/`on*Container`.
 
-| Alias | Token real (`LkColors`) | Valor (claro) | Uso |
-| --- | --- | --- | --- |
-| `color.brand.primary` | `primary` | `#5B21D6` | CTA primário, seleção, nav ativa, marca |
-| `color.brand.secondary` | `secondary` | `#2851B8` (azul **fixo**, não deriva do primary) | Chip móvel, DNS privado, links secundários |
+**Regras:**
 
-**Regra de combinação:** `primary` e `secondary` nunca competem no mesmo elemento pela mesma
-função — `primary` é ação/marca/seleção, `secondary` é informação secundária categorizada (rede
-móvel, DNS). Não usar `secondary` como CTA principal, não usar `primary` como badge informativo.
-
-### Status semântico (`color.status.*`)
-
-| Alias | Token real | Valor (claro) | Uso permitido | Uso proibido |
-| --- | --- | --- | --- | --- |
-| `color.status.success` | `success` | `#146C2E` | Conexão boa, teste OK, veredito Excelente/Bom | Decoração, ícone neutro, destaque sem significado |
-| `color.status.warning` | `warning` | `#8A5000` | Alerta moderado, veredito Regular | Erro grave, sucesso |
-| `color.status.error` | `error` | `#BA1A1A` | Falha crítica, veredito Fraco/Crítico | Alerta moderado, ênfase visual sem falha real |
-
-**Regra dura:** verde só sucesso, âmbar só atenção, vermelho só erro/falha. Nunca usar essas três
-cores como paleta decorativa (ex.: ícone verde só porque "combina") — se não há semântica de
-status por trás, usar `onSurfaceVariant`/`outline`.
-
-### Dados de rede (`color.data.*`)
-
-| Alias | Token real | Valor (claro) | Uso |
-| --- | --- | --- | --- |
-| `color.data.latencia` | `phaseLatencia` | `#2563EB` | Fase de latência do SpeedTest, gráficos relacionados |
-| `color.data.download` | `phaseDownload` | `#146C2E` | Fase de download |
-| `color.data.upload` | `phaseUpload` | `#8A5000` | Fase de upload |
-
-`phaseDownload`/`phaseUpload` reaproveitam os mesmos hex de `success`/`warning` — isso é
-intencional (download bom = verde, upload é secundário/moderado por convenção do produto), mas
-não confundir contexto: numa fase de SpeedTest a cor identifica a *fase*, não um veredito.
-
-### Superfície (`color.surface.*`)
-
-| Alias | Token real | Valor (claro) | Papel na hierarquia |
-| --- | --- | --- | --- |
-| `color.surface.background` | `surface` | `#FFFFFF` | Nível 0 — fundo da tela |
-| `color.surface.card` | `cardSurface` | `#F7F7F8` | Nível 1 — card necessário |
-| `color.surface.card-elevated` | `cardSurfaceElevated` | `#EEEEF0` | Conteúdo interno ou card elevado |
-| `color.surface.container` | `surfaceContainer` | `#F1F1F2` | Nível 1 — conteúdo agrupado |
-| `color.surface.container-high` | `surfaceContainerHigh` | `#E8E8EA` | Nível 2 — interativo/destacado |
-| `color.surface.container-highest` | `surfaceContainerHighest` | `#DEDEE1` | Nível 3 — sobreposto |
-| `color.surface.selected` | *(novo, formalizado nesta revisão — ver seção 6)* | `surfaceContainerHigh` + borda `primary`@25–30% | Estado selecionado |
-
-Valores completos (claro/escuro, todos os roles MD3) permanecem na tabela original — ver
-apêndice A ao final desta seção.
-
-### Regras de uso
-
-- Preferir `LocalLkTokens.current` e `MaterialTheme.colorScheme`.
-- `Color(0x...)` fora do tema só é aceitável quando: for cor de marca de terceiro (ex.: logo de
-  operadora), for gráfico técnico com paleta própria justificada, ou houver impossibilidade
-  prática de representar a cor via token.
-- A antiga superfície dedicada de IA pode ter tokens escuros especiais residuais no código por
-  compatibilidade/legado — não usar para telas novas do fluxo principal.
-
-### Apêndice A — tabela completa de hex (claro/escuro)
-
-<details>
-<summary>Tema claro</summary>
-
-| Token | Valor |
-| --- | --- |
-| `primary` | `#5B21D6` |
-| `onPrimary` | `#FFFFFF` |
-| `primaryContainer` | `#EAE0FF` |
-| `onPrimaryContainer` | `#210A5C` |
-| `secondary` | `#2851B8` |
-| `onSecondary` | `#FFFFFF` |
-| `secondaryContainer` | `#DCE6FF` |
-| `onSecondaryContainer` | `#001A41` |
-| `surface` | `#FFFFFF` |
-| `surfaceDim` | `#DEDEE1` |
-| `surfaceContainerLowest` | `#FFFFFF` |
-| `surfaceContainerLow` | `#F7F7F8` |
-| `surfaceContainer` | `#F1F1F2` |
-| `surfaceContainerHigh` | `#E8E8EA` |
-| `surfaceContainerHighest` | `#DEDEE1` |
-| `onSurface` | `#1C1B1F` |
-| `onSurfaceVariant` | `#49454F` |
-| `outline` | `#79747E` |
-| `outlineVariant` | `#C8C8CD` |
-| `inverseSurface` | `#313033` |
-| `inverseOnSurface` | `#F4EFF4` |
-| `errorContainer` / `onErrorContainer` | `#FFDAD6` / `#410002` |
-| `successContainer` / `onSuccessContainer` | `#B6F2BE` / `#04210D` |
-| `warningContainer` / `onWarningContainer` | `#FFDDB3` / `#2B1700` |
-
-</details>
-
-<details>
-<summary>Tema escuro</summary>
-
-| Token | Valor |
-| --- | --- |
-| `primary` | `#D0BCFF` |
-| `onPrimary` | `#38137E` |
-| `primaryContainer` | `#4F2FA8` |
-| `onPrimaryContainer` | `#EADDFF` |
-| `secondary` | `#AAC7FF` |
-| `onSecondary` | `#002E69` |
-| `secondaryContainer` | `#1E427A` |
-| `onSecondaryContainer` | `#D9E2FF` |
-| `surface` | `#000000` |
-| `cardSurface` | `#161616` |
-| `cardSurfaceElevated` | `#222222` |
-| `surfaceDim` | `#000000` |
-| `surfaceContainerLowest` | `#000000` |
-| `surfaceContainerLow` | `#121212` |
-| `surfaceContainer` | `#1E1E1E` |
-| `surfaceContainerHigh` | `#2A2A2A` |
-| `surfaceContainerHighest` | `#333333` |
-| `onSurface` | `#F5F2F7` |
-| `onSurfaceVariant` | `#CAC4D0` |
-| `outline` | `#948F99` |
-| `outlineVariant` | `#49454F` |
-| `error` / `onError` | `#FFB4AB` / `#690005` |
-| `success` / `onSuccess` | `#83DA99` / `#00390F` |
-| `warning` / `onWarning` | `#FFB870` / `#4A2900` |
-
-</details>
+- `primary` é ação/marca/seleção; `secondary` é informação categorizada. Não usar `secondary` como CTA nem `primary` como badge informativo.
+- **Verde só sucesso, âmbar só atenção, vermelho só erro/falha.** Sem significado de status, usar `onSurfaceVariant`/`outline`.
+- `phaseDownload`/`phaseUpload` reaproveitam hex de `success`/`warning` de propósito: numa fase do SpeedTest a cor identifica a *fase*, não um veredito.
+- `Color(0x...)` fora do tema só para cor de marca de terceiro (logo de operadora), gráfico técnico com paleta própria justificada ou impossibilidade prática de usar token.
+- Tokens escuros da antiga superfície de IA (`signallQBlack`, `signallQDarkSurface`, `signallQDarkCard`) permanecem em `LkColors` por legado — não usar em telas novas.
 
 ---
 
 ## 3. Tipografia
 
-**Fonte de verdade:** `SignallQTheme.kt` — `signallQTypography`.
+Família única: **Google Sans Flex** (`android/app/src/main/res/font/google_sans_flex_{regular,medium,semibold,bold}.ttf`, SIL OFL 1.1), embutida — sem dependência de rede. Nenhuma tela nova introduz segunda família.
 
-Família única: **Google Sans Flex** (arquivos `.ttf` embutidos em
-`android/app/src/main/res/font/google_sans_flex_*.ttf`, licença SIL OFL 1.1). Nenhuma nova tela
-deve introduzir segunda família tipográfica. Pesos em uso: `400` Normal, `500` Medium, `600`
-SemiBold, `700` Bold. Como a fonte é recurso local, a inicialização não depende de rede; o
-renderizador do Android mantém fallback de glifos para a fonte do sistema quando necessário.
+| Token | Tamanho / linha | Peso | Tracking | Uso |
+|---|---|---|---|---|
+| `displaySmall` (e `displayLarge`/`displayMedium`, mapeados ao mesmo estilo) | 34 / 40 sp | Bold | 0 | Métrica hero |
+| `headlineLarge` (e `headlineMedium`) | 26 / 32 sp | Bold | 0 | Título de tela |
+| `headlineSmall` | 22 / 28 sp | SemiBold | 0 | Título de seção grande |
+| `titleLarge` | 20 / 26 sp | SemiBold | 0 | Título de card/sheet |
+| `titleMedium` | 16 / 22 sp | Medium | 0.1 | Título de linha/item |
+| `titleSmall` | 14 / 20 sp | Medium | 0.1 | Subtítulo, rótulo de campo |
+| `bodyLarge` | 16 / 24 sp | Normal | 0.15 | Corpo principal |
+| `bodyMedium` | 14 / 20 sp | Normal | 0.2 | Corpo secundário |
+| `bodySmall` | 12 / 16 sp | Normal | 0.25 | Legenda, apoio |
+| `labelLarge` | 14 / 20 sp | Medium | 0.1 | Texto de botão |
+| `labelMedium` | 12 / 16 sp | Medium | 0.3 | Badge, chip |
+| `labelSmall` | 11 / 16 sp | Medium | 0.4 | Overline (+ UPPERCASE) |
 
-| Token | Tamanho | Line height | Peso | Tracking | Uso | Máx. linhas recomendado |
-| --- | --- | --- | --- | --- | --- | --- |
-| `displaySmall` | 34 sp | 40 sp | Bold | 0 | Métrica hero (velocidade, resultado principal) | 1 |
-| `headlineLarge` | 26 sp | 32 sp | Bold | 0 | Título de tela principal | 1–2 |
-| `headlineSmall` | 22 sp | 28 sp | SemiBold | 0 | Título de seção grande | 1–2 |
-| `titleLarge` | 20 sp | 26 sp | SemiBold | 0 | Título de card/sheet | 1–2 |
-| `titleMedium` | 16 sp | 22 sp | Medium | 0.1 | Título de linha/item | 1 |
-| `titleSmall` | 14 sp | 20 sp | Medium | 0.1 | Subtítulo, rótulo de campo | 1 |
-| `bodyLarge` | 16 sp | 24 sp | Normal | 0.15 | Corpo de texto principal | sem limite rígido |
-| `bodyMedium` | 14 sp | 20 sp | Normal | 0.2 | Corpo de texto secundário | sem limite rígido |
-| `bodySmall` | 12 sp | 16 sp | Normal | 0.25 | Legenda, texto de apoio | 2–3 |
-| `labelLarge` | 14 sp | 20 sp | Medium | 0.1 | Texto de botão | 1 |
-| `labelMedium` | 12 sp | 16 sp | Medium | 0.3 | Badge, chip | 1 |
-| `labelSmall` | 11 sp | 16 sp | Medium | 0.4 | Overline (+ UPPERCASE) | 1 |
-
-`displayLarge`/`displayMedium`/`headlineMedium` foram removidos da escala (nenhuma tela usa
-estilo maior que `displaySmall`) — não reintroduzir sem validar com Claudete (via `/design-check`).
-
-### Regras de uso
-
-- Preferir sempre `MaterialTheme.typography.*`.
-- Evitar `fontSize = ...sp` e `letterSpacing = ...sp` hardcoded em tela/componente comum.
-- Só usar `TextStyle(...)` manual com motivo técnico real (canvas, chart labels, renderização
-  custom).
-- **Dívida conhecida:** ainda existem telas/componentes com `fontSize`/`letterSpacing`
-  hardcoded — tratar como dívida de padronização ao tocar na área, não replicar o padrão (ver
-  débito registrado ao final deste documento — "~654 literais `.dp` soltos" cobre o mesmo tipo
-  de dívida para espaçamento; tipografia hardcoded é dívida irmã, menor em volume).
+**Regras:** usar `MaterialTheme.typography.*`; evitar `fontSize`/`letterSpacing` hardcoded fora de canvas, labels de gráfico e renderização custom. Ainda há telas com tipografia hardcoded — padronizar ao tocar na área, não replicar.
 
 ---
 
-## 4. Espaçamento e grid
+## 4. Espaçamento
 
-**Fonte de verdade:** `LkSpacing` em `SignallQTheme.kt`. Grid de 8dp, com degraus internos e de
-composição:
+`LkSpacing` (grid de 8 dp com degraus internos):
 
-| Token | Valor | Uso |
-| --- | --- | --- |
-| `xs` | 4 dp | ajustes finos, separações mínimas, distância ícone-texto compacta |
-| `sm` | 8 dp | gaps simples, paddings pequenos, distância ícone-texto padrão |
-| `md` | 12 dp | espaçamento padrão interno, gap entre cards de uma mesma seção |
-| `base` | 16 dp | padding horizontal principal de tela, padding interno de card, margem de tela padrão |
-| `lg` | 20 dp | separações de bloco e grupos mais densos, gap entre seções médias |
-| `xl` | 24 dp | separações claras entre seções, distância acima da bottom nav |
-| `xxl` | 32 dp | grandes blocos ou respiros, espaço entre seções distintas |
-| `xxxl` | 40 dp | grandes aberturas verticais, CTA de onboarding, rodapés |
-| `compositionLarge` | 48 dp | separação entre grandes blocos |
-| `compositionExtraLarge` | 64 dp | separação máxima quando o viewport permitir |
-| `cardContent` | 16 dp | padding interno de card (alias de `base` para o caso específico) |
+| Token | dp | Uso |
+|---|---|---|
+| `xs` | 4 | ajuste fino, ícone-texto compacto |
+| `sm` | 8 | gaps simples, ícone-texto padrão |
+| `md` | 12 | espaçamento interno padrão, gap entre cards da mesma seção |
+| `base` | 16 | margem de tela, padding interno de card (`cardContent`) |
+| `lg` | 20 | separação de blocos densos |
+| `xl` | 24 | separação clara entre seções |
+| `xxl` | 32 | grandes respiros |
+| `xxxl` | 40 | aberturas verticais, CTA de onboarding |
+| `compositionLarge` / `compositionExtraLarge` | 48 / 64 | separação entre grandes blocos |
 
-### Regras de aplicação
-
-- Margem de tela (padding horizontal do conteúdo principal): `base` (16dp).
-- Gap entre seções de uma mesma tela: `xl` (24dp) a `xxl` (32dp), conforme densidade da tela.
-- Gap entre cards dentro da mesma seção: `md` (12dp).
-- Padding interno de card: `base` (16dp), nunca menor que `md` (12dp).
-- Distância ícone→texto: `sm` (8dp) em linha padrão, `xs` (4dp) em contexto compacto (chip,
-  badge).
-- Distância do conteúdo até a bottom nav (`NavigationBar`): pelo menos `xl` (24dp) de respiro
-  antes do último elemento visível, sem contar o próprio padding do sistema.
-- Safe areas: sempre respeitar `WindowInsets` do sistema (status bar, gesture nav, cutout) —
-  nenhum componente deve ser cortado por barra do sistema (ver seção 12).
-- Preferir `LkSpacing` a valores literais (`16.dp`, `24.dp` direto no código). Valor fora da
-  escala é exceção técnica, não padrão visual. Medidas como `3.dp`, `5.dp`, `10.dp`, `11.dp`,
-  `13.dp`, `14.dp` em layout comum são dívida visual conhecida (ver débito registrado ao final).
+**Regras:** margem de tela `base`; gap entre seções `xl`–`xxl`; gap entre cards da mesma seção `md`; padding interno de card `base` (nunca menor que `md`); pelo menos `xl` de respiro acima da barra inferior. Respeitar `WindowInsets` em todo componente. Preferir `LkSpacing` a `.dp` literal — há centenas de literais soltos (dívida de padronização, higiene §4.11): ao tocar um arquivo, trocar o literal local por token, sem expandir a tarefa.
 
 ---
 
-## 5. Raios, bordas e "quando usar o quê"
+## 5. Raios e bordas
 
-**Fonte de verdade:** `LkRadius` em `SignallQTheme.kt`.
+`LkRadius`: `card` 16 dp · `button` 20 dp · `input` 12 dp · `sheet` 28 dp (cantos superiores) · `dialog` 24 dp · `pill` 999 dp (chip/badge). `MaterialTheme.shapes`: small = input, medium = card, large = dialog, extraLarge = sheet.
 
-| Componente | Token | Valor |
-| --- | --- | --- |
-| Card | `LkRadius.card` | 16 dp |
-| SheetFrame | `LkRadius.sheet` | 28 dp (cantos superiores) |
-| Button | `LkRadius.button` | 20 dp |
-| Field (input) | `LkRadius.input` | 12 dp |
-| Chip / Badge | `LkRadius.pill` | 999 dp |
-| Dialog | — | 24 dp |
+**Decisão do Luiz (2026-07-19) — borda nunca separa container do fundo.** A separação de card/container é **sempre** por diferença tonal de superfície (seção 6). Borda só quando é parte funcional da forma do componente: campo outlined, botão outlined, checkbox, switch desligado, segmented button, indicador de seleção; e hairline funcional entre duas regiões adjacentes do mesmo tom (ex.: faixa de tabs e conteúdo).
 
-Esses papéis também alimentam `MaterialTheme.shapes`: input nos shapes pequenos, card no médio,
-dialog no grande e sheet no extra grande. `LkRadius` permanece disponível para compatibilidade.
-
-### Quando usar card vs. borda vs. elevação vs. só diferença de superfície
-
-| Situação | Solução recomendada |
-| --- | --- |
-| Agrupar conteúdo relacionado, sem ação direta | `surfaceContainer` (nível 1), sem borda, sem sombra |
-| Separar container/card do fundo | **nunca borda** — diferença tonal de superfície (nível 1+), ver seção 6 |
-| Separar duas regiões adjacentes do mesmo tom (ex.: faixa de tabs e conteúdo abaixo) | hairline `1dp outlineVariant` é aceitável — não é separação de container, é divisor entre elementos sem profundidade própria |
-| Elemento interativo/selecionável | `surfaceContainerHigh` (nível 2) + leve elevação — nunca borda+sombra ao mesmo tempo sem justificativa |
-| Conteúdo já numa lista simples (linha única, texto+ícone) | **não usar card** — usar `LazyColumn` com divisor (`LkSheetDivider`) ou espaçamento, card aqui é ruído visual |
-| Dado é a própria tela (ex.: resultado de SpeedTest) | sem card — o fundo da tela já é a superfície |
-
-**Regra de "quando NÃO usar card":** se o conteúdo é uma única linha (ícone+texto+ação) dentro de
-uma lista maior, ou se o card não agrega nada além de "uma caixa ao redor de texto", prefira
-espaçamento a um card cheio. Card em excesso é a causa mais comum de poluição visual identificada
-em auditorias anteriores.
-
-**Decisão do Luiz (2026-07-19) — borda nunca separa container do fundo.** Borda como recurso
-passivo de contêiner ("cara de IA", malacabado) está proibida em qualquer componente do Design
-System (consumer). A separação de um card/container em relação ao fundo é **sempre** por
-diferença tonal de profundidade (seção 6) — nunca por hairline. Borda continua permitida **só**
-quando é parte funcional da forma do próprio componente: campo de texto outlined, botão outlined,
-checkbox, switch (estado desligado), controle segmentado (outlined segmented button), indicador de
-seleção. Divisor funcional entre duas regiões adjacentes do mesmo tom (ex.: `Tabs` — a faixa de
-tabs e o conteúdo abaixo não têm profundidade diferente entre si) também é permitido, mas isso não
-é "separação de container do fundo" e não deve ser confundido com o padrão proibido.
-
-Achado corrigido nesta revisão (não é débito, já resolvido): `Card` (React, `packages/design-system/src/layout/Card.tsx`)
-usava `background: bgCard` que, no tema claro, valia exatamente o mesmo `#FFFFFF` do fundo da tela
-(`bgPrimary`) — a única coisa que separava o card do fundo era a borda de 1px. Corrigido trocando o
-fundo para `depthLevel1Tint` (à época `#F3EEFA` claro / `#211F26` escuro) e removendo a borda. O
-par 2.0 dedicado para cards agora é `#F7F7F8` / `#161616`. Mesmo padrão
-corrigido em `BottomNav.tsx` (trocado `borderTop` por fundo `depthLevel1Tint`).
+| Situação | Solução |
+|---|---|
+| Agrupar conteúdo relacionado sem ação | `surfaceContainer`, sem borda nem sombra |
+| Separar container do fundo | diferença tonal (nível 1+), nunca borda |
+| Elemento interativo/selecionável | `surfaceContainerHigh` + leve elevação; nunca borda + sombra juntas sem justificativa |
+| Linha única numa lista | sem card — lista com divisor (`LkSheetDivider`) ou espaçamento |
+| Dado que é a própria tela (resultado de SpeedTest) | sem card — o fundo já é a superfície |
 
 ---
 
-## 6. Profundidade e hierarquia de superfícies (4 níveis)
+## 6. Profundidade (4 níveis)
 
-Sistema formal de profundidade, aplicado de forma equivalente nos três produtos do ecossistema
-(consumer, Pro, Console) — só os nomes de token mudam por produto. Aqui documentado com os tokens
-do consumer (`LkColors`/`colors_and_type.css`).
+| Nível | Papel | Token | Exemplo |
+|---|---|---|---|
+| 0 | Fundo da tela | `surface` | fundo de `Inicio2Screen`, `SinalScreen` |
+| 1 | Conteúdo agrupado | `cardSurface` / `surfaceContainer` — sem sombra, sem borda | card de resumo, lista de dispositivos |
+| 2 | Interativo/destacado/selecionado | `cardSurfaceElevated` ou `surfaceContainerHigh` | recomendação prioritária, rede Wi-Fi conectada |
+| 3 | Sobreposto | `surfaceContainerHighest` + scrim | `LkSheetFrame`, `ConfirmacaoDialog`, `LgpdConsentDialog` |
 
-### Os 4 níveis
+**Seleção = diferença de superfície (`surfaceContainerHigh`) + cor de destaque (`primary`), nunca só sombra.** Não há token nomeado para "superfície selecionada": hoje é resolvido por componente.
 
-| Nível | Papel | Token de superfície | Sombra/borda | Exemplo real no app |
-| --- | --- | --- | --- | --- |
-| **0 — Fundo da tela** | Plano base, não compete com o conteúdo | `surface` / `background` | Nenhuma | Fundo de `Inicio2Screen`, `SinalScreen` |
-| **1 — Conteúdo agrupado** | Cards comuns, métricas, listas | `cardSurface` | Sem sombra; **nunca borda** — separação é só pelo tint de superfície | Card de resumo, lista de dispositivos |
-| **2 — Conteúdo interativo/destacado** | Selecionado, recomendação prioritária, controles interativos | `cardSurfaceElevated` ou `surfaceContainerHigh` + `color.surface.selected` | Contraste tonal maior, pode ter borda de destaque suave e sombra discreta | `RecommendationEngineCard` em destaque, rede Wi-Fi conectada |
-| **3 — Sobreposto** | Dialogs, bottom sheets, menus, tooltips | `surfaceContainerHighest` | Sombra ou scrim controlado, contraste suficiente | `LkSheetFrame`, `ConfirmacaoDialog`, `LgpdConsentDialog` |
+**Regras:** card não parece elevado se não for interativo ou prioritário; no escuro priorizar elevação tonal sobre sombra; sem glow permanente nem glassmorphism; gradiente só em ação principal, estados especiais, marca (avatar/logo), promocional secundário ou dado quando necessário; nunca borda + sombra + glow + gradiente no mesmo elemento; componentes equivalentes têm o mesmo nível em qualquer tela; cards aninhados no máximo 2 níveis visuais; sheets e modais sempre nível 3.
 
-`color.surface.selected` é o token que estava faltando — hoje o estado "selecionado" é resolvido
-ad hoc por componente (ex.: cor de texto/ícone muda, mas a superfície nem sempre muda junto).
-Formalizado aqui: **seleção = diferença de superfície (`surfaceContainerHigh`) + cor de destaque
-(`primary`), nunca só sombra.**
+**Elevação em código:** `LkElevation` (`level0` 0 · `level1` 1 · `level2` 3 · `level3` 6 dp). **State layers** (`LkStateLayer`): hover 0.08 · focus 0.10 · pressed 0.12 · dragged 0.16 · disabled 0.38. **Movimento** (`LkMotion`): microinteração 200 ms, transição de container 300 ms, easing `cubic-bezier(.2, 0, 0, 1)`; com movimento reduzido ativo usar `durationMillis(..., reducedMotion = true)` (0 ms).
 
-Scrim (nível 3, fundo de dialog/bottom sheet modal) está disponível em `LkTokens.scrim`:
-`rgba(0,0,0,.5)` claro / `rgba(0,0,0,.6)` escuro.
-
-### Regras de aplicação (obrigatórias)
-
-- Profundidade comunica hierarquia/interação, **nunca decoração**.
-- Card não deve parecer elevado se não for interativo ou prioritário.
-- Evitar sombra forte no tema escuro — priorizar elevação tonal (diferença de superfície) sobre
-  sombra.
-- Sem glow permanente. Sem glassmorphism como linguagem principal (regra já existente,
-  reforçada aqui). Sem gradiente em todo componente — gradiente só em: ação principal, estados
-  especiais, marca (avatar/logo), promocional secundário, ou visualização de dados quando
-  necessário. Hoje usado com moderação (avatar, barra de progresso) — deve continuar assim.
-- Nunca misturar borda + sombra + glow + gradiente no mesmo elemento.
-- Profundidade igual para componentes equivalentes (dois cards do mesmo tipo têm o mesmo nível,
-  em qualquer tela).
-- Seleção usa diferença de superfície + cor, não só sombra.
-- Cards aninhados no máximo 2 níveis visuais (ex.: card nível 1 pode conter um chip/badge nível
-  2, mas não um card nível 1 dentro de outro card nível 1).
-- Botão primário pode ter leve elevação, mas sem parecer desconectado do restante da tela.
-- Bottom nav é superfície acima do conteúdo, sem sombra pesada e **sem hairline** — a separação é
-  só por diferença de tint de superfície (`depthLevel1Tint`/`surfaceContainer`), nunca por borda.
-  React (`packages/design-system/src/layout/BottomNav.tsx`) corrigido em 2026-07-19 (removido
-  `borderTop`, fundo passou a `depthLevel1Tint`). **Débito identificado, não corrigido nesta
-  revisão** (fora do escopo — mexe em `.kt` de produção): o Kotlin (`AppShell.kt`, função que
-  monta o `NavigationBar`) já usa `containerColor = c.surfaceContainer` corretamente, mas ainda tem
-  `HorizontalDivider(color = c.outlineVariant, thickness = 1.dp)` logo acima da barra — é
-  exatamente o padrão de borda-como-separação-de-container que esta decisão elimina. Ajustar
-  requer tocar `AppShell.kt` (fora do escopo desta tarefa) — registrar/atualizar issue de higiene
-  quando essa mudança for priorizada.
-- Bottom sheets/modais com profundidade claramente superior à tela base (nível 3, sempre).
-
-### Tema escuro
-
-- Fundo-base em preto absoluto (`surface = #000000`) e superfícies mais elevadas progressivamente
-  mais claras; preto-base não significa usar a mesma cor em todas as camadas.
-- Contraste tonal progressivo entre os 4 níveis.
-- Sombra sutil, complementar — não a forma principal de separação.
-- Bordas com baixa opacidade.
-- Evitar cards cinza idênticos sobre fundo cinza idêntico (checar visualmente: nível 1 e nível 2
-  devem ser discrimináveis sem depender só de zoom).
-
-### Tema claro
-
-- Diferença de branco/cinza-claro entre planos (confirmado: `surface = #FFFFFF`,
-  `surfaceContainer = #F3EEFA`, degradê suave). É o tema onde o erro de "card some no fundo" é
-  mais fácil de acontecer (diferença tonal menor que no escuro) — checar sempre com o próprio
-  `bgCard`/token de fundo, nunca assumir que a borda vai disfarçar uma diferença tonal insuficiente.
-- Sombras leves, difusas, pouco opacas.
-- Evitar visual de vários cartões flutuando ao mesmo tempo na mesma tela.
-- Nunca usar borda para compensar diferença tonal fraca — se o tint não for suficiente, o ajuste é
-  no valor do token (`depthLevel1Tint` etc.), não reintroduzir hairline.
-
-### Critérios de aceite
-
-- Usuário percebe claramente fundo / conteúdo / seleção / sobreposição sem precisar de tooltip.
-- Card comum não parece modal.
-- Modal/bottom sheet se destaca claramente do conteúdo abaixo.
-- Elemento interativo é identificável sem depender só de sombra.
-- Profundidade é consistente entre todas as telas (mesmo componente, mesmo nível, em qualquer
-  lugar do app).
-- Tema escuro não pode parecer uma coleção de retângulos cinza no mesmo plano.
-
-**Estado real de implementação:** a camada de foundations existe em Kotlin desde a issue #1649.
-`LkSurfaceCard` preserva integralmente assinatura e comportamento legados; seus consumidores não
-migram implicitamente. A variante opt-in `SignallQSurfaceCard` usa `cardSurface` por padrão ou
-`cardSurfaceElevated` com elevação tonal/sombra discreta quando `elevated = true`. O piloto isolado
-é `OperadoraContactCard`; os demais componentes e telas continuam no contrato legado até suas
-fatias verticais. Não fazer varredura oportunista nem inverter o default antes dessas validações.
+**Débito conhecido:** `AppShellBottomBar.kt` ainda desenha `HorizontalDivider(color = outlineVariant)` acima da barra inferior — é o padrão de borda-como-separação que a decisão acima elimina; a barra já usa `surfaceContainer`. Corrigir ao tocar o arquivo (higiene §4.11/§8).
 
 ---
 
-## 7. Biblioteca de componentes
+## 7. Componentes
 
-**Localização real:** `android/app/src/main/kotlin/io/signallq/app/ui/component/`. A biblioteca
-2.0 opt-in está separada por responsabilidade em `SignallQControls.kt`,
-`SignallQContainers.kt`, `SignallQFeedbackTone.kt` e `SignallQScreenState.kt`; o catálogo de previews
-claro/escuro vive em `SignallQComponentPreviews.kt`. Os componentes `Lk*` e `ConfirmacaoDialog`
-continuam disponíveis com seus contratos legados. `OfflineBanner.kt` e `StatefulScreen.kt`
-(pré-2.0) foram removidos na issue #1673 (Task 2.0.25, épico #1647) — zero consumidor de produção
-restante; `git show <sha-anterior-à-remoção>:android/app/src/main/kotlin/io/signallq/app/ui/component/OfflineBanner.kt`
-recupera o histórico se necessário.
+Localização: `android/app/src/main/kotlin/io/signallq/app/ui/component/`. Dois conjuntos convivem:
 
-### APIs centrais 2.0 opt-in
+- **Legado `Lk*`** (`BaseComponents.kt` e correlatos) — contratos preservados, ainda a base da maioria das telas: `LkSurfaceCard`, `LkSectionOverline`, `LkPillBadge`, `LkStatusDot`, `LkSheetSectionTitle`, `LkInlineBulletText`, `LkInfoCallout`, `LkNumberedStep`, `LkSheetInfoRow`, `LkSheetDivider`, `LkSheetFrame`, `LkSymbol`, mais `ConfirmacaoDialog` e `LgpdConsentDialog`.
+- **Biblioteca 2.0 opt-in** — `SignallQControls.kt`, `SignallQContainers.kt`, `SignallQFeedbackTone.kt`, `SignallQScreenState.kt` (catálogo de previews em `SignallQComponentPreviews.kt`):
+  - controles: `SignallQButton`, `SignallQTextField`, `SignallQChoiceChip`, `SignallQBadge`;
+  - estrutura: `SignallQListRow`, `SignallQSurfaceCard` (`BaseComponents.kt`), `SignallQTopAppBar`, `SignallQNavigationBar`, `SignallQSheet`, `SignallQDialog`, `SignallQExpandableDetails`;
+  - feedback: `SignallQBanner`, `SignallQProgress`, `SignallQResultBlock`, `SignallQTranslatedMetric`, `SignallQSkeleton`, `SignallQOfflineBanner`;
+  - tela: `SignallQStatefulScreen` (loading, conteúdo, vazio, offline, permissão necessária, erro recuperável).
 
-- controles: `SignallQButton`, `SignallQTextField`, `SignallQChoiceChip` e `SignallQBadge`;
-- estrutura: `SignallQListRow`, `SignallQSurfaceCard`, `SignallQTopAppBar`,
-  `SignallQNavigationBar`, `SignallQSheet`, `SignallQDialog` e `SignallQExpandableDetails`;
-- feedback: `SignallQBanner`, `SignallQProgress`, `SignallQResultBlock`,
-  `SignallQTranslatedMetric` e `SignallQSkeleton`;
-- tela: `SignallQStatefulScreen`, com loading, conteúdo, vazio, offline, permissão necessária e
-  erro recuperável.
+  Alvo interativo mínimo de 48 dp, sem depender só de cor, texto multilinha. **Adoção é incremental:** `SignallQSurfaceCard` tem um único consumidor de produção (`OperadoraContactCard`) e os demais seguem em `LkSurfaceCard` — não inverter o default nem varrer oportunisticamente. `SignallQOfflineBanner` está em `DispositivosScreen` e `SinalScreen`; `SignallQStatefulScreen` em `DiagnosticoGuiadoProcessandoSection`. `SignallQComponentsContractTest` trava a lista de consumidores.
+- **Estado de tela:** `SignallQScreenState<T>` é o modelo para estado de tela (cobre `Offline` e `PermissionRequired`); `PingScreen` já migrou. O legado `UiState<T>` (`ui/state/UiState.kt`) ainda é usado por `MainViewModel`/`AppShell` (IP local/público e ISP) — migrar é trabalho futuro. Telas de fluxo local ou wizard (Equipamento de Internet, Modo gamer, Histórico, Ajustes, Monitoramento) mantêm tratamento de estado próprio por decisão registrada: o modelo cobre disponibilidade de conteúdo, não passos de navegação nem feedback transitório de ação.
 
-Essas APIs usam Material 3 diretamente, têm alvo mínimo interativo de 48 dp, não dependem apenas
-de cor para comunicar feedback e aceitam texto multilinha. A adoção é incremental: a issue #1663
-tornou `DispositivosScreen` o primeiro piloto de `SignallQOfflineBanner`; a issue #1672 (Task
-2.0.24, épico #1647) expandiu para `SinalScreen` (as três abas Wi-Fi/Canal/Móvel), substituindo o
-`OfflineBanner()` legado (removido na issue #1673) que a tela usava por engano desde a extração da
-issue #1660 — nenhuma outra tela migrada ganhou o banner ainda (`SignallQComponentsContractTest`
-trava a lista exata).
-`SinalWifiScreen` (issue #1668) é o único consumidor de `SignallQStatefulScreen` completo (estados
-Loading/Content/Empty/Offline/PermissionRequired/RecoverableError). Não houve alteração de
-navegação, ViewModel, telemetria, regra de negócio ou placement de anúncio nesta expansão.
+### Padrões de estrutura
 
-**Matriz de avaliação encerrada (issue #1779, lote 3, 2026-08-20):** as demais telas 2.0
-(`EquipamentoInternetScreen` #1664, `DnsScreen` #1665, `MonitoramentoSheet` #1666,
-`ModoGamerScreen` #1667, `HistoricoScreen` #1669, `AjustesScreen` #1670, `OnboardingScreen`
-#1671) foram avaliadas individualmente e **mantidas deliberadamente** com tratamento de estado ad
-hoc — não é dívida pendente, é decisão registrada por tela:
-- `EquipamentoInternetScreen`: acesso é só LAN (via `ExecutorFibra` ao gateway), nunca depende de
-  internet — a variante `Offline` de `SignallQScreenState` não se aplica. Os 3 estados de "acesso
-  indisponível" (`CREDENCIAIS_NECESSARIAS`/`SOMENTE_IDENTIFICACAO`/`SESSAO_EXPIRADA`) já têm
-  ícone, texto e **múltiplas** ações contextuais (até 3 CTAs simultâneos: tentar novamente, abrir
-  no navegador, falar com suporte, revisar configurações) — mais rico do que o único
-  `actionLabel`/`onAction` que `SignallQFullScreenState` aceita hoje; forçar a migração perderia
-  CTAs sem ganho de arquitetura.
-- `MonitoramentoSheet`: sheet de toggles locais (DataStore via callback), sem carregamento
-  assíncrono, sem dependência de internet, sem gate de permissão nesta composable — não há
-  máquina de estado alguma para substituir.
-- `ModoGamerScreen`: fluxo de wizard por etapa (`ModoGamerEtapa`), não uma tela de
-  carregamento/conteúdo — `SignallQScreenState` modela disponibilidade de conteúdo, não passos de
-  navegação. As duas operações assíncronas (medição extra de ping, explicação por IA via
-  `AnalisadorState` compartilhado com `DiagnosticoGuiadoScreen`) já degradam sem esvaziar a tela
-  (o veredito do motor local nunca some).
-- `HistoricoScreen`: dado 100% local (Room), sem dependência de internet. `EmptyHistorico` já
-  diferencia "nenhum teste ainda" de "nenhum teste para este filtro", cada um com CTA própria —
-  já cumpre "explica situação, limite e próximo passo".
-- `AjustesScreen`: configuração local síncrona (DataStore via ViewModel), sem estado de
-  carregamento/vazio/offline/permissão na composable. O único estado assíncrono do arquivo
-  (`AcaoDadosLocaisEstado`, issue #1670: Ocioso/EmAndamento/Sucesso/Falha de uma ação destrutiva
-  dentro da `DadosLocaisSheet`) é feedback transitório de ação, não disponibilidade de conteúdo de
-  tela — categoria diferente do que `SignallQScreenState` cobre.
-
-`DnsScreen` e `OnboardingScreen` mantêm a avaliação já registrada no lote anterior (#1779, comentário
-do lote 2): `DnsScreen` é um card inline com lógica própria (`semDadosOffline`) sem os dois sistemas
-de estado coexistindo; `OnboardingScreen` é fluxo local, não se aplica.
-
-Com esta rodada, a matriz de #1672/#1779 está com todas as 15 telas do escopo original avaliadas —
-nenhuma pendência de arquitetura de estado de tela restante nesta frente.
-
-**Unificação de `UiState` → `SignallQScreenState` (issue #1779, decisão do Luiz 2026-08-20):** o
-sistema tipado genérico legado `UiState<T>` (`ui/state/UiState.kt`) não deveria coexistir com
-`SignallQScreenState<T>` — quem tinha `UiState<T>` como estado de tela migra para
-`SignallQScreenState<T>`, que já cobre `Offline`/`PermissionRequired` que `UiState` não tem.
-`PingScreen` migrou nesta issue: seu `PingScreenViewModel` expõe `SignallQScreenState<PingUiData>`
-em vez de `UiState<PingUiData>`, sem trocar o layout — continua com `when` inline (não adotou
-`SignallQStatefulScreen`, que impõe um layout de tela cheia incompatível com o cabeçalho fixo do
-bloco de destino). Mapeamento: o antigo `UiState.Empty` (estado inicial, antes da 1ª execução) virou
-`SignallQScreenState.Loading` — visualmente idêntico, já que a UI sempre renderizava o bloco de
-execução em progresso 0 para os dois; `UiState.Success<PingUiData>` virou
-`SignallQScreenState.Content<PingUiData>`; `UiState.Error` virou
-`SignallQScreenState.RecoverableError`. `UiState<T>` **não ficou órfão**: `MainViewModel`/
-`AppShell` (estado de IP local/público e ISP) continua usando-o — migrar isso fica para uma
-próxima rodada, registrada em comentário da issue #1779. O componente legado `StatefulScreen.kt`
-que também usava `UiState<T>` foi removido na issue #1673 (Task 2.0.25) — zero consumidor de tela
-ativo, só sobrevivia porque `SignallQComponentsContractTest` o travava de propósito.
-
-### TopBar
-
-Dois padrões oficiais:
-1. `CenterAlignedTopAppBar` — título centralizado, `ProfileAvatarButton` à esquerda, ação
-   contextual à direita. Padrão da maioria das telas de nível superior (Início, Velocidade,
-   Sinal, Histórico).
-2. TopBar com seta de voltar — telas secundárias/fluxos profundos, título alinhado à esquerda.
-
-Contexto especial (ex.: TopBar de sheet com título+subtítulo) só é aceitável com justificativa
-documentada — não criar terceiro padrão sem necessidade real de conteúdo que os dois primeiros
-não comportem.
-
-### BottomNav
-
-`NavigationBar` de 4 raízes (Início · Velocidade · Histórico · Ferramentas; Perfil é overlay, não raiz —
-ver nota de navegação no `.claude/CLAUDE.md`). Ícone `FILL 1` só no item ativo.
-
-### Botões (variantes)
-
-CTA primário sólido (`primary`), CTA secundário outline, CTA texto/link, botão de ícone
-(`IconButton` 40×40 circular), botão destrutivo (usa `error`), botão desabilitado (opacidade
-reduzida, sem cor semântica), botão de anúncio nativo (outline violeta, nunca sólido — ver seção
-10), segmented button (seletor Rápido/Completo/Triplo do SpeedTest), FAB (quando aplicável).
-
-### Cards (variantes, 8)
-
-Card de resumo/métrica, card de recomendação (`RecommendationEngineCard`), card de rede Wi-Fi
-(conectada/disponível), card de dispositivo, card de status de conexão, card informativo
-(`LkInfoCallout`), card de anúncio nativo (`NativeAdCard`), card de oferta simulada
-(`SimulatedOfferCard`). Não misturar padrões entre eles — cada card variante tem seu próprio
-arquivo/composable, não reimplementar visualmente um dos 8 sem reaproveitar o componente.
-
-GH#1682 — `ContextualQuestionCard`/`PulseResultCard` (card de pergunta contextual/resultado
-pulsante do motor de chat SignallQ Pulse) foram removidos por não terem consumidor de UI; não
-recriar esse padrão visual — o app não tem chat conversacional (decisão de produto #564).
-
-### Chips / Tabs / Segmented / Badges
-
-Chip de filtro (banda Wi-Fi: Todos/2.4/5/6 GHz), chip de status (`LkPillBadge`), badge de
-disclosure de anúncio (`AdBadge`), badge de operadora (`OperadoraBadge`), tabs de navegação
-interna (ex.: dentro de Fibra/Equipamento). Cada um com raio `pill` (999dp), sem misturar
-formato quadrado/pill no mesmo grupo.
-
-### Catálogo de ícones por conceito de rede
-
-Material Symbols Outlined — `wifi` (Wi-Fi), `cell_tower` (rede móvel), `router` (roteador/fibra),
-`speed` (velocidade/SpeedTest), `dns` (DNS), `devices` (dispositivos conectados), `history`
-(histórico), `signal_cellular_alt` (barras de sinal móvel — glyph vertical customizado via
-`SpeedBarsChart`/barras próprias, não o ícone Material puro), `warning`/`error`/`check_circle`
-(estados semânticos). Ver seção 15 para regras gerais de ícone.
-
-### Métricas / dados
-
-Padrão obrigatório: **valor + unidade + label + estado + veredito**. Nunca exibir ausência de
-dado como se fosse valor válido — usar os símbolos:
-- `—` (travessão) quando o dado simplesmente não foi coletado ainda.
-- Skeleton/shimmer quando está carregando.
-- Estado de erro explícito (ícone + texto) quando a coleta falhou.
-- Rótulo "Simulado"/"Estimado" quando o valor não vem de medição real (ver seção 10).
+- **TopBar:** (1) `CenterAlignedTopAppBar` com ação contextual — padrão das telas de nível superior; (2) TopBar com seta de voltar — telas secundárias. Não criar terceiro padrão sem conteúdo que os dois não comportam.
+- **Barra inferior:** `NavigationBar` de 4 raízes (Início · Velocidade · Histórico · Ferramentas); Ajustes é overlay (ver `technical/SCREEN_MAP.md`). Ícone com `FILL 1` só no item ativo.
+- **Botões:** primário sólido (`primary`), secundário outline, texto/link, `IconButton` 40×40, destrutivo (`error`), desabilitado (opacidade reduzida, sem cor semântica), anúncio nativo (outline, nunca sólido).
+- **Cards (variantes):** resumo/métrica, recomendação, rede Wi-Fi (conectada/disponível), dispositivo, status de conexão, informativo (`LkInfoCallout`), anúncio nativo (`NativeAdCard`), oferta simulada (`SimulatedOfferCard`). Cada variante tem seu próprio composable — reaproveitar em vez de reimplementar.
+- **Chips/badges:** raio `pill`; chip de filtro (banda Wi-Fi), chip de status (`LkPillBadge`), disclosure de anúncio (`AdBadge`), operadora (`OperadoraBadge`, fundo branco fixo + `outlineVariant` para o logo). Não misturar quadrado e pill no mesmo grupo.
+- **Métricas:** padrão **valor + unidade + label + estado + veredito**. Ausência de dado nunca como valor: `—` quando não coletado; skeleton ao carregar; erro explícito (ícone + texto) quando falhou; rótulo "Simulado"/"Estimado" quando não vem de medição real.
+- **Avatar de perfil:** `UserAvatar`/`AvatarNucleo` existem; `ProfileAvatarButton` não tem consumidor em telas hoje — confirmar antes de reutilizar.
+- **Não recriar:** padrão visual do chat "SignallQ Pulse" (`ContextualQuestionCard`/`PulseResultCard`, removidos em GH#1682) nem `OfflineBanner`/`StatefulScreen` pré-2.0 (removidos em #1673).
 
 ---
 
 ## 8. Estados e variantes
 
-### Catálogo de 7 estados semânticos
+| Estado | Cor | Ícone | Texto |
+|---|---|---|---|
+| Excelente / Bom | `success` | `check_circle` | "Excelente" / "Bom" |
+| Regular | `warning` | `warning` | "Regular" |
+| Ruim / Fraco | `error` | `error` | "Fraco" |
+| Crítico | `error` (ênfase, ex. container) | `error` | "Crítico" |
+| Indisponível | `onSurfaceVariant`/`outline` | `block`/`wifi_off` | "Indisponível" |
+| Desconhecido | `onSurfaceVariant`/`outline` | `help` | "Não foi possível medir" |
 
-| Estado | Cor | Ícone | Texto (exemplo) | Uso |
-| --- | --- | --- | --- | --- |
-| Excelente | `success` | `check_circle` | "Excelente" | Veredito de métrica muito boa |
-| Bom | `success` (tom levemente mais neutro se necessário distinguir de Excelente) | `check_circle` | "Bom" | Veredito de métrica boa |
-| Regular | `warning` | `warning` | "Regular" | Veredito de métrica mediana |
-| Ruim / Fraco | `error` | `error` | "Fraco" | Veredito de métrica ruim |
-| Crítico | `error` (ênfase, ex. container) | `error` | "Crítico" | Falha grave, ação urgente necessária |
-| Indisponível | `onSurfaceVariant`/`outline` | `block`/`wifi_off` | "Indisponível" | Recurso não aplicável ao contexto (ex. sem SIM) |
-| Desconhecido | `onSurfaceVariant`/`outline` | `help` | "Não foi possível medir" | Coleta falhou sem erro classificável |
-
-Regra: cor + ícone + palavra sempre juntos — nunca depender só de cor para comunicar estado
-(acessibilidade, seção 11).
-
-### Estados de interação (formalizados)
-
-| Estado | Opacidade/tratamento |
-| --- | --- |
-| `hover` | 8% overlay sobre `onSurface`/`onPrimary` |
-| `focus` | 10% overlay + indicador visível (não só cor) |
-| `pressed` | 12% overlay |
-| `dragged` | 16% overlay |
-| `disabled` | opacidade reduzida (~38%), sem cor semântica aplicada |
-| `loading` | skeleton/shimmer no lugar do conteúdo final, nunca card vazio sem indicação |
-
-Vale para: card clicável, itens de lista/sheet, tabs, ações de TopBar, chips tocáveis.
-
-Os alphas vivem em `LkStateLayer`. Durações e easing vivem em `LkMotion`: microinterações usam
-200 ms, transições de container usam 300 ms e o easing padrão é `cubic-bezier(.2, 0, 0, 1)`.
-Consumidores devem chamar `durationMillis(..., reducedMotion = true)` quando a preferência de
-movimento reduzido estiver ativa, eliminando deslocamento temporal. A adoção componente a
-componente é rastreada pela #1169 e pelas fatias do épico #1647.
+Cor + ícone + palavra **sempre juntos**. Estados de interação seguem `LkStateLayer` (seção 6); `loading` usa skeleton/shimmer no lugar do conteúdo final, nunca card vazio.
 
 ---
 
-## 9. Regras de gráficos
+## 9. Gráficos
 
-- Legenda sempre visível quando há mais de uma série; nunca depender só de cor pra diferenciar
-  série (usar também label/ícone).
-- Eixos com unidade explícita (Mbps, ms, dBm, canal).
-- Escala e grid discretos — linhas de grid em `outlineVariant`, nunca competindo com o dado.
-- Cores seguem `color.data.*` (seção 2) quando o gráfico for de fase de SpeedTest; fora disso,
-  usar `primary`/`secondary`/status conforme semântica real.
-- Tooltip (quando aplicável) usa nível 3 de profundidade (sobreposto).
-- Estado vazio: nunca um gráfico em branco sem explicação — texto "Sem dados suficientes ainda"
-  ou equivalente, com o veredito "Desconhecido" (seção 8).
-
-### Regras específicas — gráfico de canais Wi-Fi (`WifiChannelGuide`)
-
-- Canais válidos só por faixa real (2.4 GHz: 1–13 no Brasil; 5 GHz: canais UNII conforme
-  regulação; 6 GHz: canais Wi-Fi 6E) — nunca desenhar canal fora da faixa real do padrão.
-- Sem sobreposição de labels de canal — se a densidade de redes for alta, agrupar ou truncar
-  antes de deixar texto sobreposto.
-- Destaque visual claro da rede conectada (nível 2 de profundidade — cor `primary` ou
-  `secondary`, conforme a rede seja a ativa do usuário).
-- Redes ocultas (SSID vazio/oculto) agrupadas visualmente, não listadas uma a uma competindo com
-  redes nomeadas.
+- Legenda visível quando há mais de uma série; nunca só cor para diferenciar série.
+- Eixos com unidade explícita (Mbps, ms, dBm, canal); grid discreto em `outlineVariant`.
+- Cores seguem `phase*` para fases de SpeedTest; fora disso, `primary`/`secondary`/status conforme a semântica real.
+- Tooltip em nível 3. Estado vazio nunca é gráfico em branco — "Sem dados suficientes ainda" + estado "Desconhecido".
+- **Gráfico de canais Wi-Fi (`WifiChannelGuide`):** só canais reais da faixa (2.4 GHz: 1–13 no Brasil; 5 GHz: UNII conforme regulação; 6 GHz: Wi-Fi 6E); sem sobreposição de labels (agrupar/truncar); rede conectada em destaque (nível 2); redes ocultas agrupadas.
 
 ---
 
-## 10. Conteúdo simulado (anúncio nativo / ofertas)
+## 10. Conteúdo patrocinado (anúncio nativo / ofertas)
 
-Formalizado a partir do que já existe em `SimulatedOfferCard`/`NativeAdCard`/`AdBadge`:
+Componentes em `ui/component/ads/` (`AdBadge`, `NativeAdCard`, `NativeAdRow`, `NativeAdListRow`, `SimulatedOfferCard`, `DashedBorder`, `NativeAdCtaButton`, `NativeAdIconChip`) e carregamento em `ui/ads/`.
 
-- **Identificação sempre visível** — badge "Patrocinado" (tom neutro, AdMob) ou "Parceiro" (tom
-  `secondary`/`accentBlue`, afiliado/parceiro curado). Nunca omitir o disclosure.
-- **Hierarquia secundária** — conteúdo patrocinado nunca compete visualmente com o resultado
-  orgânico do diagnóstico; usa borda tracejada (`DashedBorder`, nunca sólida), CTA outline
-  (nunca sólido — sólido é exclusivo do CTA primário orgânico), sem foto/hero, ícone do
-  anunciante em chip quadrado (nunca círculo).
-- **Sem promessa técnica não comprovada** — copy de oferta não pode alegar resultado técnico
-  específico ("dobra sua velocidade") sem base real.
-- Componente inteiro é **omitido** (não vira placeholder vazio) quando não há criativo
-  carregado.
-- Três variantes por contexto, nunca escolha por preferência: `NativeAdCard` (card cheio,
-  dispensável), `NativeAdRow` (linha compacta), `NativeAdListRow` (linha dentro de lista
-  existente).
-
-Referência completa: `docs_ai/_archive/COMPONENTS_ANDROID.md` (seção "Monetização — Anúncio
-Nativo", preservada no arquivo histórico) e os componentes reais em
-`android/app/.../ui/component/ads/`.
+- **Disclosure sempre visível** — "Patrocinado" (neutro, AdMob) ou "Parceiro" (tom `secondary`, afiliado/curado); nunca omitir nem disfarçar de componente orgânico.
+- **Hierarquia secundária** — nunca compete com o resultado orgânico; borda tracejada (`DashedBorder`), CTA outline (sólido é exclusivo do CTA primário orgânico), sem foto/hero, ícone do anunciante em chip quadrado.
+- **Sem promessa técnica não comprovada** ("dobra sua velocidade").
+- **Sem criativo carregado, o componente é omitido** — não vira placeholder.
+- Três variantes por contexto, não por preferência: `NativeAdCard` (cheio, dispensável), `NativeAdRow` (linha compacta), `NativeAdListRow` (linha dentro de lista existente).
 
 ---
 
 ## 11. Acessibilidade
 
-- **Touch target mínimo: 48dp** — valor MD3/Android padrão. Corrige divergência anterior entre
-  `PRODUCT.md` (dizia 56dp) e `.claude/skills/SignallQ-design/HANDOFF_README.md` (dizia 44px) —
-  ambos corrigidos nesta consolidação (2026-07-19).
-- Contraste de texto conforme MD3 (mínimo AA para texto de corpo, preferencial AAA para texto
-  crítico de diagnóstico).
-- TalkBack: todo ícone/estado semântico precisa de `contentDescription`/`semantics` equivalente
-  ao texto visível — nunca só cor.
-- Reduced motion: respeitar preferência do sistema; animações de diagnóstico (loading, pulsante)
-  devem ter alternativa estática equivalente.
-- Font scaling: layout não pode quebrar com fonte do sistema aumentada — testar até pelo menos
-  130% de escala.
-- Nunca depender só de cor para status — sempre ícone + cor + palavra (reforça seção 8).
-
----
+- Alvo de toque mínimo **48 dp**.
+- Contraste de texto conforme MD3 (AA mínimo; preferir AAA em texto crítico de diagnóstico).
+- TalkBack: todo ícone/estado semântico com `contentDescription`/`semantics` equivalente ao texto visível.
+- Movimento reduzido: respeitar a preferência do sistema; animação de diagnóstico tem alternativa estática (`ReducedMotion.kt`).
+- Fonte do sistema ampliada: layout não quebra até pelo menos 130%.
+- Nunca depender só de cor para status.
 
 ## 12. Responsividade
 
-- Tamanhos de tela: telefones Android padrão (compact/medium width classes) — não há suporte
-  formal a tablet/foldable ainda; se necessário no futuro, tratar como tarefa dedicada.
-- Densidade: layout usa `dp`, nunca `px` fixo.
-- Gesture nav vs. button nav: respeitar `WindowInsets` do sistema em ambos os casos — nenhum
-  componente cortado pelas barras do sistema.
-- Cutouts (notch/câmera): conteúdo crítico nunca atrás de cutout.
-- Teclado: campos de entrada (ex. DNS customizado) devem manter o campo visível acima do teclado
-  (scroll automático ou `imePadding`).
-- Orientação: app é portrait-first; rotação para landscape não quebra layout (mesmo que não seja
-  o caso de uso principal).
-- **Nenhum componente cortado pelas barras do sistema** — critério de aceite obrigatório em
-  qualquer tela nova.
-
----
+Telefones Android (compact/medium); sem suporte formal a tablet/foldable. Medidas em `dp`. Respeitar `WindowInsets` (gesture nav, button nav, cutout) — **nenhum componente cortado pelas barras do sistema** é critério de aceite de toda tela nova. Campos de entrada visíveis acima do teclado (`imePadding`). Portrait-first; landscape não deve quebrar.
 
 ## 13. Governança
 
-- Nenhum componente novo sem checar equivalente existente na biblioteca (seção 7).
-- Nenhum valor visual hardcoded em tela — sempre token (`LkColors`/`LkSpacing`/`LkRadius`/
-  `signallQTypography`).
-- Deprecar antes de remover — componente/token antigo ganha nota de depreciação antes de sair do
-  código, nunca removido silenciosamente.
-- Este documento (`docs_ai/DESIGN_SYSTEM.md`) é a fonte única de verdade documental — protótipo
-  (Claude Design) e implementação (Kotlin) usam os mesmos nomes e estados descritos aqui.
-- Ao encontrar divergência entre protótipo/documento e código real, registrar a divergência
-  explicitamente (não silenciar) e decidir qual lado corrige — nunca presumir que o código
-  "deve" seguir o protótipo sem checagem.
+- Checar equivalente existente na biblioteca antes de criar componente (skill `verificar-modulo`).
+- Sem valor visual hardcoded em tela — sempre token (`LkColors`/`LkSpacing`/`LkRadius`/`signallQTypography`).
+- Deprecar antes de remover.
+- Divergência entre protótipo/documento e código: registrar explicitamente e decidir qual lado corrige — nunca presumir que o código deve seguir o protótipo.
+- Validação de tela: skills `design-check` (arquivo/tela) e `auditar-ux` (auditoria multi-tela).
 
----
+## 14. Ícones
 
-## 14. Mapeamento Jetpack Compose
+Material Symbols **Outlined** (variable font `material_symbols_outlined.ttf`, Apache 2.0; eixos FILL/wght/GRAD/opsz, via ligadura OpenType), encapsulado em `LkSymbol` (`filled = true` para estado selecionado). Conceitos de rede em uso: `wifi`, `cell_tower`, `router`, `speed`, `dns`, `devices`, `history`, `warning`/`error`/`check_circle`. Barras de sinal móvel são desenho próprio (`SignalBars`/`SpeedBarsChart`), não o ícone puro. Ícones novos: catálogo https://fonts.google.com/icons?icon.set=Material+Symbols, com peso e densidade consistentes na tela.
 
-Tabela por componente: nome oficial do DS (alias documental), finalidade, variantes, token
-usado, implementação real hoje.
+## 15. Copy
 
-| Nome oficial (DS) | Finalidade | Variantes | Token usado | Implementação real |
-| --- | --- | --- | --- | --- |
-| `SignallQSurfaceCard` | Card base nível 1/2 opt-in | preenchido, elevado | `cardSurface`, `cardSurfaceElevated` | `SignallQSurfaceCard` (`BaseComponents.kt`) |
-| `SignallQSectionOverline` | Rótulo de seção UPPERCASE | — | `labelSmall`, `onSurfaceVariant` | `LkSectionOverline` (`BaseComponents.kt:58`) |
-| `SignallQPillBadge` | Badge/chip pill | status, neutro | `LkRadius.pill` | `LkPillBadge` (`BaseComponents.kt:73`) |
-| `SignallQStatusDot` | Indicador de status pontual | success/warning/error | `color.status.*` | `LkStatusDot` (`BaseComponents.kt:96`) |
-| `SignallQSheetSectionTitle` | Título dentro de bottom sheet | — | `titleLarge` | `LkSheetSectionTitle` (`BaseComponents.kt:110`) |
-| `SignallQInlineBulletText` | Texto com marcador inline | — | `bodyMedium` | `LkInlineBulletText` (`BaseComponents.kt:133`) |
-| `SignallQInfoCallout` | Card informativo (nível 1) | info, aviso | `surfaceContainer`, `color.status.warning` opcional | `LkInfoCallout` (`BaseComponents.kt:161`) |
-| `SignallQNumberedStep` | Passo numerado (tutorial/ação) | — | `titleSmall`+`bodyMedium` | `LkNumberedStep` (`BaseComponents.kt:188`) |
-| `SignallQSheetInfoRow` | Linha ícone+label+valor dentro de sheet | — | `bodyMedium` | `LkSheetInfoRow` (`BaseComponents.kt:224`) |
-| `SignallQSheetDivider` | Divisor dentro de sheet | — | `outlineVariant` | `LkSheetDivider` (`BaseComponents.kt:250`) |
-| `SignallQSheetFrame` | Frame de bottom sheet (nível 3) | — | `LkRadius.sheet`, `surfaceContainerHighest` | `LkSheetFrame` (`BaseComponents.kt:256`) |
-| `SignallQSymbol` | Ícone Material Symbols | outline, filled | eixo FILL | `LkSymbol` (`LkSymbol.kt:48`) |
-| `SignallQConfirmDialog` | Dialog de confirmação (nível 3) | — | raio Dialog 24dp | `ConfirmacaoDialog.kt` |
-| `SignallQLgpdDialog` | Dialog de consentimento LGPD | — | `tonalElevation = 2.dp` (único uso real de elevação hoje) | `LgpdConsentDialog.kt` |
-| `SignallQGaugeCircular` | Gauge circular de fase (SpeedTest) | latência/download/upload | `color.data.*` | `GaugeCircular.kt` |
-| `SignallQMiniGrafico` | Mini gráfico inline | — | `color.data.*`/`outlineVariant` | `MiniGrafico.kt` |
-| `SignallQSpeedBarsChart` | Barras de sinal/velocidade | — | `color.status.*` | `SpeedBarsChart.kt` |
-| `SignallQWifiChannelGuide` | Gráfico de canais Wi-Fi | 2.4/5/6 GHz | `color.data.*`, `outlineVariant` | `WifiChannelGuide.kt` |
-| `SignallQOfflineBanner` | Banner de estado offline | — | `color.status.warning`/`error` | `SignallQScreenState.kt` |
-| `SignallQOperadoraBadge` | Badge de operadora | — | fundo branco fixo + `outlineVariant` (regra de container de logo, 2026-07-17) | `OperadoraBadge.kt` |
-| `SignallQProfileAvatarButton` | Avatar no TopBar (acesso a Ajustes) | — | gradiente `primary→secondary` | `ProfileAvatarButton.kt` |
-| `SignallQNativeAdCard` | Card de anúncio nativo | Resultado, Histórico | borda tracejada, CTA outline | `ads/NativeAdCard.kt` |
-| `SignallQNativeAdRow` | Linha compacta de anúncio | Velocidade idle | idem | `ads/NativeAdRow.kt` |
-| `SignallQNativeAdListRow` | Linha de anúncio dentro de lista | Dispositivos | idem | `ads/NativeAdListRow.kt` |
-| `SignallQAdBadge` | Disclosure "Patrocinado"/"Parceiro" | AdMob, afiliado | neutro / `secondary` | `ads/AdBadge.kt` |
-| `SignallQSimulatedOfferCard` | Card de oferta simulada/parceiro | — | outline, sem foto | `ads/SimulatedOfferCard.kt` |
-| `SignallQRecommendationCard` | Card de recomendação priorizada (nível 2) | destacado | `surfaceContainerHigh` | `RecommendationEngineCard` (referenciado em `ResultadoVelocidadeScreen.kt`, GH#813) |
-| `SignallQElevationLevel0-3` | Tokens de profundidade (seção 6) | — | `--md-sys-elevation-level0-4` (CSS) | **não implementado** — só documentação/CSS, ver débito registrado |
-| `SignallQScrim` | Scrim de modal/bottom sheet | — | `rgba(0,0,0,.5/.6)` | **não implementado** — só `packages/design-system` (React) |
-| `SignallQSurfaceSelected` | Estado de superfície selecionada | — | `surfaceContainerHigh` + borda `primary`@25–30% | **não implementado como token nomeado** — hoje resolvido ad hoc por componente |
-
-**Exemplo correto:**
-```kotlin
-LkSurfaceCard(modifier = Modifier.padding(LkSpacing.base)) {
-    LkSheetSectionTitle(text = "Rede conectada")
-    LkSheetInfoRow(label = "Sinal", value = "Forte")
-}
-```
-
-**Exemplo incorreto (hardcode, evitar):**
-```kotlin
-Card(
-    modifier = Modifier.padding(16.dp), // deveria ser LkSpacing.base
-    colors = CardDefaults.cardColors(containerColor = Color(0xFFF3EEFA)) // deveria ser LkColors.surfaceContainer
-) { /* ... */ }
-```
-
-**Nota de nomenclatura:** os nomes `SignallQ*` acima são **aliases documentais** desta tabela —
-o código real ainda usa o prefixo `Lk*` (herdado da marca anterior). Renomear os arquivos reais é
-dívida registrada ao final deste documento, não executada nesta consolidação (a consolidação de
-tokens em 2026-07-13 tocou apenas documentação; a edição do código de produção fica para o
-Camilo, validada por Caio via `/design-check`).
-
----
-
-## 15. Ícones
-
-Material Symbols (**Outlined**, variable font — `material_symbols_outlined.ttf`, Apache 2.0) —
-não-negociável fixado em `.claude/CLAUDE.md` — GH#1008 (fundação). Fonte variável com eixos FILL,
-wght, GRAD, opsz; renderiza via ligadura OpenType. Componente `LkSymbol` (GH#1008) encapsula uso,
-com suporte a `filled = true` para estado selecionado (eixo FILL) — migração de
-`androidx.compose.material.icons.*` tela a tela em andamento.
-
-Não há tabela de mapeamento ícone→uso exaustiva; ao introduzir um ícone novo, usar o catálogo
-https://fonts.google.com/icons?icon.set=Material+Symbols e manter peso/densidade consistentes
-com o restante da tela. Ver seção 7 para o catálogo de ícones por conceito de rede já em uso.
-
----
-
-## 16. Dark mode
-
-`SignallQTheme.kt` implementa `lightColorScheme`/`darkColorScheme` fixos com o acento da marca
-(seção 2) — **sem dynamic color** do sistema. A paleta escura é completa (todos os roles MD3 com
-hex próprios, não apenas inversão automática do claro).
-
-A antiga superfície SignallQ (IA) usava paleta escura fixa própria (`signallQBlack` /
-`signallQDarkSurface` / `signallQDarkCard`) que **não seguia** o tema claro/escuro do sistema —
-essa superfície está descontinuada no Fluxo de Telas To-Be; não implementar rota ou componente
-novo para ela. Tokens residuais podem continuar no código por legado/compatibilidade.
-
----
-
-## 17. Copy e regras de texto
-
-- PT-BR, com "você" (nunca "tu" ou tratamento formal "o senhor/a senhora").
-- Sentence case em títulos (não Title Case, não UPPERCASE).
-- UPPERCASE reservado a overlines.
-- Sem emoji — decisão de produto, não afetada pelo MD3.
-- Separador inline padrão: ponto médio (`·`).
-- Métrica crua (Mbps, ms, %) sempre acompanhada de veredito humano: Excelente / Bom / Regular /
-  Fraco / Forte (ver catálogo completo de 7 estados na seção 8).
-
----
-
-## 18. Localização dos tokens no código
-
-Confirmado em código:
-
-- Arquivo: `android/app/src/main/kotlin/io/signallq/app/ui/SignallQTheme.kt`
-- Objetos: `LkColors` (cores claro/escuro), `LkTokens`, `LkSpacing`, `LkRadius`,
-  `signallQTypography`
-- Consumo em componentes confirmado via grep de `LkColors` em múltiplos arquivos de
-  `ui/component/` (ex.: `BaseComponents.kt`, `ads/AdBadge.kt`, `OperadoraBottomSheet.kt`)
-
-**Nota de caminho físico:** o arquivo mora fisicamente em `io/signallq/app/...` embora
-declare `package io.signallq.app...` — é a divergência conhecida de ~460 arquivos `.kt`
-documentada em `.claude/rules/higiene-e-padronizacao-repositorio.md` (seção 4.1). Não é
-específica deste design system; é dívida estrutural do repo inteiro.
-
----
-
-## 19. Outras fontes do design system (não duplicar aqui)
-
-Existem artefatos paralelos de design no repo, cada um com escopo/finalidade próprios — não são
-cópias redundantes entre si mesmo compartilhando os mesmos tokens visuais (referência:
-`.claude/CLAUDE.md`, seção "Design System" → "Onde fica cada 'design system'"):
-
-| Onde | Escopo | Finalidade |
-| --- | --- | --- |
-| `.claude/skills/SignallQ-design/` | Android (app real) | Skill do Claude Code — ativa sozinha ao pedir UI Android; fonte de verdade para gerar código/protótipo on-brand |
-| `packages/design-system/` | Android (app real) | Pacote React "fonte do Design System"; sincroniza via `/design-sync` com o projeto [SignallQ Design System](https://claude.ai/design/p/2d25d7a1-31b2-4ac3-881f-72dbc8f35a29) — contagem de componentes: ver projeto |
-| `docs_ai/design-system/` (histórico) | Android (app real) | Os seis documentos-fonte consolidados aqui — movidos para `docs_ai/_archive/` |
-| `DESIGN.md` / `PRODUCT.md` (raiz do repo) | Android (app real) | Spec no formato da skill `impeccable`, North Star "The Calm Translator" |
-| `SignallQ Admin/DESIGN.md` / `PRODUCT.md` | SignallQ Console (Admin) | Mesmo formato impeccable, mas do Console — North Star e paleta próprias, não confundir com o app Android |
-
-Não criar artefato de design novo sem checar se já existe em algum destes.
-
----
-
-## 20. Histórico de divergências corrigidas
-
-**Nesta consolidação (2026-07-19):**
-- Touch target: `PRODUCT.md` dizia 56dp, `HANDOFF_README.md` dizia 44px — ambos corrigidos para
-  **48dp** (padrão MD3/Android real), ver seção 11.
-- `.claude/skills/SignallQ-design/ui_kits/android/chrome.jsx` tinha `accent:'#6C2BFF'` e o
-  restante da paleta local (`success`/`warning`/`error`/`bg*`/`text*`/`border`/`rBtn`/`font`)
-  travados na era Linka/manual MD3 anterior — corrigido para bater com `colors_and_type.css`
-  atual (`#5B21D6`/`#2851B8`, Google Sans Flex, raio de botão 20dp). Como os demais `.jsx` da
-  pasta (`app.jsx`, `screens.jsx`, `signallq.jsx`, `speedtest.jsx`) só consomem `LK` de
-  `chrome.jsx`, a correção se propaga automaticamente — nenhum outro arquivo tinha hex
-  hardcoded duplicado.
-- `.claude/CLAUDE.md` tinha contagem contraditória de componentes de `packages/design-system/`
-  ("14 + marca Logo" numa tabela, "25 componentes" em outra) — corrigido para 25 (contagem real,
-  confirmada pelo texto do próprio `.design-sync/conventions.md`).
-- `.claude/CLAUDE.md` tinha o status do SignallQ Pro desatualizado ("ALVO — app não existe") —
-  corrigido: `android/pro/` já tem 94 arquivos `.kt` reais (Fase 0/1 mergeadas via PR
-  #1159/#1157), mudança de escopo continua exigindo aprovação do Luiz.
-- Sistema de profundidade (elevação tonal + scrim) formalizado com 4 níveis nomeados — antes só
-  existia como 5 níveis soltos em CSS sem correspondência de código real; agora documentado
-  como alvo explícito de implementação (seção 6), com o gap real declarado.
-
-**Histórico anterior (2026-07-16 e 2026-07-13):** ver `docs_ai/design-system/
-DECISAO_ALINHAMENTO_TOBE_2026-07-13.md` e `DECISAO_RENOMEACAO_SIGNALLQ_DESIGN_2026-07-11.md` —
-preservados como registro, não reescritos.
-
-*Consolidação original gerada a partir de `docs_ai/design-system/{COLORS,COMPONENTS_ANDROID,
-DESIGN_TOKENS,MD3_GUIDELINES,SPACING,TYPOGRAPHY}.md`; expandida em 2026-07-19 por delegação da
-Claudete (issue de consolidação do DS, ver "Débito a registrar" reportado ao final da entrega).*
+PT-BR com "você" (nunca "tu" nem tratamento formal); sentence case em títulos; UPPERCASE só em overlines; sem emoji; separador inline `·`; métrica crua sempre com veredito humano (seção 8).

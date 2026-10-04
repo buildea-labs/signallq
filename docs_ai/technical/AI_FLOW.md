@@ -1,191 +1,74 @@
 ---
 title: "AI Flow"
-description: "Fluxo de diagnóstico assistido por IA no app Android e o worker que o atende, incluindo fallback local."
+description: "Fluxo de diagnóstico assistido por IA no app Android, o ai-diagnosis-worker que o atende, o desvio via NDS e o fallback local."
 type: "técnico"
 status: "ativo"
-owner: "Camilo"
-last_updated: "2026-08-20"
+owner: "Ramon"
+last_updated: "2026-10-04"
+version: "2.0.0"
 ---
 
 # AI Flow — Android SignallQ
 
-**Status:** ativo
-**Última validação:** 2026-08-19
-**Fonte de verdade:** código real (`featureDiagnostico`, `integrations/cloudflare/ai-diagnosis-worker`) — este documento é derivado, não normativo
-**Escopo:** fluxo de diagnóstico assistido por IA no app Android e o worker que o atende
-**Responsável:** Camilo (Backend Android + Workers)
+**Fonte de verdade:** código — `android/feature/diagnostico` (`ai/AiDiagnosisRepository.kt`, `ai/AiModels.kt`), `MainViewModel.analisarProblema()` e `integrations/cloudflare/ai-diagnosis-worker`. Documento derivado, não normativo.
+**Contrato HTTP do worker:** [`CONTRATOS/openapi/ai-diagnosis-worker.yaml`](../CONTRATOS/openapi/ai-diagnosis-worker.yaml).
+**Substitui:** a versão 1.x, que carregava o histórico da remoção do SignallQ Pulse (GH#1682) e uma lista de modelos descartados (recuperável via `git log -- docs_ai/technical/AI_FLOW.md`).
 
----
+## 1. Visão geral
 
-## 1. Objetivo técnico
-
-Documentar como o app SignallQ envia dados de diagnóstico de rede a um Worker Cloudflare para
-gerar um laudo assistido por IA, incluindo o fallback local quando a IA está indisponível.
-
-## 2. Visão geral da solução
-
-O app integra IA via **Cloudflare Worker** externo. Não há inferência local — todo o processamento LLM é feito no worker. O fallback local (`AiFallbackFactory`) entra apenas se o worker falhar ou timeout.
+O app envia os dados de diagnóstico a um Worker Cloudflare, que gera o laudo com LLM. Não há inferência local; o fallback local não usa LLM.
 
 ```
-MainViewModel
-    → DiagnosticOrchestrator.executar()
-        → DiagnosticRunner.run(input)            [engines locais stateless]
-        → DiagnosisAiContextFactory.fromRaw()    [monta payload — prompt diagnostico_v5_local_primary]
-        → AiDiagnosisRepository.diagnosticar()  [POST HTTP via OkHttp]
-            → linka-ai-diagnosis-worker          [Cloudflare Worker]
-                → Gemini 2.0 Flash (primário) / Qwen3 30B MoE FP8 (fallback cloud)
-                → resposta JSON
-            → AiDiagnosisResult                 [parseado pelo app]
-        → AiFallbackFactory                     [se timeout ou erro]
+MainViewModel.analisarProblema()
+  → coletarContextoAdicionalIa() + DiagnosisAiContextFactory.fromRaw()   [monta payload]
+  → AiDiagnosisRepository.explainDiagnosis()   [POST via OkHttp]
+      → linka-ai-diagnosis-worker              [Cloudflare Worker]
+          → Gemini (primário) / Qwen3 30B MoE FP8 no Workers AI (fallback cloud)
+      → AiDiagnosisResult
+  → AiFallbackFactory.fromLocal                [timeout, erro HTTP/rede ou sem internet]
 ```
 
----
+O relatório local que alimenta o payload vem de `DiagnosticOrchestrator.executar()` → `DiagnosticRunner.run()` (engines stateless de `:core:diagnostico`, tabela abaixo). O resultado aparece em `LaudoScreen`.
 
-## 2. Endpoint
+## 2. Worker e modelos
 
-**URL:** `https://linka-ai-diagnosis-worker.giammattey-luiz.workers.dev/api/ai/diagnostico-conexao`
+- **Endpoint:** `POST https://linka-ai-diagnosis-worker.giammattey-luiz.workers.dev/api/ai/diagnostico-conexao` (`Content-Type: application/json`). Nome do worker em `wrangler.toml`: `linka-ai-diagnosis-worker`. Também expõe `GET /health`.
+- **Provider primário:** Gemini, model id `gemini-flash-latest` (alias da Google; `providers.ts`), ativo quando a secret `GEMINI_API_KEY` está configurada.
+- **Fallback cloud:** Cloudflare Workers AI `@cf/qwen/qwen3-30b-a3b-fp8` (`AI_MODEL` em `wrangler.toml`, `DEFAULT_MODEL` em `src/index.ts`). Sem a secret do Gemini, é o único provider.
+- Llama/Meta não é padrão nem fallback (política do projeto). Persona da IA: "SignallQ".
+- **Prompt:** `AI_PROMPT_VERSION = "diagnostico_v6_explicacao_humana"` (`src/index.ts`). Os achados do motor local entram como entrada e a IA refina e expande; o worker aceita schemas anteriores por retrocompatibilidade. Montagem do payload em `DiagnosisAiContextFactory.fromRaw()`: tipo de conexão, snapshot Wi-Fi, latência, jitter, perda, download/upload, DNS, histórico 7d/30d, ISP e configuração do usuário (plano, operadora, UF/cidade).
+- **Telemetria:** o evento `ia_laudo_solicitado` está órfão (ver [`analytics-events.md`](analytics-events.md)).
 
-**Worker name (wrangler.toml):** `linka-ai-diagnosis-worker`
+## 3. Engines locais (`:core:diagnostico`, stateless)
 
-**Método:** POST
+| Engine | Entrada |
+|---|---|
+| `WifiSignalQualityEngine` | RSSI, frequência, link speed |
+| `InternetDiagnosticEngine` | snapshot de internet, flag de Wi-Fi confiável |
+| `WifiChannelDiagnosticEngine` | redes vizinhas, canal conectado |
+| `DnsDiagnosticEngine` | IP do DNS, latência |
+| `HistoricalDegradationEngine` | médias 7d/30d, tendência |
+| `FibraSignalQualityEngine` | RX/TX, temperatura |
+| `MobileSignalDiagnosticEngine` | RSRP, RSRQ, SINR, tecnologia |
+| `FindingEngine` | achados de todos os engines → decisão final (herdou as regras do antigo `DiagnosticDecisionEngine`) |
 
-**Content-Type:** application/json
+## 4. Desvio via NDS (NDS-02k, ADR-017, issue #1746)
 
----
+Com `consumer_diagnostico_nds_live_enabled` ligada (`FeatureFlagKeys.CONSUMER_DIAGNOSTICO_NDS_LIVE_ENABLED`; **`defaultValue: true`** em `consumer-catalog.json`), o `relatorio` já vem do NDS (`DiagnosticOrchestrator.executarProtegido`) com a narrativa do módulo `ai` (`tituloAmigavel`/`resumoTecnicoTraduzido`) embutida em `relatorio.decisao` (`NdsDiagnosticsResponseMapper.toDiagnosticReport`, `:core:nds`). Nesse caso `analisarProblema()` **não chama** `AiDiagnosisRepository.explainDiagnosis()` nem o `NdsClient` de novo: `resolverResultadoAnaliseViaNds` (`MainViewModel.kt`) deriva o resultado do mesmo `relatorio` via `AiFallbackFactory.fromLocal`, sem round-trip adicional. Se o NDS falha, o `DiagnosticRunner` local assume (fallback).
 
-## 3. Modelo de IA
+Limite conhecido: `NdsClient` só expõe `POST /v1/diagnostics/evaluate` (e v2); não há endpoint NDS equivalente a `explainDiagnosis` (schema completo com `perguntasContextuais`, `hipotesesDescartadas`, `classificacaoTecnica` por dimensão). O texto autorrelatado do usuário (`problema`) nunca vai ao NDS.
 
-**Modelo do provider fallback (Cloudflare Workers AI):** `@cf/qwen/qwen3-30b-a3b-fp8` (Qwen3 30B MoE FP8). Provider primário é Gemini 2.0 Flash — ver seção "Fallback Gemini" abaixo.
+## 5. Fallback local
 
-Configurado em `wrangler.toml`:
-```toml
-AI_MODEL = "@cf/qwen/qwen3-30b-a3b-fp8"
-```
+`AiFallbackFactory` (`ai/AiModels.kt`) monta um `AiDiagnosisResult` a partir dos engines locais, sem texto de LLM, em timeout, erro HTTP/rede ou ausência de internet.
 
-e `DEFAULT_MODEL` no `src/index.ts`:
-```ts
-const DEFAULT_MODEL = "@cf/qwen/qwen3-30b-a3b-fp8";
-```
+## 6. Persistência e custo
 
-**Provider primário Gemini:** com a secret `GEMINI_API_KEY` configurada, o worker usa Gemini (`providers.ts`, model id `gemini-flash-latest` — alias da Google que resolve para a versão Flash mais recente disponível, hoje Gemini 2.0 Flash) como provider primário e Qwen/CF como fallback automático. Sem a secret, Qwen/CF é o único provider cloud. Llama/Meta não é padrão nem fallback (política do projeto).
+- O diagnóstico vive em `MainViewModel.snapshotDiagnostico` (StateFlow, sem Room).
+- Não há chat conversacional (decisão de produto #564/SIG-282). As tabelas Room `chat_sessions`/`chat_messages` (`core/database/.../chat/`) seguem no schema mas estão órfãs; removê-las exige migration (dívida, higiene §9).
+- Não há cota client-side de IA. O controle é server-side: `aiDailyBudgetUsd` em `admin_settings` dispara o alerta `AI_BUDGET` quando o custo das últimas 24h passa do limite (ver [`admin-api-schema.md`](admin-api-schema.md)); só alerta o painel, não bloqueia chamadas.
 
-**Alternativas/legado (não são o padrão):**
-- `@cf/google/gemma-7b-it` — Gemma v1, fraco para prompt complexo
-- `@hf/google/gemma-2-9b-it` — formato incompatível com messages API
-- `@cf/google/gemma-4-26b-a4b-it` — descartado (gerava timeout > 30s)
+## 7. Riscos técnicos
 
-**Persona da IA:** "SignallQ"
-
----
-
-## 4. Payload — Schema atual
-
-Montado por `DiagnosisAiContextFactory.fromRaw()`. O worker aceita schemas anteriores para retrocompatibilidade.
-
-A versão de prompt atual do worker é `diagnostico_v6_explicacao_humana` (`AI_PROMPT_VERSION` em `src/index.ts` — atualizado desde a v5 citada em versões anteriores deste documento): os achados do motor local são enviados como entrada e a IA refina/expande em cima deles. `schemaVersion` do contexto (`DiagnosisAiContext`) é enviado ao worker. O evento `ia_laudo_solicitado` que registrava esse valor está definido em `AnalyticsHelper` mas sem call site em produção desde `740f558b` (2026-07-13, GH#937) — a remoção do `SignallQOrchestrator` em GH#1682 apagou código já inalcançável e não causou a perda. Ver `docs_ai/technical/analytics-events.md`.
-
-Campos enviados: tipo de conexão, snapshot Wi-Fi (RSSI, canal, frequência), latência, jitter, perda de pacotes, download/upload Mbps, DNS (servidor atual, latência), histórico (médias 7d/30d), dados do ISP, configuração do usuário (plano, operadora, estado/cidade).
-
----
-
-## 5. Engines de Diagnóstico Local (DiagnosticRunner)
-
-Executados antes da chamada à IA — produzem o relatório local que também alimenta o payload:
-
-| Engine | Entrada | Saída |
-|---|---|---|
-| `WifiSignalQualityEngine` | RSSI, frequência, link speed | `WifiQualityResult` |
-| `InternetDiagnosticEngine` | snapshot internet, flag wifi confiável | `DiagnosticResult` |
-| `WifiChannelDiagnosticEngine` | redes vizinhas, canal conectado | `DiagnosticResult` |
-| `DnsDiagnosticEngine` | IP DNS, latência, grade | `DiagnosticResult` |
-| `HistoricalDegradationEngine` | médias 7d/30d, tendência | `DiagnosticResult` |
-| `FibraSignalQualityEngine` | rxPowerDbm, txPowerDbm, temperatura | `DiagnosticResult` |
-| `MobileSignalDiagnosticEngine` | RSRP, RSRQ, SINR, tecnologia | `DiagnosticResult` |
-| `DiagnosticDecisionEngine` | resultados de todos os engines | `DiagnosticResult` (decisão final) |
-
-Todos residem em `:featureDiagnostico`. São stateless — recebem dados brutos e retornam resultado sem efeitos colaterais.
-
----
-
-## 6. Chat / Pulse (removido — GH#1682)
-
-O app **não tem chat conversacional de diagnóstico** — decisão de produto (#564, SIG-282: "IA
-como 'Diagnóstico avançado' opcional, sem chat"). O motor que ficou para trás dessa decisão,
-`SignallQOrchestrator` (`feature/diagnostico/.../pulse/`, 12 arquivos: `DynamicQuestionEngine`,
-`SignallQState`, `SignallQSnapshot`, `IntelligentDiagnosticSession`, `ContextAccumulator`,
-`QuestionAnswer`/`QuestionNode`/`OpcaoResposta`, `RotatingMessageProvider`,
-`SignallQInsightGenerator`, `AiAnalysisEntry`), mais as telas `ContextualQuestionCard.kt` e
-`PulseResultCard.kt` (`:app`), foram removidos em GH#1682 por não terem nenhum consumidor de UI.
-`git show <SHA-antes-da-remoção>:android/feature/diagnostico/src/main/kotlin/io/signallq/app/feature/diagnostico/pulse/SignallQOrchestrator.kt`
-recupera o código se necessário.
-
-O fluxo real de IA hoje é a "Análise avançada" (seção 1–5 acima): `MainViewModel.analisarProblema()`
-chama `coletarContextoAdicionalIa()` + `DiagnosisAiContextFactory.fromRaw()` e
-`AiDiagnosisRepository.explainDiagnosis()` diretamente — sem orquestrador intermediário — e
-apresenta o resultado em `LaudoScreen`.
-
-**NDS-02k PR2 (issue #1746, ADR-017):** atrás da flag `consumer_diagnostico_nds_live_enabled`
-(`FeatureFlagKeys.CONSUMER_DIAGNOSTICO_NDS_LIVE_ENABLED`, default `false` em todo ambiente),
-`analisarProblema()` desvia desse caminho — ver `resolverResultadoAnaliseViaNds` (função de nível
-de arquivo em `MainViewModel.kt`, extraída para ser testável sem instanciar o ViewModel inteiro).
-Com a flag ligada, o `relatorio` que alimenta a função já veio do NDS (ver
-`DiagnosticOrchestrator.executarProtegido`), com a narrativa do módulo `ai` do NDS
-(`tituloAmigavel`/`resumoTecnicoTraduzido`) já embutida em `relatorio.decisao.titulo`/
-`mensagemUsuario` (`NdsDiagnosticsResponseMapper.toDiagnosticReport`, `:core:nds`). Nesse caso,
-`analisarProblema()` **não chama** `AiDiagnosisRepository.explainDiagnosis()` nem `NdsClient` de
-novo — deriva o resultado direto do mesmo `relatorio` via `AiFallbackFactory.fromLocal`, sem
-round-trip de rede adicional. `origem="local"` no `AnalisadorState.Resultado` resultante segue
-tecnicamente correto (nenhuma chamada ao `ai-diagnosis-worker` aconteceu), mas o texto exibido já
-carrega a narrativa que o próprio NDS gerou quando o `relatorio` é `REMOTE`.
-
-**Achado registrado (não é gap desta fatia):** `NdsClient` só expõe `POST /v1/diagnostics/evaluate`
-— não existe endpoint NDS equivalente a `AiDiagnosisRepository.explainDiagnosis` (schema v2/v3
-completo: `perguntasContextuais`, `hipotesesDescartadas`, `classificacaoTecnica` por dimensão,
-metadados detalhados de `modeloIa`). O módulo `ai` do NDS devolve só `tituloAmigavel`/
-`resumoTecnicoTraduzido` (`NdsAiResult`/`NdsAiExplanation`, `:core:nds`). Enquanto a flag estiver
-desligada (hoje, todo ambiente) o comportamento documentado nesta seção permanece 100% inalterado.
-Texto autorrelatado pelo usuário (`problema`, parâmetro de `analisarProblema`) nunca é enviado ao
-NDS em nenhum dos dois caminhos — decisão já registrada em #1746 (Diagnóstico Guiado/Assist
-continuam árvore de decisão local).
-
-**Achado não corrigido nesta remoção (ver dívida na issue de acompanhamento):** as tabelas Room
-`chat_sessions`/`chat_messages` (`ChatSessionEntity`/`ChatMessageEntity`/`ChatSessionDao` em
-`core/database/.../chat/`) já estavam órfãs antes desta remoção — nenhum caminho de produção grava
-linhas ali (`SignallQOrchestrator` nunca as usava; só `AdminSyncWorker` lê, sempre encontra vazio).
-Removê-las é mudança de schema/migration, fora do escopo desta remoção (`.claude/rules/
-higiene-e-padronizacao-repositorio.md` §9 — banco de dados não se remove silenciosamente).
-
----
-
-## 7. Fallback Local
-
-**Classe:** `AiFallbackFactory`
-
-Ativado quando:
-- Timeout na chamada ao worker
-- Erro HTTP (5xx, network error)
-- Sem internet
-
-Retorna um `AiDiagnosisResult` construído a partir dos resultados dos engines locais, sem texto gerado por LLM.
-
----
-
-## 8. Armazenamento de Resultados
-
-- Diagnósticos: estado em `MainViewModel.snapshotDiagnostico` (StateFlow, não persistido em Room)
-- Sessões de chat: tabelas Room `chat_sessions`/`chat_messages` continuam existindo no schema
-  (`SignallQDatabase`), mas estão órfãs — sem chat conversacional (seção 6), nada grava nelas hoje
-- Cota/orçamento diário de IA: não há mecanismo de limite client-side no app (a classe
-  `CotaIaRepository` citada em versões anteriores deste documento não existe no código). O
-  controle real de orçamento é server-side, no Worker Admin: `aiDailyBudgetUsd` em
-  `admin_settings`, que dispara o alerta `AI_BUDGET` quando o custo das últimas 24h excede o
-  limite (ver `docs_ai/technical/admin-api-schema.md`, seção `/admin/settings`). Não bloqueia
-  chamadas do app, só alerta o painel.
-
-## 9. Riscos técnicos
-
-- Sem cota client-side: um dispositivo com uso anômalo pode gerar custo de IA sem o app impedir
-  localmente — a única salvaguarda hoje é o alerta `AI_BUDGET` no painel Admin (reativo, não
-  preventivo).
-- Fallback local (`AiFallbackFactory`) não gera texto explicativo por LLM — a experiência do
-  usuário degrada para dados brutos dos engines quando a IA está indisponível.
+- Sem cota client-side, um dispositivo anômalo pode gerar custo de IA; a salvaguarda é reativa (alerta `AI_BUDGET`).
+- No fallback local o usuário recebe dados dos engines sem explicação em linguagem natural.

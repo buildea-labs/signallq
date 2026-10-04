@@ -3,9 +3,9 @@ title: "Posicionamento de produto — SignallQ"
 description: "Diretriz canônica de posicionamento para produto, design, conteúdo e implementação do SignallQ Android e Web/PWA."
 type: "funcional"
 status: "ativo"
-owner: "Claudete"
-last_updated: "2026-08-15"
-version: "1.1.0"
+owner: "Cora"
+last_updated: "2026-10-04"
+version: "1.1.1"
 ---
 
 # Posicionamento de produto — SignallQ

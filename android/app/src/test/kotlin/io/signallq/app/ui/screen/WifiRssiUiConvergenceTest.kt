@@ -10,7 +10,7 @@ import org.junit.Test
 
 /**
  * GH#1228 Fatia 5 — corrige o P0-2 documentado em
- * `docs_ai/ARQUITETURA/AUDITORIA_1228_FASE0_INVENTARIO_COMPLETO.md`: ate esta fatia,
+ * auditoria #1228 (Fase 0): ate esta fatia,
  * [signalColor] (`SignalBars.kt`) e [signalQuality] (`SinalTopologiaHelpers.kt`) tinham regua
  * propria (`>=` inclusivo) divergente do canonico [MetricClassifier.classificarRssiWifi]
  * (`>` exclusivo), usado pelo motor de diagnostico via `WifiSignalQualityEngine`. Ambos agora

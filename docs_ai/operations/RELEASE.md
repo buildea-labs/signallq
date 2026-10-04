@@ -1,164 +1,90 @@
 ---
-title: "Release Process"
-description: "Runbook do processo de release do SignallQ Android — build, deploy, verificação pós-deploy."
+title: "Release e deploy Android"
+description: "Processo de release do SignallQ Android: build local, tag, publicação na Play Console, Firebase App Distribution e deploy de Workers."
 type: "runbook"
 status: "ativo"
-owner: "Camilo"
-last_updated: "2026-08-26"
+owner: "Camillo"
+last_updated: "2026-10-04"
+version: "2.0.0"
 ---
 
-# Release Process
+# Release e deploy Android
 
-## Objective
+- **Fonte de verdade:** `.github/workflows/release.yml`, `promote-release.yml`, `firebase-distribution.yml`; versão real em `android/gradle/libs.versions.toml`
+- **Escopo:** release do app (`:app`, `io.signallq.app`) e deploy dos Workers Cloudflare
+- **Documentos substituídos:** `DEPLOY.md` e `GuiaReleaseBuild.md` (consolidados aqui; recuperáveis via `git show f6f9d437:docs_ai/operations/<arquivo>`)
 
-This document outlines the process for releasing new versions of the SignallQ Android Kotlin application, covering the steps from build to deployment.
+Regra única para qualquer canal: **incremente `versionCode` em `android/gradle/libs.versions.toml`
+antes de subir um build** (commitado e pushado). O campo é global; não há contador por canal
+(ver `VERSIONING.md`).
 
-- **Status:** ativo
-- **Última validação:** 2026-08-26
-- **Validação de runbook:** 2026-08-26 — corrigida defasagem: `release.yml` publica direto em
-  `beta` desde o commit `1555e92b` (2026-08-23), não mais `internal`; seção "Feature Activation
-  Process" e `operations/DEPLOY.md` atualizados junto
-- **Fonte de verdade:** versão real em `android/gradle/libs.versions.toml` (não fixar número
-  aqui, muda a cada release); processo de release neste documento
-- **Escopo:** release Android (Firebase App Distribution + Play Console)
-- **Responsável:** Rhodolfo (release/QA), Camilo (build/deploy)
+## Canais (ambos via GitHub Actions)
 
-> Namespace/applicationId atual: **`io.signallq.app`** (renomeado de `io.veloo.app`
-> em 2026-06-28). O caminho fisico do codigo do modulo `:app` continua sendo
-> `io/signallq/app/` — nao alterar. Demais identificadores tecnicos de infra
-> permanecem: repo `7ALabs/SignallQ`, worker `linka-ai-diagnosis-worker`.
-> Historico autoritativo de versoes Android: `android/CHANGELOG.md`.
+### 1. Play Console — release oficial (`release.yml`)
 
-## Processo Canônico do Projeto (atualizado 2026-07-17)
+1. Bump de versão em `libs.versions.toml`, `CHANGELOG.md` e `docs_ai/RELEASES.md`;
+   notas públicas em `android/app/src/main/play/release-notes/pt-BR/default.txt` (lidas pelo workflow).
+2. `git tag vX.Y.Z && git push origin vX.Y.Z` dispara o workflow: build assinado
+   (`:app:assembleRelease`, `:app:bundleRelease`), upload do mapping ao Crashlytics, GitHub Release e
+   `:app:publishReleaseBundle` (gradle-play-publisher, secret `PLAY_SERVICE_ACCOUNT_JSON`).
+   Push de tag publica **sempre** na trilha `beta` com anúncios desligados
+   (`-PplayTrack=beta -PadsEnabled=false`).
+3. **Produção** é disparo manual do mesmo workflow (`workflow_dispatch`) com `playTrack=production`
+   e, se for o caso, `adsEnabled=true`. Publica um AAB **novo**: `USE_TEST_ADS`/`ADS_ENABLED` são
+   compilados no build (`app/build.gradle.kts`), então promover o binário de `beta` não liga anúncio.
+   O workflow rejeita `adsEnabled=true` fora de `production`. Decisão de produção/ads é do Luiz.
+4. Antes de publicar com ads reais, as chaves de Firebase Remote Config (`ads_native_enabled` + 5 por
+   tela, ver `AdsRemoteConfigRepository.kt`) precisam existir no console; sem elas o app cai em
+   `AdsFlags.DESLIGADO`.
 
-Dois canais, os dois via **GitHub Actions** — não mais comando local manual. Regra única
-para os dois: **nunca subir um build (debug ou release) sem incrementar `versionCode`** em
-`android/gradle/libs.versions.toml` antes, commitado e pushado (mesmo campo global, sem
-contador separado por canal — evita dois uploads com o mesmo número).
+Secrets usados: `KEYSTORE_BASE64`, `STORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`,
+`GOOGLE_SERVICES_JSON`, `PLAY_SERVICE_ACCOUNT_JSON`, `ADMIN_INGEST_KEY`, `NDS_API_TOKEN` (assinatura: `SIGNING.md`).
 
-### Canal 1 — Firebase App Distribution (debug/validação rápida)
+`promote-release.yml` (`workflow_dispatch`) só aceita origem `internal`/`alpha` e destino
+`internal`/`alpha`; `beta`/`production` são bloqueados. Como nenhum fluxo atual publica em
+`internal`/`alpha`, ele não é caminho ativo.
 
-Workflow `.github/workflows/firebase-distribution.yml`, `workflow_dispatch` manual (sob
-demanda, não em todo push). Builda `assembleRelease` (ou `assembleDebug` via input), assina,
-sobe via `appDistributionUploadRelease`/`...Debug`. Depende do secret `FIREBASE_TOKEN`
-(gerado com `firebase login:ci` numa sessão interativa real — precisa de TTY, não roda em
-CI headless nem via agente — configurado com `gh secret set FIREBASE_TOKEN --repo
-7ALabs/SignallQ`).
+### 2. Firebase App Distribution — validação rápida (`firebase-distribution.yml`)
 
-### Canal 2 — Play Console (release oficial), trilha em 2 etapas
+`workflow_dispatch` manual, input `buildType` (`release`/`debug`). Builda, assina e envia via
+`appDistributionUpload*`. Exige o secret `FIREBASE_TOKEN` (gerado com `firebase login:ci`, que precisa
+de TTY).
 
-1. Bump de versão (`libs.versions.toml`, `CHANGELOG.md`, `docs_ai/RELEASES.md`) — escopo
-   real desde a última versão **realmente publicada** (ver `VERSIONING.md`).
-2. `git tag vX.Y.Z && git push origin vX.Y.Z` — dispara `.github/workflows/release.yml`:
-   build, assinatura, GitHub Release, e publica direto na trilha **`beta`** (desde
-   2026-08-23, commit `1555e92b`), **compilado com anúncios desligados**
-   (`-PplayTrack=beta -PadsEnabled=false`, hardcoded no push de tag comum).
-3. Produção com anúncios reais **não é uma promoção** do binário de beta — é um disparo
-   manual do mesmo `release.yml` (`workflow_dispatch`, adicionado 2026-08-26) com
-   `playTrack=production` e `adsEnabled=true`, que builda e publica um AAB **novo**
-   direto na trilha `production`. Motivo: `BuildConfig.USE_TEST_ADS`/`ADS_ENABLED`
-   são compilados no APK/AAB no momento do build (ver `app/build.gradle.kts`), não do
-   publish — promover o mesmo binário entre trilhas não muda os Ad Unit IDs nem liga
-   anúncio nenhum.
-4. **Pré-requisito de ads antes desse disparo**: as chaves de Firebase Remote Config
-   (`ads_native_enabled` + 5 chaves por tela, ver
-   `android/app/src/main/kotlin/io/signallq/app/ads/AdsRemoteConfigRepository.kt`) precisam
-   existir no console — sem elas, mesmo o binário certo cai no fallback `AdsFlags.DESLIGADO`
-   e nenhum usuário vê anúncio. Criação dessas chaves é ação do Luiz no console do Firebase,
-   fora do escopo de qualquer agente.
-5. **Guardrail técnico**: `promote-release.yml` (usado hoje só se for preciso mover o mesmo
-   AAB de `beta` pra `internal`/`alpha`, não o caminho principal) bloqueia `production` como
-   destino — decisão explícita do Luiz, e tecnicamente inútil de qualquer forma pelo motivo
-   do item 3 acima.
+## Build local de APK assinado
 
-**Worker Cloudflare:** quando houver mudanças em
-`integrations/cloudflare/ai-diagnosis-worker/src/`, rodar `npx wrangler deploy`
-**ANTES** do commit.
+Pré-requisitos: PowerShell 7+, JDK, Android SDK, `android/key.properties` e
+`android/segredos/signallq.jks` (ver `SIGNING.md`).
 
-> Detalhe completo do fluxo Play Store (incluindo o guardrail de trilhas) em
-> `operations/DEPLOY.md`.
+```powershell
+.\scripts\version.ps1 patch          # ou minor | major | build | set <versão>
+.\scripts\build-apk-release.ps1      # alternativa: gradlew archiveReleaseApk
+```
 
-## Release Stages
+O APK sai em `android/builds/apk/release/<versionName>/` com o nome definido em
+`APK_OUTPUT_POLICY.md`. Nunca distribua `app-release.apk` bruto. Validação pós-build:
 
-The release process generally follows these stages:
+```powershell
+aapt dump badging <apk> | findstr version
+jarsigner -verify <apk>
+adb install -r <apk>
+```
 
-1.  **Development**: Features are developed and unit tested within feature modules.
-2.  **Integration and Testing**: Code is integrated, and comprehensive testing (unit, integration, UI) is performed.
-3.  **Build Generation (`operations/APK_OUTPUT_POLICY.md`)**: A release-ready APK is generated using the defined build system and versioning strategy.
-4.  **Staging/Pre-release Testing**: The generated APK may be deployed to a staging environment or distributed to a limited group of testers for final validation.
-5.  **Release (`operations/DEPLOY.md`)**: The validated APK is deployed to the target distribution platform (e.g., Google Play Store).
-6.  **Post-Release Monitoring**: Application performance and stability are monitored after release.
+## Workers Cloudflare
 
-## Key Aspects of Release Management
+Mudança em `integrations/cloudflare/<worker>/src/` é deployada à parte, em cada pasta:
+`npx wrangler deploy` (workers listados em `ENVIRONMENTS.md`). Garanta compatibilidade entre a versão do
+app e a do Worker antes de publicar; deploy de Worker em produção exige autorização do Luiz.
+Rollback: `ROLLBACK_PLAN.md`.
 
--   **APK Generation**: Detailed information on how release APKs are built is covered in `operations/APK_OUTPUT_POLICY.md`. This includes build configurations and signing.
--   **Versioning (`operations/VERSIONING.md`)**: The strategy for assigning version codes and version names is documented separately.
--   **Deployment (`operations/DEPLOY.md`)**: The steps and procedures for deploying the application to distribution channels are outlined.
--   **Release Notes**: Information regarding how release notes are drafted, reviewed, and included with releases needs to be validated. This might involve summarizing changes from version control or issue tracking.
+## Ativação de feature flag no release
 
-## Artifacts and Locations
+1. Mude o `buildConfigField` da flag no bloco `release` de `android/app/build.gradle.kts`.
+2. Bump de versão e entrada no `CHANGELOG.md` descrevendo a feature para o usuário.
+3. Atualize `FUNCIONAL.md`/`TECNICO.md` se o comportamento documentado mudar.
+4. Publique pelo fluxo acima. Se a feature não estiver pronta, reverta a flag e faça hotfix
+   (`HOTFIX_PROCEDURE.md`).
 
--   **Release APKs**: Final release builds are stored in `builds/apk/release/<versionName>/`.
--   **Versioning Script**: `scripts/version.ps1` likely plays a role in managing version information during the build process.
+## Riscos conhecidos
 
-## Known Risks
-
--   The exact procedures for each stage, including quality gates, testing checklists, and rollback strategies, require human validation.
--   The process for generating release notes and managing user-facing documentation for each version needs to be confirmed.
--   Specific approval steps or sign-offs required before a release are not detailed and need human input.
-
-
-
-## Feature Activation Process (pós-MVP)
-
-Quando uma feature flag pós-MVP deve ser ativada no release:
-
-### Checklist
-
-- [ ] Implementação concluída e testada em debug
-- [ ] Testes E2E passando
-- [ ] Code review aprovado
-- [ ] Arquivo `.changelog` adicionado descrevendo a feature
-- [ ] TECNICO.md e FUNCIONAL.md atualizados (se necessário)
-
-### Passos
-
-1. **Alterar build.gradle.kts**
-   - Arquivo: `app/build.gradle.kts`
-   - Bloco: `release { ... }`
-   - Linha: `buildConfigField("Boolean", "FEATURE_XXXX", "true")`
-   - Mudar de `"false"` para `"true"`
-
-2. **Incrementar versão em libs.versions.toml**
-   - Arquivo: `gradle/libs.versions.toml`
-   - Campo: `versionName` — seguir semver (ex: 0.23.0 → 0.23.1)
-   - Campo: `versionCode` — incrementar de 1 em 1 (ex: 56 → 57)
-
-3. **Atualizar CHANGELOG**
-   - Arquivo: `CHANGELOG.md`
-   - Adicionar entrada em **Unreleased** ou na versão correspondente
-   - Descrever o que a feature faz do ponto de vista do usuário
-
-4. **Build Release APK (clean, sem cache)**
-   - `./gradlew clean assembleRelease --no-build-cache`
-   - Assinar com chave de release (configurada em `key.properties`)
-   - Para artefato arquivado/nomeado, use `.\scripts\build-apk-release.ps1`
-   - Conferir APK em `builds/apk/release/<versionName>/`
-
-5. **Distribuir (Firebase App Distribution)**
-   - `./gradlew appDistributionUploadRelease`
-   - Para publicação em loja, seguir o fluxo Play Store em `operations/DEPLOY.md`
-     (internal testing → beta → production com staged rollout)
-
-6. **Atualizar documentação pública** (se necessário)
-   - Release notes
-   - Documentação de usuário
-   - Página de novidades in-app
-
-### Risco: Feature incompleta em release
-
-Se uma flag foi ativada mas a feature não está 100% pronta, desativar imediatamente:
-- Reverter `buildConfigField` para `"false"`
-- Incrementar versão (hotfix)
-- Rebuild e redeploy
-
+- Rollout gradual (`userFraction`) não está configurado no workflow; ajuste de rollout é manual no Play Console.
+- Aprovações e sign-offs de release dependem do Luiz; não há gate de GitHub Environment no disparo manual de produção (decisão de 2026-08-27, PR #1805).

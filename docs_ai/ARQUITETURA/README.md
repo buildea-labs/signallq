@@ -4,7 +4,8 @@ description: "Visão de sistema, módulos Gradle e dependências, do código rea
 type: "técnico"
 status: "ativo"
 owner: "Camilo"
-last_updated: "2026-08-19"
+last_updated: "2026-10-04"
+version: "1.1.0"
 ---
 
 # Arquitetura — SignallQ consumer
@@ -29,7 +30,7 @@ last_updated: "2026-08-19"
 | Módulos Gradle | **22** | `android/settings.gradle.kts` |
 | Workers Cloudflare | 5 | `integrations/cloudflare/*/wrangler.toml` |
 | Tabelas D1 | 38 — 20 admin + 18 diagnostic | `*/migrations/*.sql`, `*/schema.sql` |
-| Contratos OpenAPI | 7 contratos · **122** endpoints | `docs_ai/CONTRATOS/openapi/` |
+| Contratos OpenAPI | 5 contratos · **108** endpoints | `docs_ai/CONTRATOS/openapi/` |
 | Arquivos `.kt` em caminho legado `io/veloo` | 0 (sendo 0 em `src/main`) | dívida conhecida — higiene §4.1 |
 
 **Módulos (22):** :app :core:diagnostico :core:featureflags :core:nds :core:probejogo :core:relatorio :coreDatabase :coreDatastore :coreNetwork :corePermissions :coreRecommendation :coreTelephony :featureDevices :featureDiagnostico :featureDns :featureFibra :featureHistory :featureHome :featureRouter :featureSettings :featureSpeedtest :featureWifi
@@ -50,10 +51,8 @@ last_updated: "2026-08-19"
 |---|---|---:|
 | `ai-diagnosis-worker.yaml` | 2 | 2 |
 | `game-latency-probe-worker.yaml` | 1 | 2 |
-| `signallq-admin-api.yaml` | 2.1.0 | 59 |
-| `signallq-analytics-events.yaml` | 1.0.0 | 5 |
+| `signallq-admin-api.yaml` | 2.2.0 | 59 |
 | `signallq-diagnostic-worker.yaml` | 1 | 43 |
-| `signallq-integrations-api.yaml` | 1.0.0 | 9 |
 | `signallq-privacy-worker.yaml` | 1 | 2 |
 
 <!-- INVENTARIO:FIM -->
@@ -63,8 +62,8 @@ last_updated: "2026-08-19"
 ## 1. Visão geral
 
 App Android nativo de diagnóstico de conectividade. Mede velocidade, analisa Wi-Fi e rede móvel,
-lê modem/ONT de fibra, testa DNS e interpreta tudo isso em veredito humano — por um motor
-determinístico local e, opcionalmente, por um Worker de IA.
+lê modem/ONT de fibra e roteador, testa DNS e interpreta tudo isso em veredito humano — por um
+motor determinístico local e, opcionalmente, por Workers de IA/diagnóstico.
 
 Quatro camadas:
 
@@ -74,12 +73,12 @@ Quatro camadas:
 │                ↑ TODA a UI vive aqui — ver §4               │
 ├─────────────────────────────────────────────────────────────┤
 │  :feature*     motores e vocabulário por domínio            │
-│                (9 módulos — sem Composable)                 │
+│                (10 módulos — sem Composable)                │
 ├─────────────────────────────────────────────────────────────┤
 │  :core*        infraestrutura compartilhada                 │
-│                (9 módulos — rede, banco, prefs, permissões, │
-│                 telefonia, recomendação, diagnóstico,       │
-│                 relatório, feature flags)                   │
+│                (11 módulos — rede, banco, prefs, permissões,│
+│                 telefonia, recomendação, diagnóstico, NDS,  │
+│                 relatório, feature flags, sonda de jogo)    │
 └─────────────────────────────────────────────────────────────┘
                               ↕ HTTPS
 ┌─────────────────────────────────────────────────────────────┐
@@ -94,78 +93,68 @@ Quatro camadas:
 2. `:core*` não depende de `:feature*`.
 3. `:app` pode depender de tudo.
 
-**Nenhuma violação da regra 1 conhecida hoje.** A única existente —
-`:featureDiagnostico` → `:featureSpeedtest` (`SignallQOrchestrator.kt` importava
-`ExecutorSpeedtest`/`ResultadoSpeedtest`/`ModoSpeedtest`/`SpeedtestQualityClassifier`) — foi
-resolvida em GH#1682: o `SignallQOrchestrator` (motor SignallQ Pulse, órfão sem consumidor de UI)
-foi removido, e com ele o único uso real da dependência `implementation(project(":featureSpeedtest"))`
-em `android/feature/diagnostico/build.gradle.kts`, que também foi removida.
+Nenhuma violação da regra 1 hoje (a única histórica, `:featureDiagnostico` → `:featureSpeedtest`,
+saiu em GH#1682). Reconfirmar com `grep -rn 'project(":feature' android/feature/*/build.gradle.kts`.
 
-O contraexemplo de como fazer certo está em `:featureHome`, que precisa de dados de medição e
-**não** depende de `:featureSpeedtest`: define uma struct genérica (`ResolvedorMedicaoHome`) e
-empurra a adaptação para `HomeMedicaoAdapter.kt`, em `:app`.
+Contraexemplo de como fazer certo: `:featureHome` precisa de dados de medição e **não** depende de
+`:featureSpeedtest` — define uma struct genérica (`ResolvedorMedicaoHome`) e a adaptação vive em
+`HomeMedicaoAdapter.kt`, em `:app`.
 
 ## 3. Módulos
 
-### `:core*` — infraestrutura (9)
+Detalhe por módulo em `MODULOS/`.
 
-| Módulo | Papel | Observação |
-|---|---|---|
-| `:coreNetwork` | Sondagens de rede, contratos de analytics | **Sem lib HTTP** — `HttpURLConnection`/`Socket`/`InetAddress` amarrados à `Network` sob análise. Maior e mais consumido: 7 consumidores |
-| `:coreDatabase` | Room — histórico, outbox de analytics | Schema **v18**, 8 entidades, 7 DAOs, 17 migrations encadeadas |
-| `:coreDatastore` | Preferências do usuário, credenciais de modem | DataStore `linkaPreferencias` |
-| `:corePermissions` | Fluxo de permissões de rede | Sem testes |
-| `:coreTelephony` | Rede móvel (RSRP/RSRQ/SINR) | Exige só `READ_PHONE_STATE`; não usa IMEI/IMSI |
-| `:coreRecommendation` | Motor de recomendação por tags | Nasceu em `io/signallq/` (módulo criado pós-rebrand) |
-| `:core:diagnostico` | Motor canônico de diagnóstico | Consumido por `:app`, `:featureSpeedtest`, `:featureDiagnostico` |
-| `:core:relatorio` | Paginação HTML→PDF | Consumido por `:app`, `:featureHistory`; 194 linhas, **zero testes** |
-| `:core:featureflags` | Flags remotas do consumer | 11 flags no catálogo |
+### `:core*` — infraestrutura (11)
+
+| Módulo | Papel |
+|---|---|
+| `:coreNetwork` | Sondagens de rede (probes, gateway, scan Wi-Fi, topologia) e contratos de analytics. **Sem lib HTTP** — `HttpURLConnection`/`Socket`/`InetAddress` amarrados à `Network` sob análise. O mais consumido |
+| `:coreDatabase` | Room (`SignallQDatabase`) — histórico, chat, outbox de analytics, mapeamento Wi-Fi |
+| `:coreDatastore` | Preferências do usuário, credenciais de modem |
+| `:corePermissions` | Fluxo de permissões de rede |
+| `:coreTelephony` | Rede móvel (RSRP/RSRQ/SINR); exige só `READ_PHONE_STATE` |
+| `:coreRecommendation` | Motor de recomendação por tags |
+| `:core:diagnostico` | Motor canônico de diagnóstico (ADR-011); destino de substituição pelo NDS (ADR-017) |
+| `:core:nds` | Rede e contrato do Network Diagnostics Service (ADR-017) |
+| `:core:relatorio` | Paginação HTML→PDF (`WebViewHtmlPdfExporter`) |
+| `:core:featureflags` | Catálogo de flags remotas do consumer (`consumer-catalog.json`, 14 flags) |
+| `:core:probejogo` | Cliente UDP do beacon regional GameLift (Modo gamer) |
 
 Os seis primeiros são **aliases flat legados** (`:coreNetwork`) com `projectDir` remapeado para
-pasta hierárquica (`core/network`). Os três últimos nasceram já hierárquicos (`:core:diagnostico`).
-Renomear os legados para `:core:network` é migração dedicada — afeta CI, scripts e documentação.
+pasta hierárquica (`core/network`); os demais nasceram hierárquicos. Renomear os legados é migração
+dedicada — afeta CI, scripts e documentação.
 
-### `:feature*` — domínios (9)
+### `:feature*` — domínios (10)
 
-| Módulo | Produção | Papel |
-|---|---|---|
-| `:featureSpeedtest` | motor de medição | `ExecutorSpeedtestCloudflare.kt` tem **1495 linhas**, sem teste direto |
-| `:featureDiagnostico` | orquestração + IA | Cliente do Worker de IA e do ingest de analytics |
-| `:featureDevices` | scanner da rede local | O mais maduro: 2033 linhas de produção, 1487 de teste |
-| `:featureFibra` | leitura de ONT GPON | Um único driver real: Nokia G-1425G-B |
-| `:featureDns` | comparação de resolvedores | Sem ViewModel próprio — estado vai direto ao `MainViewModel` |
-| `:featureHistory` | histórico e exportação | **Dois motores de PDF ativos em paralelo** |
-| `:featureWifi` | vocabulário de Wi-Fi | 93 linhas; a classificação real está em `SinalWifiSection.kt` |
-| `:featureHome` | resolução de medição da Home | 67 linhas; exemplo canônico da regra de dependência |
-| `:featureSettings` | regras de ajustes | 203 linhas, zero dependências, zero UI — **não é feature**, é biblioteca de regras puras; destino natural é um `core` |
+| Módulo | Papel |
+|---|---|
+| `:featureSpeedtest` | motor de medição (`ExecutorSpeedtestCloudflare`) |
+| `:featureDiagnostico` | orquestração + clientes do Worker de IA e do ingest de analytics |
+| `:featureDevices` | scanner da rede local |
+| `:featureFibra` | leitura de ONT GPON |
+| `:featureRouter` | driver de roteador (TP-Link Archer C6) |
+| `:featureDns` | comparação de resolvedores; sem ViewModel próprio (estado vai ao `MainViewModel`) |
+| `:featureHistory` | histórico e exportação (PDF via `PdfDocument`) |
+| `:featureWifi` | vocabulário de Wi-Fi (módulo mínimo; a classificação de redes está em `SinalWifiSection.kt`) |
+| `:featureHome` | resolução de medição da Home (módulo mínimo) |
+| `:featureSettings` | regras puras de ajustes, sem UI; depende só de `:coreDatabase` — destino natural é um `core` |
 
 ## 4. A inconsistência principal: UI fora das features
 
-**Nenhum dos 9 módulos `:feature*` contém um único `@Composable`.** Toda a interface vive em
-`android/app/src/main/kotlin/io/signallq/app/ui/screen/`.
+**Nenhum módulo `:feature*` ou `:core*` contém `@Composable`.** Toda a interface vive em
+`android/app/src/main/kotlin/io/signallq/app/ui/`. Consequência: as features viraram bibliotecas de
+motor e vocabulário, e `:app` concentra a maior parte do código, incluindo vários arquivos acima do
+limiar de 800 linhas (`MainViewModel.kt`, `AppShell.kt`, `HistoricoScreen.kt`,
+`LocalDeviceSection.kt`, `SinalWifiSection.kt`, `SinalCanalSection.kt` e outros). Contagem atual:
+`find android/app/src/main -name '*.kt' | xargs wc -l | sort -rn`.
 
-Consequência direta: as features viraram bibliotecas de motor e vocabulário, e `:app` concentra
-40.017 linhas em 150 arquivos, com dez acima de 800 linhas:
+Efeitos concretos: `:featureWifi` é minúsculo porque a classificação de redes ainda é montada em
+`SinalWifiSection.kt`; `:featureDns` não tem ViewModel porque o `MainViewModel` monolítico assume o
+estado.
 
-| Arquivo | Linhas |
-|---|---:|
-| `Inicio2Screen.kt` | 302 |
-| `MainViewModel.kt` | 2438 |
-| `SinalCanalSection.kt` | 1215 |
-| `DispositivosScreen.kt` | 1380 |
-| `SinalWifiSection.kt` | 1110 |
-| `DnsScreen.kt` | 815 |
-
-A issue #1660 (épico #1647) extraiu o antigo `SinalScreen.kt` (era 3383 linhas) num scaffold de
-476 linhas + `SinalWifiSection.kt`/`SinalCanalSection.kt`/`SinalMovelSection.kt`
-(539)/`SinalSharedComponents.kt` (79) — puramente estrutural, sem mover regra pra `:featureWifi`.
-Isso puxa efeitos concretos: `:featureWifi` tem 93 linhas porque a classificação de redes ainda é
-montada dentro de `SinalWifiSection.kt` (que chega a construir `RedeClassificada(...)` inline); e
-`:featureDns` não tem ViewModel porque o `MainViewModel` monolítico assume o estado.
-
-O destino arquitetural é mover cada tela para o módulo da sua feature. É migração dedicada, por
-tela, com teste de caracterização antes — ver `.claude/rules/higiene-e-padronizacao-repositorio.md`
-§4 para o registro de cada arquivo crítico.
+O destino é mover cada tela para o módulo da sua feature — migração dedicada, por tela, com teste de
+caracterização antes. Registro dos arquivos críticos em
+`.claude/rules/higiene-e-padronizacao-repositorio.md` §4.
 
 ## 5. Fluxo de dados
 
@@ -175,35 +164,33 @@ renderizado por `:app`.
 
 **Diagnóstico com IA:** `:featureDiagnostico` monta payload → `POST` ao `ai-diagnosis-worker` →
 resposta v2 → fallback local determinístico em qualquer falha (sem auth, timeout, não-2xx, JSON
-inválido).
+inválido). A migração para o NDS (`:core:nds`, ADR-017) está em andamento.
 
 **Analytics:** cada evento vai **simultaneamente** ao Firebase e a uma outbox Room local; um
 processador com backoff drena a outbox para `POST /ingest/analytics` no `signallq-admin-worker`,
-que grava em D1. Não há Cloudflare Queue — a ingestão é HTTP síncrono direto para D1.
+que grava em D1. Não há Cloudflare Queue.
 
 ## 6. Backend Cloudflare
 
-5 Workers. Dois têm banco D1 próprio: `signallq-admin` (20 tabelas) e `signallq-diagnostic`
-(18 tabelas). O nome declarado no `wrangler.toml` difere do nome do diretório em **todos os cinco**
-— conferir a tabela do inventário acima antes de fazer deploy.
-
-Contratos em `../CONTRATOS/openapi/`.
+5 Workers (tabela do inventário). Dois têm banco D1 próprio: `signallq-admin` e
+`signallq-diagnostic`. O `name` no `wrangler.toml` difere do nome do diretório em quase todos —
+conferir a tabela do inventário antes de fazer deploy. Contratos em `../CONTRATOS/openapi/`.
 
 ## 7. Riscos arquiteturais
 
 | Risco | Evidência | Efeito |
 |---|---|---|
-| UI monolítica em `:app` | arquivos grandes concentrados em `MainViewModel`, `AppShell` e seções de rede | Features anêmicas; mudança visual exige tocar arquivos centrais |
-| Feature→feature | 0 violações conhecidas (§2) — única confirmada (`:featureDiagnostico`→`:featureSpeedtest`) resolvida em GH#1682 | Sem efeito hoje; reavaliar se `grep -rn 'project(":feature'` em `feature/*/build.gradle.kts` encontrar dependência entre `:feature*` |
-| Três mecanismos de feature flag | `:core:featureflags` + `FeatureFlagProvider` legado em `:coreNetwork` + Firebase Remote Config | Colisão de nome e ambiguidade sobre qual vence |
-| Dois motores de PDF | `:featureHistory` usa `PdfDocument` e HTML→WebView via `:core:relatorio` | Manutenção dupla |
-| Versão de dependência fora do catálogo | `:featureDevices` fixa `okhttp:5.4.0` no build | Pode divergir do `libs.okhttp` dos demais |
-| Schema Room sem `15.json` | `core/database/schemas/` tem 10–14, 16, 17, 18 | Migration 14→15 não verificável por diff de schema |
-| `:core:diagnostico` não é Kotlin puro | `build.gradle.kts` declara "zero `android.*`", mas `topology/` faz HTTP e `Runtime.exec("/system/bin/ping")` | Contrato do módulo não corresponde ao conteúdo |
-| Credencial de modem em claro | `CredenciaisModemStore` cai para `SharedPreferences` sem cifra em `catch (_: Exception)` genérico quando o AndroidKeyStore falha | Exposição de senha de roteador — ver `../TECNICO.md` §6 |
+| UI monolítica em `:app` | arquivos grandes em `MainViewModel`, `AppShell` e seções de rede | Features anêmicas; mudança visual exige tocar arquivos centrais |
+| Três mecanismos de feature flag | `:core:featureflags` + `FeatureFlagProvider` legado em `:coreNetwork` + Firebase Remote Config | Ambiguidade sobre qual vence |
+| Dois motores de PDF | `:featureHistory` (`ExportadorHistoricoPDF`, `PdfDocument`) e HTML→WebView via `:core:relatorio` | Manutenção dupla |
+| Versão fora do catálogo | `:featureDevices` fixa `okhttp:5.5.0` no `build.gradle.kts` (catálogo: `libs.okhttp`, hoje a mesma versão) | Diverge no próximo bump |
+| `:core:diagnostico` não é Kotlin puro | `topology/correlation/TopologyTracer.kt` executa `/system/bin/ping` via `Runtime.exec` | Contrato "sem `android.*`/sem I/O" do módulo não corresponde ao conteúdo |
+| Credencial de modem sem cifra no fallback | `CredenciaisModemStore` cai para `SharedPreferences` comum em `catch (_: Exception)` quando o AndroidKeyStore falha | Exposição de senha de roteador — ver `../TECNICO.md` |
+| Módulos sem teste unitário | `:corePermissions`, `:core:relatorio`, `:featureWifi` | Regressão silenciosa |
 
 ## 8. Decisões arquiteturais relacionadas
 
-`ADR-003` DispatcherProvider por injeção · `ADR-004` estrutura multi-módulo · `ADR-008` features
-novas D1-only · `ADR-011` motor canônico de diagnóstico, fase 0 · `ADR-012` `executionId`/
-`rulesVersion` · `ADR-013` unificação de latência/perda/upload. Todos em `../decisions/`.
+`ADR-003` DispatcherProvider · `ADR-004` estrutura multi-módulo · `ADR-008` features novas D1-only ·
+`ADR-011` motor canônico de diagnóstico · `ADR-012` `executionId`/`rulesVersion` · `ADR-013`
+unificação de latência/perda/upload · `ADR-017` motor de diagnóstico/IA migra para o NDS. Todos em
+`../decisions/`.

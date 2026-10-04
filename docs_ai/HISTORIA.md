@@ -4,7 +4,8 @@ description: "Origem, propósito e princípios que explicam por que o SignallQ e
 type: "produto"
 status: "ativo"
 owner: "Luiz"
-last_updated: "2026-08-15"
+last_updated: "2026-10-04"
+version: "1.1.0"
 ---
 
 # A história do SignallQ
@@ -142,7 +143,7 @@ O SignallQ existe para responder.
 
 ## Estado atual (para agentes futuros)
 
-*(Seção adicionada em 2026-08-15, curadoria pós-ADR-016 — não faz parte do relato original do Luiz
+*(Seção adicionada em 2026-08-15 e atualizada em 2026-10-04, curadoria pós-ADR-016 — não faz parte do relato original do Luiz
 acima; é só orientação factual objetiva.)*
 
 **O que o SignallQ é hoje:** app de diagnóstico de conectividade em Android (Kotlin/Compose) e Web
@@ -159,7 +160,7 @@ sem assinatura obrigatória.
 (Android+Web, freemium/ads, usuário doméstico brasileiro) e Linka (Apple, pago, diagnóstico
 profissional). Squads, repositórios e governança separados; não compartilham código.
 
-**Squad SignallQ:** Claudete (produto), Camilo (dev único — Android/Web/Workers/Admin), Caio
-(revisor único) — design e growth viram skills, não agentes permanentes.
+**Squad SignallQ:** Cora (produto), Davi (Android), Ramon (diagnóstico/Workers), Breno (QA) e Camillo
+(arquitetura transversal) — governança em `AGENTS.md`. A squad Claudete/Camilo/Caio foi aposentada.
 
 **Fonte canônica atualizada:** [ADR-016 — Portfólio Buildea](decisions/ADR-016-portfolio-buildea.md).

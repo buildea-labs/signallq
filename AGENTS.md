@@ -38,7 +38,7 @@ Fontes canônicas:
 2. comportamento real do código e testes;
 3. `docs_ai/POSICIONAMENTO_PRODUTO.md`;
 4. `docs_ai/FUNCIONAL.md` para o fluxo implementado;
-5. `docs_ai/functional/JORNADA_ANDROID_GUIADA_2_SPEC.md` para direção futura, enquanto ainda for draft;
+5. `docs_ai/functional/JORNADA_ANDROID_GUIADA_2_SPEC.md` para os princípios de produto da Jornada Android Guiada 2.0 (já entregue na v1.0.9; o comportamento real está em `FUNCIONAL.md`);
 6. `docs_ai/DESIGN_SYSTEM.md` para o Android implementado;
 7. `docs_ai/design-system/SIGNALLQ_DESIGN_SYSTEM_2_SPEC.md` para direção futura, enquanto ainda for draft;
 8. contratos em `docs_ai/CONTRATOS/`;

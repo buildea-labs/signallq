@@ -1,17 +1,24 @@
-# PingExecutor — Arquitetura & Implementação
+---
+title: "PingExecutor — arquitetura e implementação"
+description: "Medição HTTP de latência/jitter/perda (PingExecutor + AnalisadorAmostragemPing) usada pela tela Ping, pelo speedtest e pelo Modo gamer."
+type: "técnico"
+status: "ativo"
+owner: "Camilo"
+last_updated: "2026-10-04"
+version: "1.1.0"
+---
 
-**Status:** ativo
-**Última validação:** 2026-07-23 (contra `android/feature/speedtest/src/main/kotlin/.../feature/speedtest/PingExecutor.kt` e `AnalisadorAmostragemPing.kt`)
-**Fonte de verdade:** código real
-**Escopo:** medição de latência/jitter/perda usada pela tela Ping, pelo speedtest de velocidade e pelo fluxo de Jogos
-**Responsável:** Camilo (Backend Android)
+# PingExecutor — arquitetura e implementação
+
+- **Fonte de verdade:** código (`android/feature/speedtest/src/main/kotlin/io/signallq/app/feature/speedtest/PingExecutor.kt` e `AnalisadorAmostragemPing.kt`)
+- **Escopo:** medição de latência/jitter/perda usada pela tela Ping, pelo speedtest de velocidade e pelo Modo gamer
 
 ---
 
 ## 1. Objetivo técnico
 
 Medir latência, jitter e perda de pacote de forma consistente entre três consumidores (tela
-Ping, `ExecutorSpeedtestCloudflare`, `JogoConexaoEngine`) sem ICMP real — Android não concede
+Ping, `ExecutorSpeedtestCloudflare`, Modo gamer) sem ICMP real — Android não concede
 `CAP_NET_RAW` a apps, então a medição é HTTP/HTTPS. A UI nunca deve chamar isso de "ping ICMP"
 (decisão registrada em GH#1211).
 
@@ -30,9 +37,9 @@ class PingExecutor(
 }
 ```
 
-`targetUrl` é parametrizável desde a GH#935 — o fluxo de Jogos reaproveita a mesma classe
-apontando para o `game-latency-probe-worker` (sonda regional dedicada) em vez de duplicar a
-lógica de amostragem.
+`targetUrl` é parametrizável — a tela Ping aceita destino informado pelo usuário e o Modo gamer
+apontando para o `game-latency-probe-worker` (sonda regional dedicada) reaproveitam a mesma classe
+em vez de duplicar a lógica de amostragem.
 
 O algoritmo estatístico (mediana, filtro de outlier, jitter, perda) foi extraído para
 **`AnalisadorAmostragemPing`** (GH#1019) — classe pura, sem I/O, reusada também por
@@ -120,9 +127,9 @@ cache intermediário.
 
 | Consumidor | Uso |
 |---|---|
-| `PingScreen`/`PingScreenViewModel` | Tela Ping standalone (overlay) |
+| `PingScreen` (`:app`) | Tela Ping standalone (overlay); `PingExecutor()` ou `PingExecutor(targetUrl = "https://$destino/")` |
 | `ExecutorSpeedtestCloudflare` | Reusa `AnalisadorAmostragemPing` para a fase de latência do speedtest completo |
-| `JogoConexaoEngine` (fluxo de Jogos) | Reusa `PingExecutor` com `targetUrl` apontando para `game-latency-probe-worker` |
+| Modo gamer (`ModoGamerConfigResultadoSection.kt`, `:app`) | Reusa `PingExecutor` com `targetUrl` do `game-latency-probe-worker` como fallback; antes tenta a sonda UDP `SondaGameLiftBeacon` (`:core:probejogo`), cujas amostras passam pelo mesmo `AnalisadorAmostragemPing` |
 
 ## 7. Limitações conhecidas
 
@@ -134,15 +141,5 @@ cache intermediário.
 
 ## 8. Testes
 
-`android/feature/speedtest/src/test/kotlin/.../feature/speedtest/PingExecutorTest.kt`. Não
-confirmado o número exato de casos atuais (a versão anterior deste documento citava 2 exemplos
-ilustrativos, não uma contagem real) — `[a confirmar]` se precisar do total exato.
-
-## 9. Changelog relevante
-
-- GH#1019 — algoritmo de amostragem extraído para `AnalisadorAmostragemPing`, reusado por
-  `ExecutorSpeedtestCloudflare`.
-- GH#935 — `targetUrl` parametrizável, reuso pelo fluxo de Jogos via `game-latency-probe-worker`.
-- GH#1211 — timeout global de execução, abort antecipado em falha de rede consecutiva,
-  preservação de picos (`maxMs`/`p95Ms`/`picos`) fora do filtro de outlier, correção de
-  precisão de `perdaPercentual` (Double em vez de Int arredondado).
+`android/feature/speedtest/src/test/kotlin/.../feature/speedtest/PingExecutorTest.kt`. O
+algoritmo estatístico tem teste próprio em `AnalisadorAmostragemPingTest.kt`.

@@ -10,7 +10,7 @@ import org.junit.Test
  * Room, `core/database`) NAO tem correspondencia 1:1 com [MeasurementStatus] (enum de
  * `feature/speedtest`, GH#1221/#1225), apesar de os dois nominalmente cobrirem o mesmo
  * conceito ("integridade de uma medicao"). Ver
- * `docs_ai/ARQUITETURA/AUDITORIA_1228_FASE0_INVENTARIO_COMPLETO.md`, Parte 3.4 e Parte 8
+ * auditoria #1228, Fase 0, achados
  * (P2-3).
  *
  * Os valores possiveis de `MedicaoEntity.status` estao documentados apenas no kdoc do

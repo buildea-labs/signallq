@@ -1,18 +1,18 @@
-**Status:** ativo (documento de reconhecimento, não de produto — ver skill `/reconhecimento-equipamento-rede`)
-**Última validação:** 2026-07-23 — `NokiaModemClient.kt`/`NokiaModemParser.kt`/`ExecutorFibra.kt` confirmados em `android/feature/fibra/`, único scraper real de gateway hoje
-**Escopo:** levantamento exaustivo da interface web da ONT Nokia G-1425G-B (série ALCL), insumo do epic SIG-343
-**Responsável:** Camilo (Backend Android)
+---
+title: "Mapeamento de campos — ONT Nokia G-1425G-B (GPON)"
+description: "Levantamento da interface web da ONT Nokia G-1425G-B (série ALCL): campos por tela, segredos e esquema de autenticação. Insumo de reconhecimento, não de produto."
+type: "técnico"
+status: "ativo"
+owner: "Ramon"
+last_updated: "2026-10-04"
+version: "2.0.0"
+---
 
 # Mapeamento de campos — Interface Web ONT Nokia GPON
 
-> Levantamento exaustivo de schema/capacidade da interface administrativa web da ONT
-> Nokia do Luiz. **Não é implementação** — insumo de reconhecimento técnico para o
-> epic SIG-343 (alimenta SIG-345/347/352). Nenhum parser novo, nenhuma model Kotlin
-> foi criada a partir deste documento.
->
-> Levantamento feito em 2026-07-08 via acesso HTTP direto à interface web do
-> equipamento (login com par RSA+AES conforme o próprio JS da ONT: `jsencrypt` +
-> `sjcl` + `crypto_page.js`), navegando todas as telas do menu principal.
+**Natureza:** reconhecimento (skill `/reconhecimento-equipamento-rede`), não implementação. Levantamento de 2026-07-08 por acesso HTTP direto à interface web da ONT (login RSA+AES conforme o JS da própria ONT), navegando todas as telas do menu. Alimentou o epic SIG-343.
+**Fonte de verdade:** o equipamento e o código que o consome: `NokiaModemClient.kt`, `NokiaModemParser.kt`, `NokiaModemCrypto.kt`, `ExecutorFibra.kt` em `android/feature/fibra/` (único scraper real de gateway hoje). Na divergência, vale o código.
+**Substitui:** a introdução e as "Oportunidades" da versão anterior, reescritas para refletir o que o parser já consome (recuperável via `git log`).
 
 ## Fingerprint do equipamento
 
@@ -395,40 +395,15 @@ associada a explorar.
 
 ## Oportunidades
 
-Campos novos (não usados hoje pelo SignallQ) que parecem mais valiosos para o
-diagnóstico de fibra, em ordem de prioridade:
+Conferido contra `android/feature/fibra` em 2026-10-04. **Já consumidos pelo `NokiaModemParser`:** `lan_ether` (status e erros por porta LAN), `X_ASB_COM_*` (erros/drops por rádio Wi-Fi) e `device_cfg[]` (leases DHCP). **Ainda sem consumo no app**, em ordem de valor para diagnóstico de fibra:
 
-1. **`RXPowerLower` / `RXPowerUpper` (thresholds ópticos)** — hoje o app mostra
-   RX/TX absolutos (`GponStatus.rxPowerDbm/txPowerDbm`), mas não a margem até o
-   limite de falha do próprio transceptor. Dá pra classificar "sinal ok mas
-   perto do limite" em vez de só bom/ruim por faixa fixa hardcoded no app.
-2. **`stats.FECError` / `HECError` / `DropPackets` (camada GPON)** — contadores
-   de erro corrigido/descartado na camada óptica. É o tipo de sinal que aparece
-   *antes* de virar perda de pacote perceptível — bom pra alerta preditivo.
-3. **Status e estatísticas de erro por porta LAN Ethernet** (`lan_ether[].Status`,
-   `ErrorsSent/Received`, `MaxBitRate` negociado) — permite ao app diferenciar
-   "problema é no Wi-Fi" de "problema é no cabo/porta LAN" quando o dispositivo
-   testado está cabeado.
-4. **Diagnóstico nativo do ONT** (`diag.cgi?ping`) — rodar ping/traceroute a
-   partir do próprio equipamento (fora da rede Wi-Fi do celular) ajudaria a
-   isolar se o problema é entre o celular e o roteador ou entre o roteador e a
-   internet — hoje o SignallQ só mede a partir do celular.
-5. **`X_ASB_COM_RxErrors`/`RxDrops`/`TxErrors`/`TxDrops` por rádio Wi-Fi** — taxa
-   de erro reportada pelo próprio chipset do AP embutido no ONT, mais precisa que
-   inferir só por RSSI do lado do celular.
-6. **`mem_info` / `cpu_temperatureinfo` do ONT** — indicador de saúde do próprio
-   equipamento (memória baixa ou CPU quente pode explicar instabilidade
-   intermitente que não é nem Wi-Fi nem fibra).
-7. **`meshStatus` / `meshBackhaulStatus`** — só relevante para quem tem
-   extensores Nokia pareados, mas se relevante, vem pronto em enum qualitativo.
-8. **`device_cfg[]` (leases DHCP do próprio modem)** — complementar (não
-   substituto) ao scanner Android atual da featureDevices; MAC+hostname
-   reportado pelo servidor DHCP tende a ser mais estável que descoberta por
-   varredura ativa.
+1. **`RXPowerLower`/`RXPowerUpper`**: margem até o limite de falha do transceptor, em vez de só RX/TX absolutos contra faixa fixa.
+2. **`stats.FECError`/`HECError`/`DropPackets`** (camada GPON): erro corrigido/descartado que aparece antes da perda de pacote perceptível; bom para alerta preditivo.
+3. **Diagnóstico nativo** (`diag.cgi?ping`): ping/traceroute a partir da ONT isola celular↔roteador de roteador↔internet.
+4. **`mem_info`/`cpu_temperatureinfo`**: saúde do próprio equipamento (memória baixa ou CPU quente explicam instabilidade intermitente).
+5. **`meshStatus`/`meshBackhaulStatus`**: só para quem tem extensores Nokia pareados.
 
-Campos varridos e considerados **baixo valor** para diagnóstico (puramente
-configuração, não sinal de qualidade): Firewall, MAC/IP/URL Filter, Parental
-Control, DMZ/ALG, Port Forwarding/Triggering, DDNS, NTP, UPnP, Wireless Schedule.
+Varridos e de **baixo valor** (configuração pura): Firewall, MAC/IP/URL Filter, Parental Control, DMZ/ALG, Port Forwarding/Triggering, DDNS, NTP, UPnP, Wireless Schedule.
 
 ---
 
@@ -449,8 +424,3 @@ mesma família de firmware Nokia (`G-14xxG-*`, série ALCL):
    bastam (não precisa repetir handshake RSA por página — só para POSTs de
    escrita, que usam a mesma pubkey + um CSRF token embutido na própria página).
 6. Logout: `GET /login.cgi?out`.
-
-Esse esquema foi replicado neste levantamento via script Node.js pontual (RSA via
-`crypto.publicEncrypt` com `RSA_PKCS1_PADDING`, AES via `crypto.createCipheriv`),
-mantido **fora do repositório** (diretório temporário do sistema, apagado ao final
-da sessão).

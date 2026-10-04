@@ -4,8 +4,8 @@ description: "Especificação de identidade, experiência, conteúdo e fundament
 type: "funcional"
 status: "draft"
 owner: "Claudete"
-last_updated: "2026-08-15"
-version: "2.0.0-draft.6"
+last_updated: "2026-10-04"
+version: "2.0.0-draft.8"
 ---
 
 # SignallQ Design System 2.0
@@ -19,9 +19,9 @@ Esta especificação parte do brief confirmado em 2026-08-15:
 - **profundidade inicial:** foundations e componentes centrais.
 
 Esta primeira versão não inclui templates completos de tela, biblioteca de gráficos, componentes
-de campanhas, documentação de implementação Web, redesign integral das jornadas atuais nem
-migração do código Android. Esses itens dependem da validação dos fundamentos e dos componentes
-abaixo.
+de campanhas, documentação de implementação Web nem redesign integral das jornadas atuais. Esses
+itens dependem da validação dos fundamentos e dos componentes abaixo. A migração do código Android
+começou: ver o estado de implementação na seção 1.
 
 ## 1. Status e relação com o sistema atual
 
@@ -34,6 +34,19 @@ Web/PWA. Enquanto a migração não for concluída:
 - divergências entre os dois devem ser tratadas como trabalho de migração, não corrigidas de forma
   oportunista em telas sem escopo;
 - nenhuma tela deve alegar capacidade ainda não implementada.
+
+### Estado de implementação (verificado no código em 2026-10-04)
+
+| Parte do spec | Estado | Evidência |
+|---|---|---|
+| Cor: primárias, containers, semânticas (`success`/`warning`/`error`), `cardSurface`, preto-base no escuro | **Entregue** | `ui/SignallQTheme.kt` (`LkColors.Light`/`Dark`) |
+| Cor: neutros claros `surfaceContainerLow/Container/High`, `onSurface`, `onSurfaceVariant`, `outline`; `outline` escuro | **Entregue, valores do código** (decisão de 2026-10-04: o código prevalece). Claro: `surfaceContainerLow` `#F7F7F8`, `surfaceContainer` `#F1F1F2`, `surfaceContainerHigh` `#E8E8EA`, `onSurface` `#1C1C1F`, `onSurfaceVariant` `#48484D`, `outline` `#73737A`. Escuro: `#121212`, `#1E1E1E`, `#2A2A2A`, `onSurface` `#F5F2F7`, `outline` `#948F99` | `SignallQTheme.kt` |
+| Tipografia (escala `displaySmall`–`labelSmall`, Google Sans Flex 400/500/600/700) | **Entregue** | `signallQTypography`, `res/font/google_sans_flex_*` |
+| Espaçamento 4–40 + composição 48/64 (`LkSpacing`), formas (`LkRadius`), state layers (`LkStateLayer`), elevação tonal (`LkElevation`), easing `cubic-bezier(.2,0,0,1)` (`LkMotion`) | **Entregue** | `SignallQTheme.kt`; `SignallQThemeFoundationsTest.kt` |
+| Margem móvel 20/24 dp e alvo de toque 48 dp | **Não verificado** como contrato global; aplicado por tela | — |
+| Biblioteca central (§6.5) | **Entregue em grande parte** — tabela em §6.5 | `ui/component/` |
+| Migração das telas | **Incremental**; nenhuma jornada integralmente migrada (ver `DESIGN_SYSTEM.md`) | — |
+| Web/PWA (§9), movimento Web (§7) | **Draft** — vive em `signallq-web`, não verificável neste repositório | — |
 
 O sistema 2.0 compartilha fundamentos de marca, experiência e linguagem, mas possui implementações
 próprias para Android e Web. Não se pretende compartilhar código de interface entre plataformas.
@@ -198,8 +211,8 @@ Estados semânticos permanecem independentes da marca:
   controles, divisores e situações em que comuniquem um limite funcional.
 - Não usar gradientes decorativos, glassmorphism ou texturas.
 
-Os valores completos das superfícies escuras serão definidos e validados por contraste durante a
-fase de tokens; somente o fundo-base `#000000` está aprovado neste documento.
+Os valores das superfícies escuras já estão definidos em `LkColors.Dark` (`SignallQTheme.kt`) e
+validados por `SignallQThemeFoundationsTest`.
 
 ### 5.3 Tipografia
 
@@ -223,76 +236,25 @@ fase de tokens; somente o fundo-base `#000000` está aprovado neste documento.
 Formas seguem o componente, não uma estética universal arredondada. Cantos e pills não devem ser
 usados para transformar todo conteúdo em objetos isolados.
 
-### 5.6 Tokens-alvo da primeira versão
+### 5.6 Tokens da primeira versão — **entregues no Android**
 
-Os tokens abaixo são o contrato de design do 2.0. Eles preservam a identidade existente e reduzem
-divergências entre artefatos. Até a migração, diferenças em relação a `SignallQTheme.kt` são alvo,
-não estado implementado.
+Os tokens do 2.0 estão implementados em `android/app/src/main/kotlin/io/signallq/app/ui/SignallQTheme.kt`;
+a tabela completa de valores (cor, tipografia, espaçamento, formas, state layers, elevação e
+movimento) vive em [`../DESIGN_SYSTEM.md`](../DESIGN_SYSTEM.md), derivada do código. Aqui ficam só
+as regras de direção que o código não expressa:
 
-#### Cor
-
-| Papel | Claro | Escuro | Uso principal |
-|---|---:|---:|---|
-| `primary` | `#5B21D6` | `#D0BCFF` | CTA, foco e seleção principal |
-| `onPrimary` | `#FFFFFF` | `#38137E` | Conteúdo sobre `primary` |
-| `primaryContainer` | `#EAE0FF` | `#4F2FA8` | Seleção e ênfase tonal |
-| `onPrimaryContainer` | `#210A5C` | `#EADDFF` | Conteúdo sobre `primaryContainer` |
-| `secondary` | `#2851B8` | `#AAC7FF` | Compatibilidade com o sistema atual; não usar em componente central novo |
-| `surface` | `#FFFFFF` | `#000000` | Fundo-base da tela |
-| `cardSurface` | `#F7F7F8` | `#161616` | Card necessário, sem contorno perimetral |
-| `cardSurfaceElevated` | `#EEEEF0` | `#222222` | Região interna ou card elevado |
-| `surfaceContainerLow` | `#F8F5FB` | `#121212` | Agrupamento discreto |
-| `surfaceContainer` | `#F3EEFA` | `#1E1E1E` | Componentes e regiões elevadas |
-| `surfaceContainerHigh` | `#ECE5F5` | `#2A2A2A` | Seleção, sheet e destaque elevado |
-| `onSurface` | `#1C1B1F` | `#F5F2F7` | Texto e ícone principais |
-| `onSurfaceVariant` | `#49454F` | `#CAC4D0` | Texto e ícone secundários |
-| `outline` | `#79747E` | `#938F99` | Controles e bordas funcionais |
-| `outlineVariant` | `#CAC4D0` | `#49454F` | Divisores e bordas discretas |
-| `success` | `#146C2E` | `#83DA99` | Resultado positivo confirmado |
-| `warning` | `#8A5000` | `#FFB870` | Atenção ou resultado parcial |
-| `error` | `#BA1A1A` | `#FFB4AB` | Falha ou condição crítica |
-
-As cores de conteúdo sobre containers semânticos continuam sendo pares dedicados
-`onSuccessContainer`, `onWarningContainer` e `onErrorContainer`; não usar o tom de status puro
-como texto sobre um container sem validar contraste.
-
-#### Tipografia
-
-Família única: Google Sans Flex, com Google Sans, Roboto e a fonte do sistema como fallbacks.
-
-| Token | Tamanho/altura | Peso | Uso |
-|---|---:|---:|---|
-| `displaySmall` | 34/40 sp | 700 | Evidência principal excepcional |
-| `headlineLarge` | 26/32 sp | 700 | Título de tela |
-| `headlineSmall` | 22/28 sp | 600 | Conclusão ou seção principal |
-| `titleLarge` | 20/26 sp | 600 | Título de componente destacado |
-| `titleMedium` | 16/22 sp | 500 | Linha, item ou subseção |
-| `titleSmall` | 14/20 sp | 500 | Rótulo de campo ou grupo |
-| `bodyLarge` | 16/24 sp | 400 | Explicação principal |
-| `bodyMedium` | 14/20 sp | 400 | Apoio e detalhes |
-| `bodySmall` | 12/16 sp | 400 | Legenda curta |
-| `labelLarge` | 14/20 sp | 500 | Botão |
-| `labelMedium` | 12/16 sp | 500 | Chip e badge |
-| `labelSmall` | 11/16 sp | 500 | Overline excepcional |
-
-#### Espaçamento, forma e alvo de toque
-
-- escala interna: `4, 8, 12, 16, 20, 24, 32, 40` dp;
-- composição: `48` e `64` dp entre grandes blocos, quando o viewport permitir;
-- margem horizontal móvel: `20` dp por padrão e `24` dp em larguras confortáveis;
-- card: `16` dp; field: `12` dp; botão: `20` dp; dialog: `24` dp; sheet: `28` dp nos
-  cantos superiores; chip e badge: pill;
-- controles interativos: área tocável mínima de `48 × 48` dp, mesmo quando o elemento visual for
-  menor;
-- borda funcional: `1` dp; sombra apenas como reforço de elevação tonal.
-
-#### Estado e movimento
-
-- state layers: hover `8%`, focus `10%`, pressed `12%`, dragged `16%` sobre a cor de conteúdo
-  apropriada;
-- microinteração: `150–250 ms`; transição de tela ou container: `250–400 ms`;
-- easing padrão: `cubic-bezier(.2, 0, 0, 1)`;
-- movimento reduzido substitui deslocamento por troca imediata ou crossfade curto.
+- `secondary` (azul) é compatibilidade: não usar em componente central novo (ver 5.1);
+- cores de conteúdo sobre containers semânticos são pares dedicados `onSuccessContainer`,
+  `onWarningContainer` e `onErrorContainer`; não usar o tom de status puro como texto sobre um
+  container sem validar contraste;
+- escala de espaçamento `4, 8, 12, 16, 20, 24, 32, 40` dp, mais `48` e `64` dp de composição;
+- margem horizontal móvel `20` dp (`24` dp em larguras confortáveis) e alvo tocável mínimo
+  `48 × 48` dp — **alvo de design, ainda não garantido por token**;
+- raios: card `16`, campo `12`, botão `20`, dialog `24`, sheet `28` (cantos superiores), chip e badge pill;
+- borda funcional de `1` dp; sombra apenas como reforço de elevação tonal;
+- state layers hover `8%`, focus `10%`, pressed `12%`, dragged `16%`;
+- microinteração `150–250 ms`, transição de tela ou container `250–400 ms`; movimento reduzido
+  substitui deslocamento por troca imediata ou crossfade curto.
 
 ### 5.7 Expressão premium da marca
 
@@ -361,24 +323,28 @@ Não usar como contêiner padrão para títulos, métricas, navegação extensa 
 
 ### 6.5 Biblioteca central da primeira versão
 
-| Componente | Variantes mínimas | Contrato principal |
-|---|---|---|
-| Botão | filled, tonal, outlined, text, icon | Uma ação principal por contexto; loading preserva largura; alvo 48 dp |
-| Campo | texto, seleção, busca | Label persistente, ajuda e erro textual; não depender só de placeholder |
-| Chip | filter, input, assist | Seleção ou ação compacta; nunca decoração |
-| Badge de status | positivo, atenção, crítico, informativo, neutro | Palavra + ícone quando necessário; cor nunca sozinha |
-| Linha de lista | simples, navegável, selecionável, com ação | Padrão para sintomas, ações, histórico e configurações |
-| Card | informativo, interativo, selecionável, resultado | Só para unidade independente; sem cards aninhados |
-| Banner | informação, offline, atenção, erro recuperável | Mensagem curta e ação opcional; não bloquear conteúdo sem necessidade |
-| Top app bar | raiz, retorno, ação contextual | Título curto, navegação previsível e no máximo uma ação de destaque |
-| Navegação principal | compacta, com labels | Destinos de primeiro nível; ferramentas avançadas não viram abas por padrão |
-| Bottom sheet | padrão, seletora, etapa contextual | Tarefa curta e reversível; grabber e fechamento previsíveis |
-| Dialog | confirmação, permissão contextual, erro crítico | Somente quando interromper for necessário; ação segura clara |
-| Progresso | linear, circular, etapas | Explica o que está acontecendo; não simula precisão inexistente |
-| Estado de tela | vazio, skeleton, offline, erro, permissão | Sempre explica situação e próximo passo possível |
-| Bloco de resultado | positivo, atenção, problema, inconclusivo | Veredito → causa/confiança → evidência → ação → confirmação |
-| Métrica com tradução | compacta, destaque | Valor + unidade + significado humano próximo |
-| Detalhes expansíveis | fechado, aberto | Complexidade técnica sob demanda, com label descritivo |
+| Componente | Variantes mínimas | Contrato principal | Android (2026-10-04) |
+|---|---|---|---|
+| Botão | filled, tonal, outlined, text, icon | Uma ação principal por contexto; loading preserva largura; alvo 48 dp | `SignallQButton` (Primary/Secondary/Text) |
+| Campo | texto, seleção, busca | Label persistente, ajuda e erro textual; não depender só de placeholder | `SignallQTextField` |
+| Chip | filter, input, assist | Seleção ou ação compacta; nunca decoração | `SignallQChoiceChip` (só seleção; input/assist não) |
+| Badge de status | positivo, atenção, crítico, informativo, neutro | Palavra + ícone quando necessário; cor nunca sozinha | `SignallQBadge` (`SignallQBadgeTone`) |
+| Linha de lista | simples, navegável, selecionável, com ação | Padrão para sintomas, ações, histórico e configurações | `SignallQListRow` |
+| Card | informativo, interativo, selecionável, resultado | Só para unidade independente; sem cards aninhados | `SignallQSurfaceCard` |
+| Banner | informação, offline, atenção, erro recuperável | Mensagem curta e ação opcional; não bloquear conteúdo sem necessidade | parcial: `SignallQOfflineBanner`, `DiagnosticoStatusBanner` |
+| Top app bar | raiz, retorno, ação contextual | Título curto, navegação previsível e no máximo uma ação de destaque | `SignallQTopAppBar` |
+| Navegação principal | compacta, com labels | Destinos de primeiro nível; ferramentas avançadas não viram abas por padrão | `SignallQNavigationBar` |
+| Bottom sheet | padrão, seletora, etapa contextual | Tarefa curta e reversível; grabber e fechamento previsíveis | `SignallQSheet` |
+| Dialog | confirmação, permissão contextual, erro crítico | Somente quando interromper for necessário; ação segura clara | `SignallQDialog` |
+| Progresso | linear, circular, etapas | Explica o que está acontecendo; não simula precisão inexistente | `SignallQProgress` |
+| Estado de tela | vazio, skeleton, offline, erro, permissão | Sempre explica situação e próximo passo possível | `SignallQStatefulScreen`/`SignallQScreenState` |
+| Bloco de resultado | positivo, atenção, problema, inconclusivo | Veredito → causa/confiança → evidência → ação → confirmação | `SignallQResultBlock` |
+| Métrica com tradução | compacta, destaque | Valor + unidade + significado humano próximo | **não existe** como componente central |
+| Detalhes expansíveis | fechado, aberto | Complexidade técnica sob demanda, com label descritivo | `SignallQExpandableDetails` |
+
+
+
+(Componentes em `android/app/src/main/kotlin/io/signallq/app/ui/component/`: `SignallQControls.kt`, `SignallQContainers.kt`, `SignallQScreenState.kt`, `SignallQFeedbackTone.kt`.)
 
 Anúncios nativos, gráficos técnicos, topologia de rede, gauges e visualizações especializadas não
 entram na biblioteca central desta etapa. Eles serão extensões de domínio após validação do núcleo.

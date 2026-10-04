@@ -3,35 +3,27 @@ title: "Feature Flags remotas"
 description: "Contrato de flags remotas do SignallQ Android + Admin Panel — rollout gradual, kill switch, gating de features."
 type: "funcional"
 status: "ativo"
-owner: "Camilo"
-last_updated: "2026-08-20"
+owner: "Cora"
+last_updated: "2026-10-04"
+version: "1.1.0"
 ---
 
 # Feature Flags remotas — SignallQ Android + Admin Panel
 
 - **Status:** ativo
-- **Última validação:** 2026-08-01 (seção 12 atualizada — issue #1497 migrou o último consumidor
-  real do sistema SIG-13 pro terceiro sistema)
+- **Última validação:** 2026-10-04 (arquivos, endpoints e módulo `:core:featureflags` conferidos no código)
 - **Fonte de verdade:** este arquivo, para o efeito de produto das flags remotas (rollout gradual,
   kill switch). Mecanismo técnico completo (endpoints, schema D1) referenciado em
   `docs_ai/TECNICO.md` seção 5.2 — não duplicado lá. **Não cobre** as feature flags de compile-time
-  (`FeatureFlags.kt`, `BuildConfig.FEATURE_*`) — essas são inteiramente distintas e estão em
-  `docs_ai/FUNCIONAL.md` seção 8.3 / `docs_ai/TECNICO.md` seção 5.2.
+  (`FeatureFlags.kt`, `BuildConfig.FEATURE_*`) — sistema distinto, em `docs_ai/TECNICO.md` seção 5.2.
 - **Escopo:** sistema de feature flags remotas — Admin Worker (`signallq-admin-worker`) + consumo
   Android (`FeatureFlagRepository`/`FeatureFlagManager`).
-- **Responsável:** Camilo (implementação Android/Worker). Revisão anterior citava Felipe (painel) e
-  Gema (review) — **ambos fora do squad desde 2026-07-09/07-10** (ver `.claude/CLAUDE.md`,
-  decisões de demissão/substituição), corrigido nesta revisão.
+- **Responsável:** Cora (spec); Ramon (Worker) e Davi (Android) na implementação.
 
 > Segue o template de **Especificação Funcional**
 > (`.claude/rules/higiene-e-padronizacao-repositorio.md`, seção 10) — spec pontual, mais focada que
 > `FUNCIONAL.md`.
 >
-> **Reescrita integral em 2026-07-23:** a versão anterior deste documento era majoritariamente
-> especulativa — endpoints, nomes de tabela D1 e nomes de flag não batiam com o código real
-> (`signallq-admin-worker/src/index.ts`, `signallq-admin-worker/migrations/005_sig13.sql`,
-> `FeatureFlagRepository.kt`). Conteúdo abaixo vem de leitura direta desses três arquivos.
-
 ---
 
 ## 1. Objetivo
@@ -53,7 +45,7 @@ instalada pelo usuário.
 
 ## 3. Personas e casos de uso
 
-- **Camilo (engenharia)** — ativa/desativa flag via Admin Worker quando uma feature tem problema em
+- **Responsável técnico** — ativa/desativa flag via Admin Worker quando uma feature tem problema em
   produção, ou faz rollout gradual de uma feature nova.
 - **App Android (usuário final, indireto)** — consome o estado das flags sem interação direta;
   efeito é a feature aparecer/desaparecer ou mudar de comportamento sem update.
@@ -103,12 +95,6 @@ totalmente distintos — não é uma única tabela com dois formatos de resposta
 | Flags seed reais | `ai_diagnosis_enabled`, `speedtest_enabled`, `fibra_module_enabled` (`scope: public`), `new_ui_diagnostics` (`scope: internal`, nunca aparece no endpoint público) | `feature_speedtest`, `feature_wifi`, `feature_fibra`, `feature_diagnostico_ia`, `feature_devices`, `feature_dns` |
 | Audit log | não encontrado | tabela `feature_flag_audit` (`id`, `flag_key`, `old_enabled`, `new_enabled`, `changed_at`, `changed_by`) |
 
-> Correção sobre a versão anterior deste documento: não existe tabela `d1_feature_flags` nem
-> `d1_feature_flags_audit` — os nomes reais são `feature_flags` e `feature_flag_audit`. Não existe
-> endpoint `GET /admin/feature-flags?device_id=X` nem `POST /admin/feature-flags/:name/toggle` — o
-> endpoint real de escrita é `PUT /admin/feature-flags/:key` com corpo `{"enabled": boolean}`. Não
-> há `device_id` em nenhum dos endpoints reais — a leitura não é segmentada por device.
-
 ### RF-02 — Consumo Android (`FeatureFlagRepository`)
 
 Fonte: `android/app/src/main/kotlin/io/signallq/app/featureflags/FeatureFlagRepository.kt`.
@@ -121,8 +107,8 @@ Fonte: `android/app/src/main/kotlin/io/signallq/app/featureflags/FeatureFlagRepo
 - `lerFlags()`: combina defaults hardcoded no app (`DEFAULTS`, todas `true`) com o que estiver
   salvo — uma flag nova nunca fica ausente/`null` no app, mesmo sem fetch recente.
 - Não há TTL/cache-expiry explícito no código lido — a sincronização acontece por chamada explícita
-  de `sincronizarFlags()`, não por polling automático agendado; `[a confirmar]` se algum
-  `WorkManager`/trigger periódico invoca esse método (não encontrado nesta revisão).
+  de `sincronizarFlags()`, não por polling automático agendado (nenhum `WorkManager` periódico
+  localizado; não verificado quais pontos do app invocam o método).
 
 ### RF-03 — Escrita e auditoria (sistema SIG-13)
 
@@ -170,7 +156,7 @@ Fonte: `android/app/src/main/kotlin/io/signallq/app/featureflags/FeatureFlagRepo
 - **Rate limiting** — não encontrado no código dos endpoints públicos nesta revisão; a versão
   anterior descrevia um rate-limit por device que não foi confirmado.
 - **Feature flags de compile-time** (`FeatureFlags.kt`) — sistema totalmente separado, coberto em
-  `docs_ai/FUNCIONAL.md` seção 8.3 e `docs_ai/TECNICO.md` seção 5.2, não neste documento.
+  `docs_ai/TECNICO.md` seção 5.2, não neste documento.
 
 ---
 

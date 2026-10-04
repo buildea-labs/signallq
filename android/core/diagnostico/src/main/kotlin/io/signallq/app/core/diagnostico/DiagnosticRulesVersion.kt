@@ -8,7 +8,7 @@ package io.signallq.app.core.diagnostico
  * uma versão de regra — se um threshold mudasse no futuro, um resultado antigo no Histórico
  * era reclassificado silenciosamente com a regra ATUAL, sem forma de saber se o rótulo
  * exibido reflete a regra vigente quando o teste rodou ou uma regra posterior (achado P0-9
- * de `docs_ai/ARQUITETURA/AUDITORIA_1228_FASE0_INVENTARIO_COMPLETO.md`).
+ * da auditoria #1228, Fase 0; ver ADR-012).
  *
  * [CURRENT] é a fonte canônica única desse identificador — nunca deriva de data, nunca muda a
  * cada build, nunca é um hash instável, e não pode ser recalculado por tela/mapper/presenter

@@ -3,23 +3,18 @@ title: "Scripts Oficiais"
 description: "Scripts PowerShell/shell oficiais em scripts/ para build, versionamento e ambiente do SignallQ Android"
 type: "técnico"
 status: "ativo"
-owner: "Camilo"
-last_updated: "2026-08-15"
+owner: "Camillo"
+last_updated: "2026-10-04"
+version: "1.1.0"
 ---
 
 # Scripts Oficiais
 
 - **Status:** ativo
-- **Última validação:** 2026-08-15 (seção "Legado" atualizada após remoção de `scripts/legacy/` — Fase 4f do épico #1623)
+- **Fonte de verdade:** `scripts/` (índice resumido em `scripts/README.md`)
 - **Escopo:** scripts PowerShell/shell em `scripts/`
 
-Scripts ficam em:
-
-```text
-<raiz-do-projeto>\scripts\
-```
-
-> Pasta local do repo: `C:\Projetos\SignallQ`.
+Scripts ficam em `scripts/`, na raiz do repositório.
 
 ## Build APK
 
@@ -32,7 +27,7 @@ Scripts ficam em:
 Saida:
 
 ```text
-builds/apk/debug/<versionName>/signallq-android-v<versionName>+<versionCode>-debug-<yyyyMMdd-HHmmss>.apk
+android/builds/apk/debug/<versionName>/signallq-android-v<versionName>+<versionCode>-debug-<yyyyMMdd-HHmmss>.apk
 ```
 
 ### Release
@@ -44,14 +39,14 @@ builds/apk/debug/<versionName>/signallq-android-v<versionName>+<versionCode>-deb
 Saida:
 
 ```text
-builds/apk/release/<versionName>/signallq-android-v<versionName>+<versionCode>-release-<yyyyMMdd-HHmmss>.apk
+android/builds/apk/release/<versionName>/signallq-android-v<versionName>+<versionCode>-release-<yyyyMMdd-HHmmss>.apk
 ```
 
 Tambem existem tarefas Gradle equivalentes:
 
 ```powershell
-.\gradlew.bat archiveDebugApk
-.\gradlew.bat archiveReleaseApk
+cd android; .\gradlew.bat archiveDebugApk
+cd android; .\gradlew.bat archiveReleaseApk
 ```
 
 Nunca entregue `app-debug.apk` ou `app-release.apk` diretamente.
@@ -66,7 +61,7 @@ Nunca entregue `app-debug.apk` ou `app-release.apk` diretamente.
 .\scripts\version.ps1 build
 ```
 
-O script altera `gradle/libs.versions.toml`.
+O script altera `android/gradle/libs.versions.toml`. Também aceita `set X.Y.Z+N`.
 
 ## Ambiente
 
@@ -82,17 +77,8 @@ Valida Java, Android SDK, ADB e ferramentas auxiliares.
 .\scripts\clean-build.ps1
 ```
 
-Remove outputs de build locais, mas nao deve apagar `builds/apk/`, onde ficam os APKs arquivados.
+Remove outputs de build locais, mas não deve apagar `android/builds/apk/`, onde ficam os APKs arquivados.
 
-## Legado
+## Outros scripts
 
-Scripts antigos de build release foram removidos. O projeto deve usar somente:
-
-```powershell
-.\scripts\build-apk-debug.ps1
-.\scripts\build-apk-release.ps1
-```
-
-A pasta `scripts/legacy/` foi removida na Fase 4f do epico #1623 apos auditoria confirmar zero uso
-de todo o conteudo (scripts de handoff/notify e utilitarios Python do app Flutter legado). O git
-preserva o historico — ver `scripts/legacy/README.md` no commit anterior a remocao.
+`pre-commit-android.sh`/`setup-hooks.*` (hook de pré-commit), `validar-docs.sh` e `gerar-inventario-docs.sh` (docs), `sync-skills-mirrors.sh` (espelhos de skills), `observe-and-act.sh` (hook do Claude Code) e `issue-move.sh`/`setup-github-labels.sh`/`migrate-issue-labels.sh` (GitHub). Detalhes em `scripts/README.md`. Scripts antigos de build e `scripts/legacy/` foram removidos; o git preserva o histórico.

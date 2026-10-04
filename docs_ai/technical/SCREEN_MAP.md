@@ -1,76 +1,77 @@
 ---
 title: "Screen Map — Android SignallQ"
-description: "Mapa de navegação do app consumer (tab bar + overlays) validado contra AppShell.kt."
+description: "Mapa de navegação do app consumer (4 raízes + pilha de overlays) validado contra AppShell.kt e AppShellNavigation.kt."
 type: "técnico"
 status: "ativo"
 owner: "Camilo"
-last_updated: "2026-08-16"
+last_updated: "2026-10-04"
+version: "2.0.0"
 ---
 
 # Screen Map — Android SignallQ
 
-**Status:** ativo
-**Última validação:** 2026-07-23 (contra `AppShell.kt`)
-**Fonte de verdade:** código real (`android/app/src/main/kotlin/io/signallq/app/ui/screen/AppShell.kt`)
-**Escopo:** navegação do app consumer (tab bar + overlays)
-**Responsável:** Lia (Frontend & Design)
+- **Fonte de verdade:** código — `android/app/src/main/kotlin/io/signallq/app/ui/screen/AppShell.kt`
+  e `AppShellNavigation.kt` (enums `AppShellRoot` e `AppShellOverlay`)
+- **Escopo:** navegação do app consumer (barra inferior + overlays). Padrões de extensão em
+  [`appshell-root-content-registry.md`](appshell-root-content-registry.md) e
+  [`appshell-overlay-registry.md`](appshell-overlay-registry.md)
 
-> Versão anterior deste documento descrevia a tab bar com `Ajustes` como 5ª aba — isso mudou em
-> GH#930 (Fase 1 do plano MD3 To-Be, arquivado em `docs_ai/_archive/2026-07-23_TOBE_MD3_APP_PLANO_IMPLEMENTACAO.md`).
-> A barra atual usa `Ferramentas` como quarta raiz; Ajustes virou overlay `Perfil`, acessado pelo avatar no TopBar.
-
-Todas as telas residem em: `app/src/main/kotlin/io/signallq/app/ui/screen/`
+Todas as telas residem em `android/app/src/main/kotlin/io/signallq/app/ui/screen/`. A navegação viva
+é `AppShellNavigator` (raiz selecionada + pilha de overlays por raiz), não Compose Navigation.
 
 ---
 
-## NavigationBar — 4 abas
+## Barra inferior — 4 raízes
 
-As raízes são `home`, `speedtest`, `historico` e `ferramentas` em `AppShellNavigation.kt`.
+`AppShellRoot` em `AppShellNavigation.kt`; rótulos em `AppShellBottomBar.kt`.
 
-| Índice | Label | Composable | Arquivo |
-|---|---|---|---|
-| 0 | Início | `Inicio2Screen` | `Inicio2Screen.kt` |
-| 1 | Velocidade | `SpeedTestScreen` | `SpeedTestScreen.kt` |
-| 2 | Histórico | `HistoricoScreen` | `HistoricoScreen.kt` |
-| 3 | Ferramentas | `FerramentasScreen` | `FerramentasScreen.kt` |
-
-> Não existe aba "Ajustes" nem "Mais". `DispositivosScreen`, diagnóstico de IA e os demais
-> itens do hub Ferramentas não são abas — são overlays.
->
-> A navegação viva é `selectedTab` (índice 0–3) + `overlayStack`
-> (enum `Overlay`, privado) dentro de `AppShell.kt`, não Compose Navigation.
-
----
-
-## Telas Sobrepostas (Overlays)
-
-`private enum class Overlay` em `AppShell.kt`. Controladas por `overlayStack`, renderizadas via
-`AnimatedVisibility` com z-index calculado pela posição na pilha (GH#1098 — corrige bug de
-ordem de desenho que não seguia a ordem de empilhamento).
-
-| Overlay | Composable | Arquivo | Trigger | Origem |
+| Índice | Raiz | Label | Composable | Arquivo |
 |---|---|---|---|---|
-| `ResultadoVelocidade` | `ResultadoVelocidadeScreen` | `ResultadoVelocidadeScreen.kt` | Teste de velocidade concluído | Velocidade |
-| `Laudo` | `LaudoScreen` | `LaudoScreen.kt` | "Gerar Laudo" (Ferramentas / diagnóstico) | Ferramentas, atalhos Home |
-| `Dispositivos` | `DispositivosScreen` | `DispositivosScreen.kt` | Atalho Dispositivos | Ferramentas, atalhos Home |
-| `EquipamentoInternet` | `EquipamentoInternetScreen` | `EquipamentoInternetScreen.kt` | Atalho Equipamento de Internet (GH#934 — substitui o antigo `FibraScreen`/`FibraModemScreen` Nokia-only) | Ferramentas |
-| `Fibra` | (rota legada, ver nota) | `FibraScreen.kt` | — | mantido no enum, superfície real hoje é `EquipamentoInternet` |
-| `Ping` | `PingScreen` | — | Atalho Ping | Ferramentas |
-| `Dns` | `DnsScreen`/conteúdo equivalente | — | Atalho DNS (GH#933 — saiu de `ModalBottomSheet` pra tela cheia roteada) | Ferramentas |
-| `Jogos` | tela de Jogos | — | Atalho Jogos (GH#935 — catálogo real, ver `docs_ai/functional/JOGOS_TESTE_CONEXAO_SPEC.md`) | Ferramentas |
-| `SinalWifi` | indicador dinâmico RSSI/PHY | — | Atalho Sinal WiFi (GH#1201) | Ferramentas |
-| `Perfil` | `AjustesScreen` (reorganizado 6a-6f) | `AjustesScreen.kt` | Avatar no TopBar (GH#936 — Fase 7) | TopBar, qualquer tab |
-| `Privacidade` | `PrivacidadeScreen` | `PrivacidadeScreen.kt` | Perfil → Privacidade | Perfil |
-| `Novidades` | `NovidadesScreen` | `NovidadesScreen.kt` | Perfil → Novidades | Perfil |
+| 0 | `Home` | Início | `Inicio2Screen` | `Inicio2Screen.kt` |
+| 1 | `Speed` | Velocidade | `SpeedTestScreen` | `SpeedTestScreen.kt` |
+| 2 | `History` | Histórico | `HistoricoScreen` | `AppShellHistoricoRoot.kt` → `HistoricoScreen.kt` |
+| 3 | `Tools` | Ferramentas | `FerramentasScreen` | `AppShellFerramentasRoot.kt` → `FerramentasScreen.kt` |
 
-**Telas de IA** (`SignallQScreen`/`SignallQPulseScreen`/`LLMChatScreen`/`ChatDiagnosticoIaScreen`,
-citadas em versão anterior deste documento) — confirmado: nenhuma existe no código nem no
-`Overlay` enum de `AppShell.kt`. `SignallQScreen` foi removida na Fase 8 MD3 (GH#937). As demais
-nunca chegaram a ter consumidor de UI — eram parte do motor de chat "SignallQ Pulse"
-(`SignallQOrchestrator` e as telas `ContextualQuestionCard`/`PulseResultCard`), removido em
-GH#1682 por decisão de produto (o app não tem e não terá chat conversacional — #564). O fluxo de
-IA real hoje é a "Análise avançada" (`LaudoScreen`, ver `docs_ai/technical/AI_FLOW.md`). Não
-reintroduzir rota para nenhuma dessas telas.
+Não existe aba "Ajustes" nem "Mais": Ajustes é overlay, aberto pelo acesso de perfil/menu de cada
+raiz. Durante a execução do speedtest a barra inferior some (`shouldShowAppShellBottomBar`).
+
+---
+
+## Overlays
+
+`AppShellOverlay` (`AppShellNavigation.kt`), empilhados em `overlayStack`, cada um em
+`AnimatedVisibility` com z-index pela posição na pilha (`rememberOverlayZIndex`).
+
+| Overlay | Composable | Arquivo | Origem típica |
+|---|---|---|---|
+| `ResultadoVelocidade` | `ResultadoVelocidadeScreen` | `AppShellResultadoVelocidadeOverlay.kt` | Teste de velocidade concluído |
+| `Laudo` | `LaudoScreen` | `AppShellLaudoOverlay.kt` | "Gerar laudo" (Ferramentas, diagnóstico, atalhos) |
+| `Dispositivos` | `DispositivosScreen` | `DispositivosScreen.kt` | Ferramentas, atalhos da Início |
+| `EquipamentoConectar` | `EquipamentoConectarScreen` | `EquipamentoConectarScreen.kt` | Gateway sem endereço de equipamento salvo (GH#1806) |
+| `EquipamentoInternet` | `EquipamentoInternetScreen` | `EquipamentoInternetScreen.kt` | Ferramentas, nó do gateway na Início |
+| `Fibra` | `EquipamentoInternetScreen` | `EquipamentoInternetScreen.kt` | Conexão bem-sucedida ao equipamento (mesma tela de `EquipamentoInternet`; nome histórico) |
+| `Ferramentas` | `FerramentasScreen` | `FerramentasScreen.kt` | Hub aberto como overlay a partir de card de ferramenta sugerida (Início); fecha limpando `ferramentaRecomendada` |
+| `Ping` | `PingScreen` | `AppShellPingOverlay.kt` | Ferramentas |
+| `Dns` | `DnsScreen` | `AppShellDnsOverlay.kt` | Ferramentas |
+| `SinalWifi` | `WifiCasaScreen` | `AppShellSinalWifiOverlay.kt` | Ferramentas, trilha da Início (nome técnico preservado; `SinalWifiScreen` segue existindo) |
+| `SinalCanais` | `SinalScreen` | `SinalScreen.kt` (+ `SinalWifiSection`/`SinalCanalSection`/`SinalMovelSection`) | Ferramentas |
+| `DiagnosticoGuiado` | `DiagnosticoGuiadoScreen` | `AppShellDiagnosticoGuiadoOverlay.kt` | Início / Ferramentas |
+| `DetalhesTecnicos` | `DetalhesTecnicosScreen` | `AppShellDetalhesTecnicosOverlay.kt` | Resultado de velocidade |
+| `ModoGamer` | `ModoGamerScreen` | `ModoGamerScreen.kt` | Ferramentas, resultado de velocidade |
+| `Ajustes` | `AjustesScreen` | `AjustesScreen.kt` | Acesso de perfil/menu de qualquer raiz |
+| `Privacidade` | `PrivacidadeScreen` | `AppShellPrivacidadeOverlay.kt` | Ajustes |
+| `Novidades` | `NovidadesScreen` | `AppShellNovidadesOverlay.kt` | Ajustes |
+| `Termos` | `TermosDeUsoScreen` | `AppShellTermosOverlay.kt` | Ajustes |
+| `Perfil` | — | — | Valor presente no enum **sem uso**: não há tela intermediária de Perfil (comentário em `AppShell.kt`); candidato a remoção |
+
+**Sem rota no app:** telas de chat/IA conversacional (`SignallQScreen`, `SignallQPulseScreen`,
+`LLMChatScreen`, `ChatDiagnosticoIaScreen`) e o fluxo "Jogos" (`JogosScreen`, `Overlay.Jogos`)
+foram removidos (GH#937, GH#1682, GH#1487 — decisão de produto). O fluxo de IA real é a "Análise
+avançada" no `LaudoScreen` (ver `docs_ai/technical/AI_FLOW.md`); o teste de jogo vive no Modo gamer.
+Não reintroduzir rota para nenhuma delas.
+
+Sheets sem back-stack (monitoramento, credenciais de equipamento, gerenciar dados, ajuda/suporte,
+sobre) não usam `AppShellOverlay` — ver `appshell-overlay-registry.md`.
 
 ---
 
@@ -78,42 +79,38 @@ reintroduzir rota para nenhuma dessas telas.
 
 | Composable | Arquivo | Acesso |
 |---|---|---|
-| `OnboardingScreen` | `OnboardingScreen.kt` | Apenas primeira execução (`onboardingConcluidoFlow` no DataStore) |
+| `OnboardingScreen` | `OnboardingScreen.kt`, montado na `MainActivity` | Apenas primeira execução (`onboardingConcluidoFlow` no DataStore); boas-vindas + termos/LGPD, sem pedido de permissão em lote |
 
 ---
 
-## Arquivos de Suporte à Navegação
+## Arquivos de suporte à navegação
 
 | Arquivo | Papel |
 |---|---|
-| `AppShell.kt` | Shell do app — `NavigationBar` de 4 raízes + pilha de overlays (`overlayStack`, enum `AppShellOverlay`) |
-| `MainViewModel.kt` | ViewModel raiz `@HiltViewModel` — expõe os snapshots/estados consumidos pelas telas (2191 linhas — dívida técnica registrada em `.claude/rules/higiene-e-padronizacao-repositorio.md`, seção 4.2) |
+| `AppShell.kt` | Shell: barra inferior de 4 raízes + pilha de overlays |
+| `AppShellNavigation.kt` | `AppShellRoot`, `AppShellOverlay`, `AppShellNavigator`, back |
+| `AppShellRootRegistry.kt` / `AppShellOverlayRegistry.kt` | Agregadores de raízes e overlays |
+| `AppShellState.kt` | Grupos de estado (`AppShellXxxState`) passados ao shell |
+| `MainViewModel.kt` | ViewModel raiz `@HiltViewModel`; dívida registrada em `.claude/rules/higiene-e-padronizacao-repositorio.md` §4.2 |
 
 ---
 
-## Diagrama de Navegação
+## Diagrama de navegação
 
 ```
 OnboardingScreen (primeira execução)
     ↓
-AppShell  (NavigationBar índice 0–3 + overlays)
-├── [0] Inicio2Screen
-│       ├── → Dispositivos (overlay)
-│       └── → Laudo (overlay)
-├── [1] VelocidadeScreen
-│       └── → ResultadoVelocidade (overlay)
-├── [2] SinalScreen
-├── [3] HistoricoScreen
-└── [4] FerramentasScreen (hub de atalhos)
-        ├── → Dispositivos
-        ├── → EquipamentoInternet
-        ├── → Ping
-        ├── → Dns
-        ├── → Laudo
-        ├── → Jogos
-        └── → SinalWifi
+AppShell  (barra inferior com 4 raízes + overlays)
+├── [0] Início ── Dispositivos · Laudo · EquipamentoInternet/Conectar · SinalWifi · DiagnosticoGuiado
+├── [1] Velocidade ── ResultadoVelocidade ── DetalhesTecnicos · ModoGamer
+├── [2] Histórico
+└── [3] Ferramentas (hub)
+        ├── Dispositivos · EquipamentoInternet · Ping · Dns
+        ├── Laudo · DiagnosticoGuiado · ModoGamer
+        └── SinalWifi · SinalCanais
 
-TopBar (qualquer tab) → avatar → Perfil (overlay)
-        ├── → Privacidade
-        └── → Novidades
+Acesso de perfil/menu (qualquer raiz) → Ajustes
+        ├── Privacidade
+        ├── Novidades
+        └── Termos
 ```

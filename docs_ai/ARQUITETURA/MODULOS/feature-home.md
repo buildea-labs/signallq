@@ -4,7 +4,8 @@ description: "Regra pura de escolha da medição exibida na tela Início — sem
 type: "técnico"
 status: "ativo"
 owner: "Camilo"
-last_updated: "2026-08-06"
+last_updated: "2026-10-04"
+version: "1.1.0"
 ---
 
 # `:featureHome`
@@ -25,12 +26,12 @@ Extraídas de `android/feature/home/build.gradle.kts`.
 | Tipo | Dependência | Observação |
 |---|---|---|
 | Plugin | `com.android.library` | módulo de biblioteca Android |
-| Plugin | `org.jetbrains.kotlin.android` | — |
+| Plugin | `org.jetbrains.kotlin.android` |
 | `implementation` | `libs.androidx.core.ktx` | única dependência de runtime |
-| `testImplementation` | `libs.junit` | — |
+| `testImplementation` | `libs.junit` |
 | `androidTestImplementation` | `libs.androidx.junit`, `libs.androidx.espresso.core` | herdado do template; não há teste instrumentado no módulo |
 
-Nenhuma dependência de módulo `:core*` e nenhuma de outra `feature` — é o módulo mais isolado dos cinco.
+Nenhuma dependência de módulo `:core*` e nenhuma de outra `feature` — é o módulo mais isolado do grafo.
 
 ## Consumidores
 
@@ -38,28 +39,24 @@ Nenhuma dependência de módulo `:core*` e nenhuma de outra `feature` — é o m
 
 | Consumidor | Arquivo |
 |---|---|
-| `:app` | `android/app/build.gradle.kts:311` |
+| `:app` | `android/app/build.gradle.kts` |
 
-No código, o consumo é feito por `android/app/src/main/kotlin/io/signallq/app/ui/screen/HomeMedicaoAdapter.kt` (55 linhas — adapta `ResultadoSpeedtest`/`MedicaoEntity` para `MetricasMedicaoHome`) e por `Inicio2Screen.kt`.
+No código, o consumo é feito por `android/app/src/main/kotlin/io/signallq/app/ui/screen/HomeMedicaoAdapter.kt` (adapta `ResultadoSpeedtest`/`MedicaoEntity` para `MetricasMedicaoHome`) e por `Inicio2Screen.kt`.
 
 ## Componentes principais
 
-| Arquivo / classe | Linhas | Responsabilidade |
-|---|---|---|
-| `android/feature/home/src/main/kotlin/io/signallq/app/kotlin/feature/home/ResolvedorMedicaoHome.kt` → `ResolvedorMedicaoHome` | 65 | Escolhe entre medição atual e anterior de forma atômica; nunca combina campos de execuções diferentes. |
-| mesmo arquivo → `MetricasMedicaoHome` | — | Struct genérica de entrada (download, upload, latência, jitter, perda, timestamp, `connectionType`, ssid, veredito gamer, gargalo, flag `utilizavel`). |
-| mesmo arquivo → `ResolvedHomeMeasurement` / `OrigemMedicaoHome` | — | Saída com a origem explícita (`ATUAL` / `ANTERIOR`) para a UI rotular "Resultado anterior · Wi-Fi · há 2h". |
-| `android/feature/home/src/main/kotlin/io/signallq/app/kotlin/feature/home/FeatureHomeModulo.kt` | 2 | `object FeatureHomeModulo` vazio — placeholder de factory do módulo, sem membros. |
-| `android/feature/home/src/test/kotlin/io/signallq/app/kotlin/feature/home/ResolvedorMedicaoHomeTest.kt` | 78 | Único teste do módulo. |
-| `android/feature/home/src/main/AndroidManifest.xml` | — | `<manifest />` vazio. |
-
-Total de Kotlin no módulo: 145 linhas (67 em `src/main`, 78 em `src/test`).
+| Arquivo / classe | Responsabilidade |
+|---|---|
+| `android/feature/home/src/main/kotlin/io/signallq/app/feature/home/ResolvedorMedicaoHome.kt` → `ResolvedorMedicaoHome` | Escolhe entre medição atual e anterior de forma atômica; nunca combina campos de execuções diferentes. |
+| mesmo arquivo → `MetricasMedicaoHome` | Struct genérica de entrada (download, upload, latência, jitter, perda, timestamp, `connectionType`, ssid, veredito gamer, gargalo, flag `utilizavel`). |
+| mesmo arquivo → `ResolvedHomeMeasurement` / `OrigemMedicaoHome` | Saída com a origem explícita (`ATUAL` / `ANTERIOR`) para a UI rotular "Resultado anterior · Wi-Fi · há 2h". |
+| `android/feature/home/src/main/kotlin/io/signallq/app/feature/home/FeatureHomeModulo.kt` | `object FeatureHomeModulo` vazio — placeholder de factory do módulo, sem membros. |
+| `android/feature/home/src/test/kotlin/io/signallq/app/feature/home/ResolvedorMedicaoHomeTest.kt` | Único teste do módulo. |
+| `android/feature/home/src/main/AndroidManifest.xml` | `<manifest />` vazio. |
 
 ## Riscos e dívidas
 
-- **Módulo quase vazio versus tela no `:app`.** `Inicio2Screen.kt` vive em `:app`, enquanto `:featureHome` inteiro tem 67 linhas de produção. A feature "Início" não mora no módulo `:featureHome` — mora no `:app`; o módulo permanece responsável somente pela regra pura de seleção da medição.
-- **Path físico alinhado ao package `io.signallq.app.*`** — migração de `io/signallq/app/kotlin/` concluída em 2026-08-15 (#1645).
-- **`FeatureHomeModulo` é código morto** (`object` sem membros, 2 linhas). Ou ganha as factories do módulo, ou é removido.
+- **Módulo quase vazio versus tela no `:app`.** `Inicio2Screen.kt` vive em `:app`, enquanto `:featureHome` inteiro tem um único arquivo de regra. A feature "Início" não mora no módulo `:featureHome` — mora no `:app`; o módulo permanece responsável somente pela regra pura de seleção da medição.
+- **`FeatureHomeModulo` é código morto** (`object` sem membros). Ou ganha as factories do módulo, ou é removido.
 - **Regra de dependência entre features: respeitada.** O KDoc de `ResolvedorMedicaoHome` documenta explicitamente que a struct genérica existe porque `feature/home → feature/speedtest` é proibido, e a adaptação dos tipos reais foi empurrada para o `:app` (`HomeMedicaoAdapter.kt`). É o exemplo correto do padrão no repositório.
 - **Cobertura de teste:** adequada para o que existe (1 arquivo de teste para 1 arquivo de regra).
-- Nenhum arquivo acima de 800 linhas dentro do módulo.

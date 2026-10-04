@@ -1,25 +1,18 @@
-**Status:** ativo (documento de reconhecimento, não de produto — ver skill `/reconhecimento-equipamento-rede`)
-**Última validação:** 2026-07-23
-**Escopo:** levantamento exaustivo da interface web do roteador TP-Link Archer C6/A6v2 (família `tplink-stok-luci`), insumo do epic SIG-343
-**Responsável:** Camilo (Backend Android)
+---
+title: "Mapeamento de campos — roteador TP-Link Archer (stok-luci)"
+description: "Levantamento da interface web do TP-Link Archer C6/A6 v2 (família tplink-stok-luci): campos por menu, achados de segurança e esquema de autenticação. Insumo de reconhecimento, não de produto."
+type: "técnico"
+status: "ativo"
+owner: "Ramon"
+last_updated: "2026-10-04"
+version: "2.0.0"
+---
 
 # Mapeamento de campos — Interface Web Roteador TP-Link (stok-luci)
 
-> Levantamento exaustivo de schema/capacidade da interface administrativa web do
-> roteador TP-Link do Luiz (atrás da ONT Nokia mapeada em
-> `NOKIA_GPON_FIELD_MAP.md`). **Não é implementação** — insumo de reconhecimento
-> técnico, mesmo racional do documento irmão sobre a ONT (alimenta o epic SIG-343
-> / SIG-345/347/352). Nenhum parser novo, nenhuma model Kotlin foi criada a partir
-> deste documento.
->
-> Levantamento feito em 2026-07-08/09 via acesso HTTP direto (`192.168.0.1`),
-> replicando em Node.js o esquema de autenticação RSA duplo + AES da própria
-> interface do roteador (arquivos `tpEncrypt.js`/`encrypt.js` do próprio
-> equipamento). O formato exato do handshake (`form=keys` → `form=auth` →
-> `form=login`) já estava catalogado como família `TpLinkStokLuciDriverFamily` no
-> projeto `C:\Projetos\SevenAgents\Nethal` (`docs/drivers/live-evidence/
-> tplink-archer-c6-stok-v1.json`), que serviu de referência inicial; a
-> implementação real foi confirmada lendo o JS servido pelo próprio equipamento.
+**Natureza:** reconhecimento (skill `/reconhecimento-equipamento-rede`), não implementação; mesmo racional de `NOKIA_GPON_FIELD_MAP.md` (a ONT à frente deste roteador). Levantamento de 2026-07-08/09 por HTTP direto, replicando em Node.js o esquema de autenticação RSA duplo + AES da própria interface (`tpEncrypt.js`/`encrypt.js` servidos pelo equipamento). Alimentou o epic SIG-343.
+**Fonte de verdade:** o equipamento. **Não existe parser TP-Link no SignallQ**; "TP-Link" no código é só fabricante no catálogo OUI (`OuiCatalog.kt`). Nenhum model Kotlin nasceu deste documento.
+**Substitui:** a introdução e as "Oportunidades" da versão anterior (recuperável via `git log`).
 
 ## Fingerprint do equipamento
 
@@ -49,8 +42,7 @@ TP-Link em modo router (rotea `192.168.0.0/24`, a rede "principal" da casa).
 ## Segurança — achados críticos (fora do escopo de schema, mas relevantes)
 
 1. **Credencial padrão ainda ativa.** O login com usuário `admin` / senha `admin`
-   (fornecido pelo Luiz como "não usado" — na verdade o campo usuário nem aparece
-   na UI, é fixo em `"admin"` hardcoded no JS de login) **funcionou de primeira**.
+   (o campo usuário nem aparece na UI: é fixo em `"admin"` no JS de login) **funcionou de primeira**.
    Isso é uma senha padrão de fábrica ainda ativa no roteador principal da rede
    do Luiz. Recomendação: trocar antes de qualquer outra coisa (tela **System
    Tools > Administration**, endpoint `admin/administration?form=account`).
@@ -327,50 +319,15 @@ lidos, fora de escopo de diagnóstico de conectividade doméstica básica.
 
 ## Oportunidades
 
-Campos novos (nenhum usado hoje — não existe parser TP-Link no SignallQ) que
-parecem mais valiosos para diagnóstico de rede doméstica, em ordem de
-prioridade:
+Nenhum destes campos é usado hoje (não há parser TP-Link). Em ordem de valor para diagnóstico de rede doméstica:
 
-1. **Diagnóstico nativo do roteador** (`admin/diag?form=diag`) — mesmo racional
-   documentado para a ONT: ping/traceroute rodando a partir do próprio
-   roteador isola se o problema é local (Wi-Fi do celular) ou downstream
-   (roteador→ONT→Internet).
-2. **`admin/onemesh_network?form=mesh_topology`** — lista de dispositivos
-   conectados (com hostname reportado pelo próprio roteador) mais estável que
-   o scanner ativo do Android atual, e detecta automaticamente extensores
-   OneMesh se o usuário tiver.
-3. **Canal e potência real por rádio** (`wireless_2g_current_channel`,
-   `wireless_5g_current_channel`, `txpower`) — direto do AP, sem depender só
-   da leitura do rádio Wi-Fi do próprio celular Android (que só vê o que está
-   conectado, não necessariamente o canal configurado no AP quando em
-   modo "auto").
-4. **Thresholds de proteção DoS** (`security_settings?form=dos_setting`) —
-   indicador de causa possível para falsos positivos de latência/perda sob
-   tráfego elevado (rate limit de ICMP/SYN/UDP configurado pode explicar
-   picos de perda em testes agressivos do próprio SignallQ, tipo speedtest
-   multi-thread).
-5. **Parâmetros avançados de RF** (`syspara_2g`/`syspara_5g`: fragmentation,
-   RTS threshold, guard interval, WMM) — diagnóstico de causa raiz para
-   degradação de performance Wi-Fi em ambientes com muita interferência.
-6. **Detecção de double-NAT** — o próprio `wan_ipv4_gateway` do roteador
-   (`192.168.1.254`) bater com o IP LAN de uma ONT já é um sinal de rede
-   suficiente para o SignallQ inferir e explicar "double NAT" ao usuário sem
-   precisar de heurística adicional, se ambos os dispositivos puderem ser
-   correlacionados (mesmo Wi-Fi/rede local).
+1. **`admin/diag?form=diag`** (diagnóstico nativo): ping/traceroute a partir do roteador isola problema local (Wi-Fi do celular) de downstream (roteador→ONT→internet).
+2. **`admin/onemesh_network?form=mesh_topology`**: dispositivos conectados com hostname do próprio roteador (mais estável que o scanner ativo) e detecção automática de extensores OneMesh.
+3. **Canal e potência reais por rádio** (`wireless_2g_current_channel`, `wireless_5g_current_channel`, `txpower`): direto do AP, sem depender da leitura do rádio do celular.
+4. **Proteção DoS** (`security_settings?form=dos_setting`): rate limit de ICMP/SYN/UDP pode explicar picos de perda em testes agressivos (speedtest multi-thread).
+5. **Parâmetros avançados de RF** (`syspara_2g`/`syspara_5g`: fragmentação, RTS, guard interval, WMM): causa raiz de degradação sob interferência.
+6. **Double NAT**: o `wan_ipv4_gateway` do roteador coincidir com o IP LAN de uma ONT já indica a condição, se os dois dispositivos puderem ser correlacionados.
 
-Campos varridos e considerados **baixo valor** para diagnóstico (puramente
-configuração ou fora do domínio de conectividade): Parental Control, QoS,
-Guest Network, USB Settings, Smart Life Assistant (Alexa/IFTTT), VPN/VPN
-Client, LED Control, Firmware Upgrade, Backup/Restore, IPTV, Advanced Routing,
-Dynamic DNS.
+**Baixo valor** (configuração ou fora de conectividade): Parental Control, QoS, Guest Network, USB, Smart Life Assistant, VPN/VPN Client, LED, Firmware Upgrade, Backup/Restore, IPTV, Advanced Routing, Dynamic DNS.
 
-Endpoints que existem na árvore de menu mas **retornaram erro
-`"no such callback"`** com o payload simples `operation=read` usado nesta
-sessão (provavelmente exigem parâmetro adicional de paginação/filtro não
-descoberto — não insisti para não arriscar comportamento inesperado no
-equipamento em produção do Luiz): tabela ARP viva, bindings IP-MAC estáticos,
-listas de firewall customizado, lista negra/branca de Access Control,
-visualizador de log do sistema, lista detalhada de tráfego por dispositivo.
-Se algum desses for priorizado no futuro, vale inspecionar o JS de cada tela
-(`pages/userrpm/*.html`) em busca do shape exato de parâmetros que o grid/proxy
-da UI envia (paginação, filtro, etc.) antes de tentar de novo.
+**Endpoints que retornaram `"no such callback"`** com o payload simples `operation=read` (provavelmente exigem parâmetros de paginação/filtro não descobertos; não insisti para não arriscar o equipamento): tabela ARP viva, bindings IP-MAC, firewall customizado, Access Control, log do sistema, tráfego por dispositivo. Se algum for priorizado, inspecione o JS de cada tela (`pages/userrpm/*.html`) para o shape exato dos parâmetros.

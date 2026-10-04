@@ -44,12 +44,6 @@ chmod +x .git/hooks/pre-commit
 rm .git/hooks/pre-commit
 ```
 
-## Agentes
-
-- `agent-status.ps1`
-- `agent-delegate.ps1`
-- `agent-wake.ps1`
-
 ## Investigacao Android
 
 - `audit-gpon/`: auditoria GPON.

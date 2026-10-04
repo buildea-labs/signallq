@@ -29,7 +29,7 @@ private const val CAT = "recomendacao"
  * da auditoria #1228 (corrige P1-1): o nome antigo colidia literalmente com
  * `core.recommendation.RecommendationEngine` (motor de monetizacao, issue #790),
  * sem nenhuma relacao de chamada entre os dois — ver
- * `docs_ai/ARQUITETURA/AUDITORIA_1228_FASE0_INVENTARIO_COMPLETO.md`.
+ * a auditoria #1228 (Fase 0).
  *
  * ## Por que separa de [FindingEngine]
  * O [FindingEngine] decide QUAL e o problema principal (desempate por score entre

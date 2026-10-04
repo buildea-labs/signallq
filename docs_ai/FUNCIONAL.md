@@ -3,24 +3,23 @@ title: "SignallQ Consumer — Documentação Funcional"
 description: "O que o app Android SignallQ (io.signallq.app) entrega ao usuário final: navegação real, telas, funcionalidades por domínio, permissões e limitações."
 type: "funcional"
 status: "ativo"
-owner: "Claudete"
-last_updated: "2026-09-26"
+owner: "Cora"
+last_updated: "2026-10-04"
+version: "2.1.1"
 ---
 
 - **Fonte de verdade:** o código do app consumer em `android/app/src/main/kotlin/io/signallq/app/`
-  (caminho físico legado; o package declarado é `io.signallq.app` — dívida conhecida, ver
-  `.claude/rules/higiene-e-padronizacao-repositorio.md` seção 4.1), com os módulos `:core*` e
-  `:feature*` consumidos por ele. Este documento foi reescrito do zero em 2026-08-06 lendo o código,
-  e substitui integralmente a revisão anterior (2026-07-23).
+  (package `io.signallq.app`), com os módulos `:core*` e `:feature*` consumidos por ele. Referências
+  no texto apontam arquivo e símbolo, sem número de linha (o `AppShell` foi fatiado e as linhas deslocam a cada
+  mudança). Reescrito em 2026-08-06 lendo o código; revalidado em 2026-10-04 contra a v1.0.9 (Wi-Fi Casa, status ao vivo da Início, sonda UDP do Modo gamer).
 - **Escopo:** app consumer Android `io.signallq.app` — telas, navegação, funcionalidades,
   permissões e limitações visíveis ao usuário final.
 - **Fora do escopo:** SignallQ Pro (descontinuado permanentemente, ver ADR-016), painel
   Admin (repositório `buildea-admin`), site/PWA (repositório `signallq-web`) e arquitetura interna
   (ver `docs_ai/TECNICO.md`).
-- **Responsável:** Claudete (documentação funcional). Implementação: Camilo. Revisão independente:
-  Caio.
-- **Versão validada:** versionName `0.31.0`, versionCode `72` (`android/gradle/libs.versions.toml:5-6`);
-  `applicationId = "io.signallq.app"` (`android/app/build.gradle.kts:85`).
+- **Responsável:** Cora (documentação funcional).
+- **Versão validada:** versionName `1.0.9`, versionCode `89` (`android/gradle/libs.versions.toml:5-6`);
+  `applicationId = "io.signallq.app"` (`android/app/build.gradle.kts:89`).
 
 ---
 
@@ -102,7 +101,7 @@ preservados (`home`, `speedtest`, `historico` e `ferramentas`).
 
 ### 4.2 Overlays
 
-Lista exata de `AppShellOverlay` (`AppShellNavigation.kt`) — 18 valores, todos empilháveis:
+Lista exata de `AppShellOverlay` (`AppShellNavigation.kt`) — 19 valores, todos empilháveis:
 
 | Valor do enum | Tela renderizada | Aberto a partir de |
 |---|---|---|
@@ -110,16 +109,17 @@ Lista exata de `AppShellOverlay` (`AppShellNavigation.kt`) — 18 valores, todos
 | `Ping` | `PingScreen` | Ferramentas; SpeedTestScreen |
 | `Privacidade` | `PrivacidadeScreen` | Perfil; Ajustes |
 | `Novidades` | `NovidadesScreen` | Perfil; Ajustes |
-| `ResultadoVelocidade` | `ResultadoVelocidadeScreen` | automático ao concluir um teste (`AppShell.kt:615-630`); link "Ver resultado" em Velocidade |
-| `Fibra` | `EquipamentoInternetScreen` | nó do gateway na Início; linha do roteador em Ajustes (`onAbrirGatewayDetalhe`, `AppShell.kt:483-488`) |
+| `ResultadoVelocidade` | `ResultadoVelocidadeScreen` | automático ao concluir um teste (`AppShell.kt`); link "Ver resultado" em Velocidade |
+| `Fibra` | `EquipamentoInternetScreen` | nó do gateway na Início; linha do roteador em Ajustes (`onAbrirGatewayDetalhe`, `AppShell.kt`) |
 | `Dispositivos` | `DispositivosScreen` | Ferramentas; CTA dentro do Equipamento de internet |
+| `EquipamentoConectar` | `EquipamentoConectarScreen` | card "Equipamento de internet" quando ainda não há endereço do roteador salvo (#1806): mostra o que foi detectado, o catálogo de modelos compatíveis e o formulário de conexão; ao conectar (ou "Pular por enquanto") troca para `EquipamentoInternet` |
 | `EquipamentoInternet` | `EquipamentoInternetScreen` | Ferramentas (card "Equipamento de internet") |
-| `Ferramentas` | `FerramentasScreen` | apenas o card contextual do diagnóstico guiado (`onAbrirFerramentaSugeridaOverlay`, `AppShell.kt:475-478`) — a aba 4 usa a tela direto, sem passar por este overlay |
+| `Ferramentas` | `FerramentasScreen` | apenas o card contextual do diagnóstico guiado (`onAbrirFerramentaSugeridaOverlay`, `AppShell.kt`) — a aba 4 usa a tela direto, sem passar por este overlay |
 | `Dns` | `DnsScreen` | Ferramentas; SpeedTestScreen |
 | `Perfil` | — | não é um overlay separado; a edição fica dentro de Ajustes |
 | `Ajustes` | `AjustesScreen` | ação de perfil na app bar das quatro raízes; preserva conexão, monitoramento e dados locais existentes |
 | `SinalCanais` | `SinalScreen` | Ferramentas; Wi-Fi, canais e rede móvel em fluxo profundo 2.0 |
-| `SinalWifi` | `SinalWifiScreen` | Ferramentas |
+| `SinalWifi` | `WifiCasaScreen` | Ferramentas (card "WiFi Casa"; o nome técnico do overlay não mudou) |
 | `Termos` | `TermosDeUsoScreen` | Perfil; Sobre o SignallQ |
 | `DiagnosticoGuiado` | `DiagnosticoGuiadoScreen` | CTA "Descobrir o que está acontecendo" no resultado do teste. Desde a #1704 o fluxo **não exige medição anterior**: sem resultado disponível ele abre na escolha do sintoma e mede sozinho na rota `Analise` (§8.5 da spec 2.0) antes de concluir. Desde a #1705 a conclusão distingue os 5 valores de `MeasurementStatus` — parcial, contaminado, inconclusivo e cancelado têm explicação própria e ação concreta, em vez de um banner único sem saída. Desde a #1707 (Task 2.0.09e) a conclusão também mostra o rótulo de confiança em texto ("confiança alta/média/baixa", §14.4 — nunca número) e, quando a IA recomenda reteste (`AiAcaoRecomendada.tipo == "reteste"`), o CTA "Testar novamente" **vinculado** à mesma análise (§8.8): dispara uma medição nova de verdade e resolve em "Melhorou"/"Não mudou"/"Piorou"/"Comparação inconclusiva" (§14.6) — nunca "recomeçar do zero" (isso é outro CTA, em `ResultadoVelocidadeScreen`), nunca compara redes diferentes com aviso |
 | `DetalhesTecnicos` | `DetalhesTecnicosScreen` | CTA "Ver detalhes da conexão" no resultado do teste |
@@ -128,14 +128,15 @@ Lista exata de `AppShellOverlay` (`AppShellNavigation.kt`) — 18 valores, todos
 Notas de comportamento:
 
 - `Fibra` e `EquipamentoInternet` renderizam **a mesma** `EquipamentoInternetScreen`
-  (`AppShell.kt:1062` e `AppShell.kt:1108`) — são dois pontos de entrada históricos para o mesmo
+  (os dois blocos `AnimatedVisibility` em `AppShell.kt` que compõem `EquipamentoInternetScreen`) — são dois pontos de entrada históricos para o mesmo
   destino, não duas telas.
-- Back físico desempilha um overlay por vez (`AppShell.kt:633-641`); fechar `Laudo` por back conta
+- Back físico desempilha um overlay por vez (`AppShellBackHandlers`, `AppShellNavigation.kt`); fechar `Laudo` por back conta
   como "laudo fechado" para elegibilidade do prompt de avaliação da Play Store.
 - O z-order de desenho segue a posição real na pilha, não a ordem no arquivo
-  (`rememberOverlayZIndex`, `AppShell.kt:174-183`).
-- `ResultadoVelocidade`, `DiagnosticoGuiado` e `DetalhesTecnicos` só renderizam se existir um
-  resultado de speedtest em memória (`AppShell.kt:885`, `:921`, `:985`).
+  (`rememberOverlayZIndex`, `AppShell.kt`).
+- `ResultadoVelocidade` e `DetalhesTecnicos` sem resultado de speedtest em memória mostram um estado
+  indisponível (`ResultadoIndisponivelScreen`, GH#1714), não ficam em branco. `DiagnosticoGuiado` pode
+  começar sem resultado anterior: a rota `Analise` produz o que falta.
 - Uma tela **existe no diretório mas não é roteada**: `MinhaConexaoScreen.kt` — seu conteúdo é
   consumido como bottom sheet dentro de `AjustesScreen`, não como destino próprio.
 
@@ -189,6 +190,17 @@ do NDS. A entrada pelo resultado do speedtest reaproveita os dados recém-medido
 "Vídeos ou chamadas travam" pergunta primeiro o tipo de mídia e então fixa o roteiro correspondente.
 O resultado mostra confiança e passos imperativos de resolução. Se o NDS não responder, exibe erro
 explícito e nova tentativa, sem apresentar fallback local como resultado do Assist.
+**Status de conectividade ao vivo (v1.0.9, #1908).** Em Wi-Fi, com a Início visível e em
+foreground, `StatusConectividadeAoVivoCoordinator` repete a sondagem leve de `ConnectivityDiagnosisSource`
+(gateway → DNS → rota externa) com intervalo de 5 s entre rodadas, nunca sobrepostas. Cada nó da trilha
+(Equipamento/Wi-Fi e Internet) ganha um badge de tom, e o Hero passa a usar o status ambiente ("Conexão
+estável", "Wi-Fi pode estar instável", "Provedor com lentidão"). Antes da primeira leitura o Hero diz
+"Verificando sua rede"; ao sair da Início o valor é descartado, nunca reexibido como atual. Confiança
+baixa, ou exceção na sondagem, vira **estado incerto** nos dois estágios — nunca causa afirmada sem
+evidência. Tocar um nó com badge abre a sheet de explicação do estágio, com "Detalhes técnicos"
+(DNS/gateway/rota externa) só quando há evidência bruta da última rodada. Móvel e Ethernet continuam sem
+esse status. Essa sondagem ambiente não grava no histórico de diagnósticos.
+
 Não há grade técnica, catálogo de ferramentas, diagnóstico completo nem placement AdMob na Início.
 A issue #1601 continua responsável pelo acesso direto ao resultado persistido exato; esta fatia
 somente apresenta sua existência sem duplicar essa navegação.
@@ -224,9 +236,9 @@ O placement nativo de Jogos permanece no mesmo destino funcional.
 
 Controlados por flag local no `AppShell`, não empilhados: `MonitoramentoSheet`, `DadosLocaisSheet`,
 `GatewayConnectionSheet` (credenciais do equipamento), `SimpleInfoSheet` (ajuda), `SobreSheet`, mais
-dois diálogos — `ForaDoWifiDialog` (aviso de consumo em rede móvel, `AppShell.kt:1299-1309`) e
+dois diálogos — `ForaDoWifiDialog` (aviso de consumo em rede móvel, `AppShell.kt`) e
 `DiagnosticoConectividadeDialog` (speedtest interrompido por Wi-Fi sem internet,
-`AppShell.kt:1314-1319`).
+`AppShell.kt`).
 
 ### 4.6 Antes do shell: onboarding e consentimento
 
@@ -251,10 +263,10 @@ uso básico do app.
 ### 4.7 Bloqueio remoto de rotas
 
 Nove módulos do consumer podem ser desligados remotamente por Firebase Remote Config
-(`ConsumerFeatureModuleIds`, `AppShellFeatureGating.kt:30-40`): home, speedtest, wifi, devices, dns,
+(`ConsumerFeatureModuleIds`, `AppShellFeatureGating.kt`): home, speedtest, wifi, devices, dns,
 fibra, diagnostico, history, settings. **Todas as flags nascem ligadas** (fail-open,
 `consumer-catalog.json`). Com a flag desligada, a aba fica não clicável e o overlay não abre — o
-usuário vê o snackbar neutro "Recurso temporariamente indisponível." (`AppShell.kt:411`). Ferramentas
+usuário vê o snackbar neutro "Recurso temporariamente indisponível." (`AppShell.kt`). Ferramentas
 (hub), Privacidade e Termos nunca passam pelo gate, por decisão explícita de não esconder obrigação
 legal.
 
@@ -286,23 +298,23 @@ contaminada ou inconclusiva — `MeasurementStatus`, GH#1738), a `VelocidadeScre
 toda conclusão não-`erro` como sucesso.
 
 **O que o usuário vê depois.** O resultado abre sozinho ao concluir. Título e mensagem vêm da decisão
-do motor de diagnóstico, não de texto fixo (`ResultadoVelocidadeScreen.kt:306-321`). Dois cards
+do motor de diagnóstico, não de texto fixo (`ResultadoVelocidadeScreen.kt`). Dois cards
 principais (download e upload); um toggle "Ver detalhes da conexão" revela mais quatro: tempo de
 resposta, variação do tempo de resposta, "falhas estimadas na conexão" (rótulo deliberadamente
 honesto — a medição é taxa de timeout de probes HTTP, não perda de pacotes IP,
-`ResultadoVelocidadeScreen.kt:397-402`) e "lentidão com a rede ocupada" (bufferbloat). Abaixo, a
+`ResultadoVelocidadeScreen.kt`) e "lentidão com a rede ocupada" (bufferbloat). Abaixo, a
 seção "Como sua internet deve funcionar" traduz o resultado em três usos práticos: vídeos em alta
 qualidade, jogos online, chamadas de vídeo.
 
 O app avisa quando o próprio resultado é suspeito: callout se o upload não foi detectado, e texto
 distinto quando o teste foi contaminado por mudança de rede ("O teste foi interrompido porque a
 conexão caiu ou mudou durante a medição.") versus interferência genérica de outros apps
-(`ResultadoVelocidadeScreen.kt:445-470`).
+(`ResultadoVelocidadeScreen.kt`).
 
 **Guardas.** Iniciar teste em rede móvel abre o `ForaDoWifiDialog` com aviso de consumo; confirmar
-ali pula o segundo gate de rede medida (`AppShell.kt:1385-1394`). Se o Wi-Fi estiver conectado mas
+ali pula o segundo gate de rede medida (`AppShell.kt`). Se o Wi-Fi estiver conectado mas
 sem internet, o speedtest é interrompido e o app mostra a conclusão do diagnóstico local em vez de
-travar em "executando" (`AppShell.kt:1397-1405`) — o conteúdo desse diálogo
+travar em "executando" (`AppShell.kt`) — o conteúdo desse diálogo
 (`DiagnosticoConectividadeDialog`) migrou para tokens do design system 2.0 em `VelocidadeScreen.kt`
 (GH#1738); o gatilho (quando bloquear, antes de `executando` publicar) continua em
 `MainViewModel`/`SpeedtestViewModel`, sem mudança.
@@ -362,17 +374,13 @@ SSID em 5 GHz. O próprio rótulo da aba ganha ícone de alerta quando o canal c
 congestionado.
 
 Ambas as abas fazem auto-refresh a cada 30 s enquanto visíveis e em foreground
-(`SinalScreen.kt:268-278`), e mostram estado vazio "Você está usando a internet do chip" quando não
+(`SinalScreen.kt`), e mostram estado vazio "Você está usando a internet do chip" quando não
 há Wi-Fi.
 
-**Sinal WiFi (ferramenta separada).** `SinalWifiScreen` é o indicador em tempo real, pensado para o
-usuário andar pela casa. Migrada para a ferramenta 2.0 na issue #1668 (épico #1647): categoria
-simples em destaque (Excelente/Bom/Regular/Fraco, mesmo motor de classificação de
-`signalQuality`/`ClassificacaoMetricaLocal.kt` usado nas outras telas de sinal) com o dBm como
-detalhe técnico secundário, barras de sinal ampliadas, velocidade do link e um card com o padrão
-Wi-Fi (4/5/6/6E/7 ou "Não identificado") e badge de suporte a MU-MIMO. Um selo "Ao vivo" indica
-atualização contínua; com "Remover animações" ativo nas opções de acessibilidade do Android
-(`animacoesDoSistemaDesativadas`), o pulso decorativo vira estático sem tirar nenhum dado da tela.
+**WiFi Casa (ferramenta separada).** O overlay `SinalWifi` renderiza `WifiCasaScreen` (ver 5.13).
+`SinalWifiScreen` — indicador em tempo real (categoria Excelente/Bom/Regular/Fraco com dBm secundário,
+barras de sinal, velocidade do link, padrão Wi-Fi e MU-MIMO, selo "Ao vivo"; pulso estático com "Remover
+animações") — não é mais destino próprio: é reaproveitado dentro do fluxo de captura de marcador do WiFi Casa.
 
 Estados tratados via `SignallQStatefulScreen`: Wi-Fi desligado (botão "Ligar Wi-Fi", que abre o
 painel do sistema `Settings.Panel.ACTION_WIFI` sem sair do app — ou liga direto via
@@ -453,16 +461,16 @@ host escolhido pelo usuário — por isso não ganhou a mesma opção avançada.
 
 **O app não troca o DNS.** A tela diz isso ao usuário na cara: "Isso não troca o DNS
 automaticamente. Para alterar, você precisa configurar no Android ou no roteador."
-(`DnsScreen.kt:452-456`).
+(`DnsScreen.kt`).
 
 Quatro blocos. **Seu DNS atual** — nome resolvido e IP do resolvedor, com a latência omitida quando o
 DNS é o próprio roteador (o app explica que o roteador só repassa as consultas). **Benchmark** —
 botão "Comparar servidores DNS" mede sete provedores públicos via DNS-over-HTTPS: Cloudflare, Google
 DNS, Quad9, OpenDNS, AdGuard, Control D e CleanBrowsing
-(`feature/dns/.../BenchmarkDnsDoh.kt:366-375`); cada linha mostra tempo em ms, nota A/B/C/D e badges
+(`feature/dns/.../BenchmarkDnsDoh.kt`); cada linha mostra tempo em ms, nota A/B/C/D e badges
 "atual"/"mais rápido". **Recomendação** — declara o vencedor, ou recusa declarar: quando os melhores
 ficam dentro de 10 ms, a tela diz "Empate técnico entre os servidores mais rápidos nesta conexão."
-(`DnsScreen.kt:480-490`). **Guia** — colapsável "Quando vale a pena trocar DNS?", com o passo a
+(`DnsScreen.kt`). **Guia** — colapsável "Quando vale a pena trocar DNS?", com o passo a
 passo real de configuração em duas abas (Dispositivo, 5 passos; Roteador, 6 passos), cada uma
 declarando o escopo do efeito.
 
@@ -511,7 +519,7 @@ reiniciar o equipamento só aparece quando há gerenciamento disponível.
 
 Três CTAs saem daqui para o resto do app: "Ver dispositivos", "Executar diagnóstico" (Laudo) e "Ver
 detalhes do Wi-Fi" — este último fecha o overlay e leva à aba Sinal, em vez de empilhar mais uma
-tela (`AppShell.kt:555-561`).
+tela (`AppShell.kt`).
 
 **Modelo não suportado.** Quando o app identifica um equipamento na rede mas não sabe ler os dados
 dele (`AcessoEquipamento.SOMENTE_IDENTIFICACAO`), a tela não se limita a avisar "não suportado" —
@@ -534,7 +542,7 @@ atual, para não reautenticar a cada retorno à mesma rede.
 **Aviso importante sobre o estado real desta funcionalidade:** o serviço genérico de conexão a
 gateway está em modo indisponível em produção. `GatewayConnectionServiceIndisponivelPadrao` nunca
 retorna sucesso — só "Indisponível" — porque o mock anterior fingia autenticar e persistia
-credencial sem nenhuma validação real (BUG#1511, documentado em `AppShell.kt:418-424`). Na prática,
+credencial sem nenhuma validação real (BUG#1511, documentado em `AppShell.kt`). Na prática,
 `gatewaySessaoValida` é sempre `false` e o nó do gateway sempre reabre a sheet manual. A leitura
 real de equipamento hoje passa só pelo driver Nokia (ver seção 7).
 
@@ -546,25 +554,25 @@ de `DetalhesTecnicosScreen`.
 O fluxo é **guiado por objetivo, nunca chat livre**. Pela Início ou pelo resultado do speedtest, o
 CTA do SignallQ Assist abre uma lista de **7 objetivos fechados** e a opção neutra
 "Quero verificar minha conexão"
-(`core/diagnostico/.../ObjetivoDiagnostico.kt:14-41`): a internet cai ou fica instável; vídeos travam
+(`core/diagnostico/.../ObjetivoDiagnostico.kt`): a internet cai ou fica instável; vídeos travam
 ou ficam carregando; jogos atrasam ou travam; chamadas de vídeo travam; sites demoram para abrir; a
 velocidade está abaixo do plano; não sei onde está o problema.
 
 Escolhido o objetivo, o app faz **2 perguntas fechadas** (single-select, com barra de progresso) e
 mostra o resultado. Se o resultado do speedtest não for válido para conclusão, a tela nem entra no
-fluxo — pede para refazer o teste na mesma rede (`DiagnosticoGuiadoScreen.kt:203-206`).
+fluxo — pede para refazer o teste na mesma rede (`DiagnosticoGuiadoScreen.kt`).
 
 O resultado separa visualmente o que foi medido do que foi narrado, em duas caixas: **"DADOS MEDIDOS
 PELO SIGNALLQ"** (label → valor, colorido por status) e **"EXPLICAÇÃO DO RESULTADO"** (a parte da
 IA). Rodapé fixo: "A explicação ajuda a entender o resultado. A avaliação é feita com os dados
 medidos no seu aparelho." Se a IA falhar, o app diz "Não consegui carregar a explicação. O resultado
 acima continua válido." — a IA nunca decide o status, só escreve a prosa
-(`ui/component/DiagnosticoResultadoComponents.kt:86-186`).
+(`ui/component/DiagnosticoResultadoComponents.kt`).
 
 Complementos do resultado:
 
 - **Card "Próximo passo"** — aponta **uma** ferramenta, quando o objetivo mapeia para alguma
-  (`TipoFerramenta.kt:55-64`): sites lentos e velocidade abaixo do plano → DNS; internet instável →
+  (`TipoFerramenta.kt`): sites lentos e velocidade abaixo do plano → DNS; internet instável →
   Monitoramento; "não sei onde está o problema" → Sinal Wi-Fi. Vídeos travando, jogos com lag e
   chamadas congelando **não recebem card**, por regra explícita de não empurrar sugestão fraca.
 - **Contato da operadora** — só quando a causa aponta para ISP ou fibra; abre a sheet de canais
@@ -575,17 +583,17 @@ Complementos do resultado:
 - Para o objetivo de jogos, um botão "Analisar um jogo específico" leva ao Modo gamer.
 
 **Detalhes técnicos** é o caminho paralelo, sem IA e sem recomendação
-(`DetalhesTecnicosScreen.kt:39-46`): texto explicativo sobre o tipo de conexão e a lista de dados
+(`DetalhesTecnicosScreen.kt`): texto explicativo sobre o tipo de conexão e a lista de dados
 medidos com rótulos em linguagem comum ("lentidão com a rede ocupada", "tempo para localizar sites",
 "estabilidade da conexão"), mais o servidor usado no teste e o equipamento de internet.
 
 **Laudo.** `LaudoScreen` é o documento. O título exibido é "Relatório de diagnóstico", não "laudo
-técnico" — o nome pericial está reservado ao Pro (`LaudoScreen.kt:153-160`). Traz banner de status
+técnico" — o nome pericial está reservado ao Pro (`LaudoScreen.kt`). Traz banner de status
 com score, resumo, grade de seis métricas (download, upload, latência, jitter, perda, bufferbloat) e
 recomendação. Exporta em PDF pelo ícone do TopBar ou pelo botão no rodapé. No PDF, o nome do usuário
 é deliberadamente omitido e SSID/IPs vão mascarados. Se o diagnóstico em memória for de outra
 execução que a medição exibida, o app recusa combinar os dois e avisa
-(`LaudoScreen.kt:265-287`).
+(`LaudoScreen.kt`).
 
 ### 5.8 Histórico
 
@@ -659,7 +667,7 @@ latência entra acima de 400 ms e sai abaixo de 300 ms; DNS entra acima de 2500 
 1800 ms; RSSI entra abaixo de −75 dBm e sai acima de −68 dBm. "Sem internet" suprime os outros
 alertas. Há teto de **3 notificações por dia** e cooldowns por tipo (DNS 4 h, Wi-Fi fraco 8 h, sem
 internet 30 min). Tudo em um único canal de notificação, "Monitoramento de rede"
-(`SignallQNotificationHelper.kt:15,38-45`).
+(`SignallQNotificationHelper.kt`).
 
 Existe ainda uma notificação de **dispositivo novo na rede**, disparada pelo app (não pelo Worker),
 com cooldown de 1 h.
@@ -684,7 +692,7 @@ oferecer caminho para revisá-lo.
 O perfil de conexão é **por rede**, não global. Quando o app detecta um provedor diferente do
 cadastrado, mostra um banner "Detectamos {provedor} nesta rede. / Usar este provedor?" — mas isso só
 acontece se o usuário já tinha confirmado explicitamente o valor salvo; sem confirmação prévia, o
-app atualiza silenciosamente (`AjustesScreen.kt:209-247`).
+app atualiza silenciosamente (`AjustesScreen.kt`).
 
 `DadosLocaisSheet` concentra as três ações destrutivas, escalonadas por gravidade e **todas com
 diálogo de confirmação**: limpar histórico de testes, apagar dados locais, resetar o app. A partir
@@ -698,7 +706,7 @@ caminho de contato/suporte para pedir remoção remota.
 
 **Divergências reais no código:** `AjustesScreen` recebe os estados de monitoramento e de dados
 móveis (permitir teste pesado em rede móvel, MB consumidos no mês) mas **não renderiza nenhuma linha
-para eles** (`AjustesScreen.kt:90-99,122,136-138`) — monitoramento só é configurável pelo hub
+para eles** (`AjustesScreen.kt`) — monitoramento só é configurável pelo hub
 Ferramentas, e a preferência de dados móveis não tem ponto de entrada na UI hoje. `DiagnosticoAppSheet`
 (implementado sem nenhum ponto de entrada) foi removido em #1670, junto com o `SettingItem` órfão.
 
@@ -709,7 +717,7 @@ o **único** fluxo de jogos do app: a `JogosScreen` legada foi removida em 2026-
 fundida aqui.
 
 **Etapa 1 — jogo.** Busca e lista de **21 jogos** de catálogo fechado
-(`core/diagnostico/.../ModoGamerEngine.kt:326-356`), cobrindo battle royale, FPS competitivo, MOBA e
+(`core/diagnostico/.../ModoGamerEngine.kt`), cobrindo battle royale, FPS competitivo, MOBA e
 casual. Jogo fora da lista nunca vira erro: o rodapé "Meu jogo não está na lista" leva a **6
 categorias genéricas** de fallback.
 
@@ -718,8 +726,10 @@ puramente contextual — **não altera os limiares do motor**.
 
 **Etapa 3 — salvar.** "Salvar para os próximos testes" (marcada por padrão) ou "Usar apenas agora".
 Se houver padrão salvo, as próximas aberturas pulam direto para o resultado
-(`ModoGamerViewModel.kt:90-103`). Nesta etapa também fica a medição extra opcional "Medir o tempo de
-resposta agora", que não bloqueia o fluxo.
+(`ModoGamerViewModel.kt`). Nesta etapa também fica a medição extra opcional "Medir o tempo de
+resposta agora", que não bloqueia o fluxo. A medição de rota usa uma **sonda UDP real** contra o beacon
+AWS GameLift (`SondaGameLiftBeacon`, v1.0.9, #1902) para todo jogo do catálogo; se a sonda falha (UDP
+bloqueado, DNS ou rede), cai no fallback HTTPS. O catálogo não tem mais host dedicado por jogo (#1904).
 
 **Resultado.** Abre com uma headline direta e simples ("Bom pra jogar" / "Pode ter atrasos" / "Não
 recomendado" / "Sem dados suficientes" — issue #1667, decisão do Luiz 2026-08-19: linguagem direta
@@ -727,7 +737,7 @@ em vez de fraseado de probabilidade), depois o mesmo banner de status e o mesmo 
 SignallQ / Explicação por IA" do diagnóstico guiado, mais "O que fazer agora" com as ações do
 motor. Se o jogo veio do fallback, um aviso amarelo declara isso. Se o usuário pediu a medição
 extra, aparece uma linha informativa sobre conexão direta com outros jogadores (NAT UDP) — que é
-**puramente informativa e nunca rebaixa o veredito** (`ModoGamerConfigResultadoSection.kt:344-347`).
+**puramente informativa e nunca rebaixa o veredito** (`ModoGamerConfigResultadoSection.kt`).
 Uma faixa final confirma se a escolha virou padrão ou foi usada só desta vez.
 
 **Convergência com o objetivo guiado "Jogos atrasam ou travam" (issue #1667).** A pergunta guiada
@@ -745,16 +755,24 @@ usado pela entrada direta (hub Ferramentas) — um único fluxo, dois pontos de 
 
 O topo apresenta o estado da conexão, o veredito humano, uma explicação curta e o CTA **"Analisar minha
 conexão"**. Em seguida, a tela mostra uma trilha horizontal de até cinco nós (Internet, equipamento
-principal, mesh quando confirmado, Wi-Fi e este aparelho), como contexto visual não interativo. A lista
+principal, mesh quando confirmado, Wi-Fi e este aparelho), com badge de status ao vivo em Wi-Fi (ver 4.3.2). A lista
 de problemas oferece o atalho "Vídeos ou chamadas travam"; o antigo card "Outro problema"
 foi removido porque era uma segunda entrada redundante para a mesma jornada.
 
 Os detalhes de aparelho, roteador e provedor continuam acessíveis pelos fluxos próprios de
-Ferramentas e Ajustes; a trilha da Início não promete uma ação quando o nó é tocado.
+Ferramentas e Ajustes; a trilha só reage ao toque nos nós com badge de status ao vivo (sheet de
+explicação do estágio).
 
 O aviso regulatório da Anatel não ocupa a tela inicial. A Início mantém foco no diagnóstico e nos
 próximos passos; informações regulatórias permanecem disponíveis nos contextos de resultado e
 configuração quando aplicáveis.
+
+### 5.13 WiFi Casa
+
+**Tela:** `WifiCasaScreen` (+ `WifiCasaGridCanvas`), overlay `SinalWifi`, card "WiFi Casa" em Ferramentas.
+Mapeamento espacial de cobertura Wi-Fi por cômodo em grade 2D, com comparação Antes × Depois ao
+reposicionar roteador ou nó mesh. Requer permissão de localização para ler o sinal. Comportamento,
+requisitos e critérios de aceite: `functional/WIFI_CASA_MAPEAMENTO_SPEC.md`.
 
 ---
 
@@ -777,7 +795,7 @@ uso do app** — a ausência oculta ou degrada o dado dependente, nunca produz t
 
 Fora do manifesto, existe um consentimento de **LGPD** exibido depois do onboarding
 (`MainActivity.kt`): a coleta de analytics nasce desabilitada e só é ligada quando o consentimento é
-positivo (`SignallQApplication.kt:123-126`).
+positivo (`SignallQApplication.kt`).
 
 ---
 
@@ -813,7 +831,7 @@ cliente HTTP autenticado, parsers de GPON/WAN/PPP/Wi-Fi/LAN/clientes, perfil óp
 classificador de Rx/Tx e ação de reboot — tudo em
 `android/feature/fibra/src/main/kotlin/.../fibra/`, com testes. TP-Link (Archer C20, Archer C6,
 genérico luci/stok) e o perfil mesh genérico existem **apenas como entradas de reconhecimento
-documental** no `DeviceDriverCatalog` (`core/network/.../gateway/DeviceDriverCatalog.kt:59-118`) —
+documental** no `DeviceDriverCatalog` (`core/network/.../gateway/DeviceDriverCatalog.kt`) —
 metadados de vendor/modelo/banner, sem nenhum cliente HTTP ou parser. **Intelbras não tem driver nem
 entrada de catálogo de equipamento**: aparece só como OUI de fabricante para classificação de
 topologia.

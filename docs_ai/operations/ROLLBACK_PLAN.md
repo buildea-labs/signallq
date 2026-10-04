@@ -1,7 +1,16 @@
+---
+title: "Plano de rollback"
+description: "Quando e como reverter Android (Play Store/Firebase), Workers Cloudflare e D1."
+type: "runbook"
+status: "ativo"
+owner: "Camillo"
+last_updated: "2026-10-04"
+version: "1.1.0"
+---
+
 # Plano de Rollback — SignallQ
 
-- **Status:** ativo
-- **Última validação:** 2026-07-23
+- **Fonte de verdade:** `.github/workflows/release.yml`, `integrations/cloudflare/*/wrangler.toml`
 - **Escopo:** rollback de Android (Play Store/Firebase), workers Cloudflare e D1
 
 ## Quando fazer rollback
@@ -32,13 +41,7 @@
 
 ### Android — Firebase App Distribution
 
-```powershell
-# Rebuildar versão anterior
-git checkout v0.XX.X
-$env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr"
-.\android\gradlew.bat clean assembleRelease --no-build-cache
-.\android\gradlew.bat appDistributionUploadRelease
-```
+Faça checkout da tag anterior (`git checkout vX.Y.Z`), incremente `versionCode` (não pode regredir) e dispare `firebase-distribution.yml` (ver `RELEASE.md`).
 
 ### Workers Cloudflare
 
@@ -55,12 +58,7 @@ cd integrations/cloudflare/<worker>
 npx wrangler deploy
 ```
 
-**Workers do SignallQ (5, todos em `integrations/cloudflare/`):**
-- `linka-ai-diagnosis-worker` (pasta `ai-diagnosis-worker`) — diagnóstico IA
-- `signallq-admin` (pasta `signallq-admin-worker`) — admin backend (D1)
-- `signallq-diagnostic` (pasta `signallq-diagnostic-worker`) — diagnóstico/telemetria
-- `signallq-privacy` (pasta `signallq-privacy-worker`) — política de privacidade/termos (não é Cloudflare Pages, é Worker)
-- `signallq-game-latency-probe` (pasta `game-latency-probe-worker`) — probe de latência do fluxo de Jogos
+Lista dos 5 Workers e nomes reais: `ENVIRONMENTS.md`.
 
 ### D1 Database
 

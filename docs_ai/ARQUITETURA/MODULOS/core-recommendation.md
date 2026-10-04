@@ -4,7 +4,8 @@ description: "Motor stateless de decisão de recomendações pós-diagnóstico, 
 type: "técnico"
 status: "ativo"
 owner: "Camilo"
-last_updated: "2026-08-06"
+last_updated: "2026-10-04"
+version: "1.1.0"
 ---
 
 # `:coreRecommendation`
@@ -28,7 +29,7 @@ Estratégia de decisão (issue #790): 1) recomendação gratuita quando resolve;
 | `junit` (test) | `RecommendationEngineTest` |
 | `androidx.junit`, `androidx.espresso.core` (androidTest) | scaffolding padrão, sem teste instrumentado |
 
-**Nenhuma dependência de `implementation`** — nem `androidx.core.ktx`, nem coroutines, nem módulo do monorepo. É o único dos seis módulos `core` legados com o bloco de dependências de produção vazio.
+**Nenhuma dependência de `implementation`** — nem `androidx.core.ktx`, nem coroutines, nem módulo do monorepo. É o único módulo `core` legado com o bloco de dependências de produção vazio.
 
 ## Consumidores
 
@@ -41,7 +42,7 @@ Estratégia de decisão (issue #790): 1) recomendação gratuita quando resolve;
 
 | Arquivo/classe | Responsabilidade |
 |---|---|
-| `src/main/kotlin/io/signallq/app/core/recommendation/RecommendationEngine.kt` (163 linhas) | motor: `rank()` (filtros encadeados + ordenação por `priorityTier` e `-score`) e `choose()` |
+| `src/main/kotlin/io/signallq/app/core/recommendation/RecommendationEngine.kt` | motor: `rank()` (filtros encadeados + ordenação por `priorityTier` e `-score`) e `choose()` |
 | `src/main/kotlin/io/signallq/app/core/recommendation/Recommendation.kt` | item de catálogo (tags, redes aplicáveis, `basePriority`, `cooldownHours`, `maxPerDay`/`maxPerWeek`) |
 | `src/main/kotlin/io/signallq/app/core/recommendation/RecommendationDecision.kt` | saída do motor: recomendação + `matchedTags`, `score`, `priorityTier`, `reason`, `trackingId` |
 | `src/main/kotlin/io/signallq/app/core/recommendation/RecommendationRequest.kt` | entrada estruturada + `RecommendationFlags` (inclui `minAffiliateMatchRatio`, default 0.5) |
@@ -51,17 +52,12 @@ Estratégia de decisão (issue #790): 1) recomendação gratuita quando resolve;
 | `src/main/kotlin/io/signallq/app/core/recommendation/RecommendationFeedback.kt` | `RecommendationFeedbackType` e `RecommendationHistoryEntry` |
 | `src/main/kotlin/io/signallq/app/core/recommendation/NetworkContextType.kt` | `WIFI`, `MOVEL`, `ETHERNET` |
 | `src/main/kotlin/io/signallq/app/core/recommendation/catalog/RecommendationCatalog.kt` | `fun interface` da fonte de candidatos |
-| `src/main/kotlin/io/signallq/app/core/recommendation/catalog/LocalRecommendationCatalog.kt` (88 linhas) | catálogo mínimo embarcado, usado enquanto o catálogo remoto não existe |
-| `src/main/kotlin/io/signallq/app/core/recommendation/analytics/RecommendationAnalytics.kt` (51 linhas) | 6 eventos (`recommendation_eligible/shown/clicked/dismissed/feedback/fallback_ad_shown`), payload e `RecommendationAnalyticsTracker` |
-
-### Único módulo nascido em `io/signallq/`
-
-**Confirmado:** todos os 13 arquivos `.kt` deste módulo (12 em `src/main`, 1 em `src/test`) estão sob `.../kotlin/io/signallq/app/core/recommendation/`. Módulo nasceu depois do rebrand — sinal disso é o `build.gradle.kts` sem BOM UTF-8 (todos os outros herdados ainda têm). Após a migração de 2026-08-15 (#1645), todos os 16 módulos têm path físico alinhado ao package.
+| `src/main/kotlin/io/signallq/app/core/recommendation/catalog/LocalRecommendationCatalog.kt` | catálogo mínimo embarcado, usado enquanto o catálogo remoto não existe |
+| `src/main/kotlin/io/signallq/app/core/recommendation/analytics/RecommendationAnalytics.kt` | 6 eventos (`recommendation_eligible/shown/clicked/dismissed/feedback/fallback_ad_shown`), payload e `RecommendationAnalyticsTracker` |
 
 ## Riscos e dívidas
 
 - **Catálogo remoto inexistente:** só há `LocalRecommendationCatalog`, com um exemplo por categoria. Toda a monetização depende hoje de uma lista hardcoded no app — mudar recomendação exige release.
 - **Plugin Android sem uso de Android:** aplica `com.android.library` e declara `compileSdk`/`minSdk`/`testInstrumentationRunner` para código Kotlin puro. Poderia ser um módulo `java-library`/JVM, o que aceleraria build e testes.
 - **Acoplamento indireto com `:coreDatabase`:** a tabela `recommendation_history` e `RecommendationHistoryEntity`/`RecommendationHistoryDao` vivem em `:coreDatabase`, enquanto o modelo `RecommendationHistoryEntry` vive aqui. Os dois precisam evoluir juntos sem que o Gradle imponha a relação — desalinhamento não quebra a compilação.
-- **Cobertura concentrada:** 1 arquivo de teste (`RecommendationEngineTest`, 270 linhas) para 482 linhas de `src/main`; cobre o motor, não o catálogo nem o mapeamento de analytics.
-- Nenhum arquivo acima de 800 linhas (maior: `RecommendationEngine.kt`, 163 linhas).
+- **Cobertura concentrada:** 1 arquivo de teste (`RecommendationEngineTest`); cobre o motor, não o catálogo nem o mapeamento de analytics.

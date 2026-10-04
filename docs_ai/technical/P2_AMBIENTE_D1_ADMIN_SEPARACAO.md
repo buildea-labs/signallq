@@ -1,60 +1,39 @@
-# P2 — Separação de ambiente para o Admin Worker e D1
+---
+title: "P2 — Separação de ambiente do Admin Worker e do D1"
+description: "Plano técnico, ainda não executado, para isolar o D1 de desenvolvimento do de produção no signallq-admin-worker."
+type: "técnico"
+status: "draft"
+owner: "Ramon"
+last_updated: "2026-10-04"
+version: "1.1.0"
+---
 
-- **Status:** plano técnico, sem operação remota executada.
-- **Escopo:** `integrations/cloudflare/signallq-admin-worker`.
-- **Motivo:** o `wrangler.toml` atual declara um único binding `DB` para
-  `signallq-admin-db`. O campo `environment` nos registros permite filtro lógico,
-  mas desenvolvimento e produção ainda compartilham a mesma base D1.
+# P2 — Separação de ambiente do Admin Worker e do D1
 
-## Estado confirmado no código
+**Status:** plano técnico, sem nenhuma operação remota executada; depende de autorização do Luiz (cria recurso Cloudflare).
+**Escopo:** `integrations/cloudflare/signallq-admin-worker`.
+**Problema:** desenvolvimento e produção compartilham o mesmo D1 (`signallq-admin-db`). `environment`, `dist_channel` e `build_type` nos registros só filtram logicamente; não isolam dados, credenciais, migrations nem o impacto de testes.
 
-1. O Worker usa o binding único `DB`.
-2. `environment`, `dist_channel` e `build_type` já acompanham os eventos de
-   ingest; isso não isola dados, credenciais, migrações nem impacto de testes.
-3. Não existe `[env.development]` nem outro binding D1 no `wrangler.toml`.
+## Estado confirmado (2026-10-04)
 
-## Mudança proposta, dependente de autorização do Luiz
+`wrangler.toml` tem um único `[[d1_databases]]` (binding `DB` → `signallq-admin-db`) e nenhum `[env.development]`. O código TypeScript depende só de `Env.DB`, então a separação é de configuração e de recurso remoto, sem mudança de código.
 
-Criar um D1 de desenvolvimento distinto e configurar um ambiente Wrangler
-`development` com `DB` apontando exclusivamente para ele. Produção mantém o
-binding e o database id atuais. O código TypeScript não precisa mudar porque o
-contrato continua sendo `Env.DB`; a separação é de configuração e recurso remoto.
+## Mudança proposta
 
-Pré-requisitos externos:
+Criar um D1 de desenvolvimento (por exemplo `signallq-admin-dev-db`) e um ambiente Wrangler `development` cujo `DB` aponte só para ele. Produção mantém binding e `database_id` atuais.
 
-1. Luiz autoriza criação do recurso D1 e confirma conta Cloudflare e convenção de
-   nome, por exemplo `signallq-admin-dev-db`.
-2. Acesso Cloudflare com permissão para criar D1, aplicar migrations e publicar
-   Worker em ambiente não produtivo.
-3. Decisão explícita sobre segredos de desenvolvimento: valores próprios, nunca
-   cópia de `INGEST_KEY`, `ADMIN_SECRET` ou credenciais de produção.
+**Pré-requisitos (Luiz):** autorizar a criação do D1 e a convenção de nome; acesso Cloudflare para criar D1, aplicar migrations e publicar em ambiente não produtivo; secrets de desenvolvimento próprios — nunca cópia de `INGEST_KEY`, `ADMIN_SECRET` ou credenciais de produção.
 
-## Sequência executável após autorização
+## Sequência após autorização
 
-1. Criar o D1 de desenvolvimento e registrar o `database_id` retornado.
-2. Adicionar `[env.development]` e `[[env.development.d1_databases]]` ao
-   `wrangler.toml`, preservando o binding `DB` e usando apenas o novo id.
-3. Aplicar todas as migrations versionadas ao novo banco, em ordem, e registrar
-   os hashes dos arquivos efetivamente aplicados.
-4. Configurar somente secrets de desenvolvimento no ambiente `development`.
-5. Publicar somente `--env development`; não executar `wrangler deploy` sem
-   ambiente explícito.
-6. Validar `GET /health`, ingest autenticado com chave de desenvolvimento e
-   consultas de contagem no D1 de desenvolvimento.
-7. Confirmar que os ids de D1 de produção e desenvolvimento são diferentes e
-   que nenhuma escrita de teste apareceu na produção.
+1. Criar o D1 de desenvolvimento e registrar o `database_id`.
+2. Adicionar `[env.development]` e `[[env.development.d1_databases]]` ao `wrangler.toml`, mantendo o binding `DB`.
+3. Aplicar todas as migrations (`migrations/001`–`022`) ao novo banco, em ordem, registrando o SHA-256 de cada arquivo aplicado.
+4. Configurar só secrets de desenvolvimento no ambiente `development`.
+5. Publicar apenas com `--env development`; nunca `wrangler deploy` sem ambiente explícito.
+6. Validar `GET /health`, ingest autenticado com a chave de desenvolvimento e contagens no D1 de desenvolvimento.
+7. Confirmar que os ids dos dois D1 são diferentes e que nenhuma escrita de teste apareceu em produção.
 
-## Evidências de aceite
+**Evidências de aceite:** saída da criação do D1 (sem secrets); diff do `wrangler.toml` com bindings distintos; lista e hashes das migrations aplicadas; smoke HTTP do `development`; contagens nos dois bancos.
 
-- Saída de criação com id do D1 de desenvolvimento (sem secrets).
-- Diff do `wrangler.toml` mostrando bindings distintos.
-- Lista e SHA-256 das migrations aplicadas, com resultado por migration.
-- Logs/HTTP de smoke do ambiente `development`.
-- Consulta de contagem em ambos os D1 comprovando ausência de dados de teste na
-  produção.
-
-## Limites
-
-Este plano não cria D1, não adiciona secrets, não aplica migration, não publica
-Worker e não altera o binding de produção. A separação não deve ser simulada por
-apenas filtrar a coluna `environment`.
+**Limite:** a separação não pode ser simulada filtrando a coluna `environment`.

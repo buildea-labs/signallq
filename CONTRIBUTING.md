@@ -1,14 +1,13 @@
 # Contribuindo com o SignallQ
 
-Este projeto usa agentes autônomos (Claude Code) como squad principal de desenvolvimento. As
+Este projeto usa agentes (Codex e Claude Code coexistem como orquestradores) como squad de desenvolvimento. As
 regras completas de processo vivem em [`AGENTS.md`](AGENTS.md); papéis, autonomia e escopo de
 cada agente vivem em `.claude/agents/*.md` — este arquivo existe só para dar visibilidade rápida.
 
 ## Checks obrigatórios para merge em `main`
 
 - `Ktlint`, `Detekt` e `Unit Tests` (GitHub Actions) — branch protection exige os três verdes.
-- Branch precisa estar atualizada com `main` antes do merge (`strict: true`) — o workflow
-  `auto-update-branch.yml` atualiza PRs abertas automaticamente a cada push em `main`.
+- A branch não precisa estar byte-a-byte atualizada com `main` (`strict: false` em `required_status_checks`, conferido via API em 2026-10-04); o workflow `auto-update-branch.yml` atualiza PRs abertas a cada push em `main`.
 
 ## Antes de abrir PR
 

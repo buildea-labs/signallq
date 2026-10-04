@@ -8,7 +8,7 @@ import org.junit.Test
  * Fase 0 da auditoria #1228 — congela que [ScoreEvidenceBuilder] reimplementa thresholds
  * de upload em vez de chamar [MetricClassifier], apesar do proprio kdoc do arquivo
  * afirmar "Nao reclassifica nada do zero — reaproveita o MetricClassifier". Ver
- * `docs_ai/ARQUITETURA/AUDITORIA_1228_FASE0_INVENTARIO_COMPLETO.md`, Parte 8, P1-6.
+ * auditoria #1228, Fase 0, achado P1-6.
  *
  * `ScoreEvidenceBuilder.velocidade()` (privada) usa um corte de upload de dois niveis
  * (`ul<=0.0 -> 15`, `ul<5.0 -> 55`, `else -> 100`) que bate com o limiar de negocio de

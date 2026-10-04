@@ -434,8 +434,7 @@ docs_ai/
 │   ├── README.md            (visão de sistema, dependências entre módulos)
 │   └── MODULOS/              (um doc por módulo Gradle real — 16 arquivos)
 ├── CONTRATOS/
-│   ├── openapi/               (contrato OpenAPI 3.0 — 7 arquivos: 5 por Worker Cloudflare + 2
-│   │                            transversais — analytics-events, integrations-api)
+│   ├── openapi/               (contrato OpenAPI 3.0 — 5 arquivos, um por Worker Cloudflare)
 │   └── schemas/                (índice de schemas reais: Room, D1, analytics — referencia a origem)
 ├── RELEASES.md
 ├── decisions/                  (ADRs e decisões de negócio — preservados, não regeneráveis)
