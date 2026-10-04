@@ -5,7 +5,7 @@ type: "técnico"
 status: "ativo"
 owner: "Camilo"
 last_updated: "2026-10-04"
-version: "1.1.0"
+version: "1.2.0"
 ---
 
 # `:featureSettings`
@@ -18,6 +18,8 @@ version: "1.1.0"
 Biblioteca de regras puras dos Ajustes: modela o `ConnectionProfile` vinculado a uma rede específica (`networkId` resolvido por `ResolvedorNetworkId`, promovido pra `:coreDatabase` na issue #1707), valida os campos que o usuário preenche (velocidade contratada, cidade/UF) e tipa a preferência de tema. Cada regra é um `object` ou `data class` sem dependência de Android, Hilt, Compose ou DataStore.
 
 Não é dele: a tela de Ajustes (`AjustesScreen.kt` vive em `:app`), a persistência (chaves e leitura/escrita ficam em `:coreDatastore`, consumido por `:app`), a resolução real de SSID/BSSID (quem chama já resolveu via `WifiManager`/`ConnectivityManager`) e qualquer decisão de UI sobre divergência de perfil — o módulo só classifica a situação e devolve o tipo.
+
+Comportamento de Ajustes, perfil e privacidade: [`features/perfil-ajustes-legal.md`](../../features/perfil-ajustes-legal.md).
 
 ## Dependências
 

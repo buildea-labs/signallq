@@ -5,7 +5,7 @@ type: "técnico"
 status: "ativo"
 owner: "Camilo"
 last_updated: "2026-10-04"
-version: "1.1.0"
+version: "1.2.0"
 ---
 
 # `:featureWifi`
@@ -18,6 +18,8 @@ version: "1.1.0"
 Traduz o `SnapshotRede` de `:coreNetwork` em um resumo apresentável do estado da conexão (`MontarResumoWifiUseCase` → `ResumoWifi`: título + detalhe por tipo de conexão) e expõe o vocabulário de topologia Wi-Fi consumido pela tela Sinal (`TipoTopologia`, `ConfiancaTopologia`, `RedeClassificada`, `GrupoRedeWifi`). Também reexporta, via `typealias`, os contratos `RedeVizinha`/`SegurancaWifi` que já migraram para `coreNetwork/contracts`.
 
 Não é dele: varrer redes Wi-Fi (isso é `ScannerRedesWifi`, de `:coreNetwork` — o módulo só oferece uma factory que a instancia), classificar topologia de fato (`TopologiaRedeEngine`, também em `:coreNetwork`), renderizar a tela Sinal, nem gerenciar permissões de localização.
+
+Comportamento das telas que usam este vocabulário: [`features/wifi-canais-sinal.md`](../../features/wifi-canais-sinal.md).
 
 ## Dependências
 
@@ -60,6 +62,6 @@ No código do `:app`, os tipos do módulo aparecem em `di/AppModule.kt`, `ui/scr
 ## Riscos e dívidas
 
 - **Zero testes.** O módulo declara `testImplementation(libs.junit)` mas **não possui diretório `src/test`**. `MontarResumoWifiUseCase` é lógica pura, 100% testável, e está descoberta.
-- **Regra de negócio dentro de Composable, no `:app`.** O agrupamento e a classificação de redes que dão sentido a `GrupoRedeWifi`/`RedeClassificada` continuam montados no `:app`, dentro de `android/app/src/main/kotlin/io/signallq/app/ui/screen/SinalWifiSection.kt` — inclusive a construção literal de `RedeClassificada(..., TipoTopologia.DESCONHECIDO, ConfiancaTopologia.BAIXA, motivo = "")`. O módulo `:featureWifi` fornece só os tipos; a decisão vive na tela. A issue #1660 (épico #1647) só reorganizou o arquivo monolítico `SinalScreen.kt` (era 3383 linhas) em scaffold + `SinalWifiSection.kt`/`SinalCanalSection.kt`/`SinalMovelSection.kt` — não moveu regra de negócio pra `:featureWifi`, isso segue fora de escopo desta fatia. `SinalTopologiaHelpers.kt` também mora no `:app`.
+- **Regra de negócio dentro de Composable, no `:app`.** O agrupamento e a classificação de redes que dão sentido a `GrupoRedeWifi`/`RedeClassificada` são montados em `SinalWifiSection.kt` (inclusive a construção literal de `RedeClassificada(..., TipoTopologia.DESCONHECIDO, ConfiancaTopologia.BAIXA, motivo = "")`) e em `SinalTopologiaHelpers.kt`; o módulo só fornece os tipos. Estado da extração por aba: [`wifi-canais-sinal`](../../features/wifi-canais-sinal.md).
 - **Desequilíbrio de massa:** módulo mínimo contra milhares de linhas de telas Wi-Fi/Canal/Móvel no `:app`. Mesma inconsistência de `:featureHome`.
 - **Regra de dependência entre features: respeitada.** Nenhum `project(":feature…")` no `build.gradle.kts`; a única dependência de projeto é `:coreNetwork`.

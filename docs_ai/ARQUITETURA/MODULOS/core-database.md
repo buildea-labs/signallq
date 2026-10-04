@@ -5,7 +5,7 @@ type: "técnico"
 status: "ativo"
 owner: "Camilo"
 last_updated: "2026-10-04"
-version: "1.1.0"
+version: "1.2.0"
 ---
 
 # `:coreDatabase`
@@ -56,7 +56,7 @@ Nenhuma dependência de outro módulo do monorepo. `ResolvedorNetworkId` (`src/m
 | `src/main/kotlin/io/signallq/app/core/database/connectivity/ConnectivityDiagnosisHistoryEntity.kt` / `Dao` | histórico do diagnóstico de conectividade (GH#1512), só campos sanitizados |
 | `src/main/kotlin/io/signallq/app/core/database/provider/ProviderDirectoryCacheEntity.kt` / `Dao` | cache local do diretório remoto de provedores (GH#1462) |
 | `src/main/kotlin/io/signallq/app/core/database/analytics/AnalyticsOutboxEntity.kt` / `Dao` | outbox de eventos de analytics com retry (`enqueue`/`due`/`acknowledge`/`defer`/`clear`) |
-| `src/main/kotlin/io/signallq/app/core/database/wificasa/MapeamentoWifiEntity.kt`, `MarcadorMapeamentoEntity.kt`, `MapeamentoWifiDao.kt` | Wi-Fi Casa: sessão de mapeamento espacial de sinal + marcadores filhos; `comparadoComSessaoId` liga a sessão "depois" à "antes" (`docs_ai/functional/WIFI_CASA_MAPEAMENTO_SPEC.md`) |
+| `src/main/kotlin/io/signallq/app/core/database/wificasa/MapeamentoWifiEntity.kt`, `MarcadorMapeamentoEntity.kt`, `MapeamentoWifiDao.kt` | Wi-Fi Casa: sessão de mapeamento espacial de sinal + marcadores filhos; `comparadoComSessaoId` liga a sessão "depois" à "antes" (`docs_ai/features/wifi-casa.md`) |
 
 ### Schema Room
 
@@ -80,6 +80,10 @@ Nenhuma dependência de outro módulo do monorepo. `ResolvedorNetworkId` (`src/m
 **Migrations:** 21 objetos `Migration`, de 1→2 até 21→22, todos registrados por `addMigrations` em `criarBanco`. Não há `fallbackToDestructiveMigration`. As mais recentes são aditivas: `MIGRATION_19_20` (`CREATE INDEX IF NOT EXISTS` em `analytics_outbox.nextAttemptAtEpochMs`, GH#1787), `MIGRATION_20_21` (4 colunas nullable em `medicao`: `perdaConfianca`, `latenciaP95Ms`, `latenciaMaxMs`, `latenciaPicos` — `NULL` para todo registro anterior, nunca inferidos retroativamente) e `MIGRATION_21_22` (cria `mapeamento_wifi` e `marcador_mapeamento`).
 
 **Testes instrumentados** (`src/androidTest/`): migrations 9→10 e 13→14 até 21→22 (10 das 21 migrations têm teste dedicado), `ChatSessionDaoTest`, `AnalyticsOutboxDaoTest`, `RecommendationHistoryDaoTest`, `MedicaoDaoNetworkIdTest`, `MedicaoDaoPerdaConfiancaTest` e `MapeamentoWifiDaoTest`. O sourceSet `androidTest` aponta `assets.srcDirs` para `schemas/`, requisito do `MigrationTestHelper`.
+
+## Features
+
+Features que listam este módulo (comportamento e regras de negócio ficam na página da feature): [`dispositivos-rede`](../../features/dispositivos-rede.md), [`historico-laudo`](../../features/historico-laudo.md), [`monitoramento-alertas`](../../features/monitoramento-alertas.md), [`wifi-casa`](../../features/wifi-casa.md).
 
 ## Riscos e dívidas
 

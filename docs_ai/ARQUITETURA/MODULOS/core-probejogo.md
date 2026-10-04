@@ -5,7 +5,7 @@ type: "técnico"
 status: "ativo"
 owner: "Camilo"
 last_updated: "2026-10-04"
-version: "1.0.0"
+version: "1.1.0"
 ---
 
 # `:core:probejogo`
@@ -49,6 +49,4 @@ nenhuma, cai na estimativa HTTPS antiga, preservando o contrato de `ModoGamerScr
 
 ## Riscos e dívidas
 
-- **Beacon de terceiro (AWS):** disponibilidade e política de uso fora do controle do produto;
-  UDP bloqueado por rede/operadora gera `null` e cai no fallback.
-- **Rota de referência ≠ rota do jogo:** limite de promessa de produto, não técnico.
+Beacon de terceiro (AWS) e "rota de referência ≠ rota do jogo": ver [`features/modo-gamer.md`](../../features/modo-gamer.md), seção 12.

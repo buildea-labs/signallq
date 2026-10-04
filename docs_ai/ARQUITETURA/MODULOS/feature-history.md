@@ -5,7 +5,7 @@ type: "técnico"
 status: "ativo"
 owner: "Camilo"
 last_updated: "2026-10-04"
-version: "1.1.0"
+version: "1.2.0"
 ---
 
 # `:featureHistory`
@@ -18,6 +18,8 @@ version: "1.1.0"
 Camada de leitura e derivação sobre o histórico de medições persistido em Room: expõe `Flow`/`StateFlow` filtrados por período, modo e contaminação; agrega o resumo das últimas medições; agrupa amostras em blocos de 30 minutos para o gráfico de uptime; gera a narrativa textual dos últimos 7 dias; e exporta o histórico em CSV e PDF.
 
 Não é dele: a escrita das medições (quem grava é `:featureSpeedtest`/monitor via `:coreDatabase`), o schema Room (`MedicaoEntity`/`MedicaoDao` vivem em `:coreDatabase`), a UI do histórico (Screens em `:app` — o módulo não tem nenhum `@Composable`) e o motor genérico de paginação HTML→PDF (`:core:relatorio`, que só recebe HTML pronto e não conhece `MedicaoEntity`).
+
+Comportamento do histórico e do laudo: [`features/historico-laudo.md`](../../features/historico-laudo.md).
 
 ## Dependências
 

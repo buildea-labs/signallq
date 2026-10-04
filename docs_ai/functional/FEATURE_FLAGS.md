@@ -5,7 +5,7 @@ type: "funcional"
 status: "ativo"
 owner: "Cora"
 last_updated: "2026-10-04"
-version: "1.1.0"
+version: "1.2.0"
 ---
 
 # Feature Flags remotas — SignallQ Android + Admin Panel
@@ -180,36 +180,10 @@ uso do kill switch) em código ou doc ativa.
 
 ---
 
-## 12. Terceiro sistema — fundação Firebase Remote Config (Épico #1347, GH#1477, 2026-07-26)
+## 12. Terceiro sistema — Firebase Remote Config (Épico #1347)
 
-Um **terceiro** mecanismo de feature flags nasceu em 2026-07-26 (`:core:featureflags`), com destino
-de **substituir** o sistema SIG-13 descrito neste documento — não é mais um sistema paralelo
-"para sempre", é a próxima geração, ainda em fundação. Diferenças-chave:
+Um **terceiro** mecanismo (`:core:featureflags`, GH#1477, 2026-07-26) destina-se a **substituir** o sistema SIG-13 descrito acima: storage em Firebase Remote Config (a mesma instância do toggle de anúncios, issue #555) e catálogo tipado versionado no repositório (`consumer-catalog.json`), sem "chave solta". A governança completa pelo SignallQ Admin (criar/editar/publicar/rollback, ETag, auditoria) é o objetivo do épico e **ainda não está implementada** (F2/#1478 backend, F3/#1479 UI).
 
-- **Storage remoto:** Firebase Remote Config (mesma instância já usada pelo toggle de anúncios,
-  issue #555), não D1/`signallq-admin-worker`.
-- **Catálogo tipado versionado no repositório** (`consumer-catalog.json`), consumido tanto por
-  Android quanto (em fases futuras) pelo Worker/Admin — sem "chave solta" em nenhum dos lados.
-- **Governança completa pelo SignallQ Admin** (criar/editar/publicar/rollback parâmetros, ETag,
-  auditoria) é o objetivo do Épico #1347 — ainda não implementada (F2/#1478 backend, F3/#1479 UI).
+Estado e decisões (F4/#1480: 9 flags de módulo gateando tab/overlay; #1497: `DiagnosticDivergenceReporter` migrado para `consumer_diagnostico_shadow_mode_enabled`; `consumer_speedtest_cloudflare_engine_enabled` ainda smoke-test) estão em [`technical/feature-flags-remote-config.md`](../technical/feature-flags-remote-config.md). O sistema SIG-13 deste documento **continua em produção**: #1497 só migrou o último consumo real; remover o sistema é uma decisão de arquitetura candidata a issue futura, não aconteceu sozinha.
 
-**Estado real em 2026-08-01:** fundação Android (GH#1477) criou o módulo `:core:featureflags` e o
-`FeatureFlagProvider` funcional sobre Firebase Remote Config. F4 (GH#1480, 2026-07-26) instrumentou
-de verdade as 9 flags principais de módulo (`consumer.{modulo}.enabled` — home, speedtest, wifi,
-devices, dns, fibra, diagnostico, history, settings), todas `androidImplemented=true`, gateando
-tab/overlay em `AppShell.kt` (detalhe completo:
-`docs_ai/technical/feature-flags-remote-config.md`, seção 10). Só
-`consumer_speedtest_cloudflare_engine_enabled` continua smoke-test (`androidImplemented=false`).
-
-**Issue #1497 (2026-08-01):** migrou `DiagnosticDivergenceReporter` — único consumidor real
-restante do sistema SIG-13 acima (kill switch do shadow mode de diagnóstico,
-`feature_diagnostic_shadow_mode`) — para `consumer_diagnostico_shadow_mode_enabled` no catálogo
-novo. O sistema SIG-13 descrito neste documento (`FeatureFlagManager`/`FeatureFlagRepository`,
-endpoints `GET /flags`/`GET /feature-flags`, tabelas D1 `feature_flags`/`feature_flag_audit`)
-**continua existindo e em produção** — #1497 não o removeu, só migrou o último ponto de consumo
-real. Sem nenhum consumidor real restante, a remoção completa do sistema SIG-13 é uma decisão de
-arquitetura candidata a uma issue futura dedicada (avaliação registrada, não executada), não algo
-que aconteceu automaticamente por não sobrar consumidor.
-
-Detalhe técnico completo (schema, contratos, decisões de arquitetura): ver
-`docs_ai/technical/feature-flags-remote-config.md`.
+Quais flags cada feature usa: campo `flags` do frontmatter de cada página em [`features/`](../features/INDEX.md).

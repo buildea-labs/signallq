@@ -5,7 +5,7 @@ type: "técnico"
 status: "ativo"
 owner: "Ramon"
 last_updated: "2026-10-04"
-version: "2.0.0"
+version: "2.1.0"
 ---
 
 # AI Flow — Android SignallQ
@@ -54,7 +54,7 @@ O relatório local que alimenta o payload vem de `DiagnosticOrchestrator.executa
 
 ## 4. Desvio via NDS (NDS-02k, ADR-017, issue #1746)
 
-Com `consumer_diagnostico_nds_live_enabled` ligada (`FeatureFlagKeys.CONSUMER_DIAGNOSTICO_NDS_LIVE_ENABLED`; **`defaultValue: true`** em `consumer-catalog.json`), o `relatorio` já vem do NDS (`DiagnosticOrchestrator.executarProtegido`) com a narrativa do módulo `ai` (`tituloAmigavel`/`resumoTecnicoTraduzido`) embutida em `relatorio.decisao` (`NdsDiagnosticsResponseMapper.toDiagnosticReport`, `:core:nds`). Nesse caso `analisarProblema()` **não chama** `AiDiagnosisRepository.explainDiagnosis()` nem o `NdsClient` de novo: `resolverResultadoAnaliseViaNds` (`MainViewModel.kt`) deriva o resultado do mesmo `relatorio` via `AiFallbackFactory.fromLocal`, sem round-trip adicional. Se o NDS falha, o `DiagnosticRunner` local assume (fallback).
+Com `consumer_diagnostico_nds_live_enabled` ligada (default e combinação com as demais flags: [`features/assist-diagnostico.md`](../features/assist-diagnostico.md)), o `relatorio` já vem do NDS (`DiagnosticOrchestrator.executarProtegido`) com a narrativa do módulo `ai` (`tituloAmigavel`/`resumoTecnicoTraduzido`) embutida em `relatorio.decisao` (`NdsDiagnosticsResponseMapper.toDiagnosticReport`, `:core:nds`). Nesse caso `analisarProblema()` **não chama** `AiDiagnosisRepository.explainDiagnosis()` nem o `NdsClient` de novo: `resolverResultadoAnaliseViaNds` (`MainViewModel.kt`) deriva o resultado do mesmo `relatorio` via `AiFallbackFactory.fromLocal`, sem round-trip adicional. Se o NDS falha, o `DiagnosticRunner` local assume (fallback).
 
 Limite conhecido: `NdsClient` só expõe `POST /v1/diagnostics/evaluate` (e v2); não há endpoint NDS equivalente a `explainDiagnosis` (schema completo com `perguntasContextuais`, `hipotesesDescartadas`, `classificacaoTecnica` por dimensão). O texto autorrelatado do usuário (`problema`) nunca vai ao NDS.
 

@@ -5,7 +5,7 @@ type: "técnico"
 status: "ativo"
 owner: "Camilo"
 last_updated: "2026-10-04"
-version: "1.1.0"
+version: "1.2.0"
 ---
 
 # `:app`
@@ -18,10 +18,9 @@ version: "1.1.0"
 
 Módulo de composição do app Consumer: hospeda `SignallQApplication`, `MainActivity`, o
 `MainViewModel` raiz, o grafo Hilt de nível de aplicação (`di/AppModule.kt`), a navegação
-(`ui/screen/AppShell.kt`) e praticamente todas as telas Compose do produto. Também concentra o
-que só existe quando várias features se juntam: monetização AdMob + consentimento UMP,
-analytics/telemetria para o `signallq-admin-worker`, monitoramento em background via WorkManager,
-notificações e o exportador de relatório em PDF do consumidor.
+(`ui/screen/AppShell.kt`) e as telas Compose. O comportamento de cada feature (Início, Sinal,
+Dispositivos, WiFi Casa, Modo gamer, Monitoramento, Ajustes, anúncios etc.) está em
+[`features/`](../../features/README.md), não aqui.
 
 Não é dele: coleta de dados de rede (`:coreNetwork`, `:coreTelephony`), persistência
 (`:coreDatabase`, `:coreDatastore`), regras de classificação/causa-raiz (`:core:diagnostico`),
@@ -94,11 +93,7 @@ Nenhum. `:app` é o topo do grafo do Consumer — a busca por `project(":app")` 
 | `app/src/main/kotlin/io/signallq/app/FeatureFlags.kt` | Flags de compilação (`BuildConfig.FEATURE_*`) — mecanismo por build type, distinto das flags remotas |
 | `app/src/main/kotlin/io/signallq/app/featureflags/ConsumerFeatureGateCoordinator.kt` | Deriva `AppShellFeatureFlagsState` reativo a partir do `FeatureFlagProvider` remoto |
 | `app/src/main/kotlin/io/signallq/app/featureflags/FeatureFlagManager.kt` / `FeatureFlagRepository.kt` | Mecanismo legado de flags via HTTP `GET /flags` (SIG-13) |
-| `app/src/main/kotlin/io/signallq/app/ui/relatorio/` (4 arquivos) | `RelatorioDiagnosticoSnapshot` → `RelatorioDiagnosticoHtmlBuilder` (puro) → `RelatorioDiagnosticoExporter`, que delega a paginação para `:core:relatorio` |
-| `app/src/main/kotlin/io/signallq/app/ads/` (9 arquivos) | `AdSlot`, `AdUnitIds` (real vs teste conforme `-PplayTrack`), `ConsentManager` (UMP), `AdsRemoteConfigRepository` |
-| `app/src/main/kotlin/io/signallq/app/monitoramento/` (7 arquivos) | `MonitoramentoWorker`/`Scheduler`, `AdminSyncWorker`/`Scheduler`, `AnalyticsOutboxProcessor`, `HisteresiHelper` |
-| `app/src/main/kotlin/io/signallq/app/analytics/` (6 arquivos) | `CompositeAnalyticsTracker`, `FirebaseAnalyticsTracker`, `AnalyticsOutboxFunnelTracker`, `DistributionChannel` |
-| `app/src/main/kotlin/io/signallq/app/ui/screen/` | telas e estados da jornada única — inclui `Inicio2Screen.kt`, `SinalCanalSection.kt`, `SinalWifiSection.kt` e os overlays do shell. `SinalScreen.kt` virou scaffold — issue #1660 extraiu as três seções para `SinalWifiSection.kt`/`SinalCanalSection.kt`/`SinalMovelSection.kt` + `SinalSharedComponents.kt`. `DispositivosScreen.kt` virou scaffold — issue #1663 extraiu lista/estados para `DispositivosLista.kt` e sheets de detalhe para `DispositivoDetalheSheet.kt` |
+| `app/src/main/kotlin/io/signallq/app/{ads,monitoramento,analytics,ui/relatorio,ui/screen}/` | Código de feature hospedado no `:app`: descrito nas páginas de [`features/`](../../features/README.md) (ex.: `perfil-ajustes-legal` para anúncios/UMP, `monitoramento-alertas`, `historico-laudo` para o relatório PDF, `wifi-canais-sinal`, `dispositivos-rede`, `wifi-casa`, `inicio-status`); eventos e tracker em `technical/analytics-events-schema.md` |
 | `app/src/main/AndroidManifest.xml` | 9 `uses-permission`, `FileProvider`, App ID do AdMob, remoção do `WorkManagerInitializer` automático |
 
 Versão e SDKs: `android/gradle/libs.versions.toml` e inventário em `../README.md`.

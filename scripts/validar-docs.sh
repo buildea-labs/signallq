@@ -136,8 +136,8 @@ fi
 # do frontmatter precisa existir de verdade. Contrato: docs_ai/features/README.md.
 #
 # Promover a cobertura de modulos de AVISO para FALHA quando as 12 paginas existirem:
-#   FEATURES_COBERTURA_ESTRITA=1 bash scripts/validar-docs.sh   (ou troque o default 0 -> 1)
-COBERTURA_ESTRITA="${FEATURES_COBERTURA_ESTRITA:-0}"
+#   FEATURES_COBERTURA_ESTRITA=1 bash scripts/validar-docs.sh   (ou default 1 desde a migração das 12 features; use FEATURES_COBERTURA_ESTRITA=0 para rebaixar a aviso)
+COBERTURA_ESTRITA="${FEATURES_COBERTURA_ESTRITA:-1}"
 # Modulos de infraestrutura que nao pertencem a nenhuma feature de produto.
 # Lista explicita de proposito: modulo novo nao entra aqui por omissao.
 MODULOS_INFRA=(

@@ -5,7 +5,7 @@ type: "técnico"
 status: "ativo"
 owner: "Camilo"
 last_updated: "2026-10-04"
-version: "1.1.0"
+version: "1.2.0"
 ---
 
 # `:corePermissions`
@@ -50,6 +50,10 @@ Observação: nenhum módulo `:feature*` do Consumer depende dele diretamente �
 | `src/main/kotlin/io/signallq/app/core/permissions/CorePermissionsModulo.kt` | fábrica manual `criarGerenciadorPermissoesRede(context)` |
 
 Permissões avaliadas: `ACCESS_FINE_LOCATION`, `ACCESS_COARSE_LOCATION` (só no helper) e `NEARBY_WIFI_DEVICES`.
+
+## Features
+
+Nenhuma página de feature lista este módulo no frontmatter (`modulos`): o consumo passa por `:app`; ver [`features/INDEX.md`](../../features/INDEX.md).
 
 ## Riscos e dívidas
 

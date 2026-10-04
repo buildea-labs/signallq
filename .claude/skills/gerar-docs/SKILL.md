@@ -13,7 +13,8 @@ Use para documentação funcional, técnica, contratos, testes, fluxo, design ou
 2. procure documento existente que já seja dono do assunto;
 3. confirme comportamento no código/testes quando a documentação afirmar algo implementado;
 4. atualize a fonte existente em vez de criar documento concorrente quando possível;
-5. se substituir documento, deixe relação clara e preserve histórico no Git — não mantenha duas fontes ativas contraditórias.
+5. se substituir documento, deixe relação clara e preserve histórico no Git — não mantenha duas fontes ativas contraditórias;
+6. para comportamento de uma feature, a fonte é `docs_ai/features/<slug>.md` (índice em `docs_ai/features/INDEX.md`): atualize a página, não `FUNCIONAL.md` nem o doc de módulo, e rode `scripts/validar-docs.sh` (confere caminhos, eventos e flags do frontmatter).
 
 Não é necessário perguntar “humano ou IA?” quando o pedido e o destino já deixam o público claro. Pergunte somente quando isso realmente muda o artefato.
 
