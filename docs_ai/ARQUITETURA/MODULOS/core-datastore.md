@@ -5,7 +5,7 @@ type: "técnico"
 status: "ativo"
 owner: "Camilo"
 last_updated: "2026-10-04"
-version: "1.1.0"
+version: "1.2.0"
 ---
 
 # `:coreDatastore`
@@ -52,6 +52,10 @@ Nenhuma dependência de outro módulo do monorepo.
 | `src/main/kotlin/io/signallq/app/core/datastore/ModoGamerPadraoPersistido.kt` | modelo serializado do modo gamer padrão |
 
 O `CredenciaisModemStore` tem fallback explícito para `SharedPreferences` em claro (arquivo `signallq_modem_credentials_fallback`) quando o AndroidKeyStore não está disponível — cenário previsto para testes com Robolectric; em device real o KeyStore sempre existe.
+
+## Features
+
+Features que listam este módulo (comportamento e regras de negócio ficam na página da feature): [`equipamento-internet`](../../features/equipamento-internet.md), [`modo-gamer`](../../features/modo-gamer.md), [`monitoramento-alertas`](../../features/monitoramento-alertas.md), [`perfil-ajustes-legal`](../../features/perfil-ajustes-legal.md).
 
 ## Riscos e dívidas
 

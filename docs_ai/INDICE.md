@@ -115,7 +115,7 @@ Release e build: `RELEASE.md`, `APK_OUTPUT_POLICY.md`, `VERSIONING.md`, `SIGNING
 `INFRASTRUCTURE_COSTS.md`. Processo: `PROCESSO_PR_E_AGENTES_2026-07-16.md`, `FAQ_USERS.md`,
 `THIRD_PARTY_NOTICES.md`.
 
-## Páginas de feature — `features/` (3)
+## Páginas de feature — `features/` (14)
 
 Uma página por feature de produto, com negócio e técnico no mesmo arquivo e frontmatter legível por máquina (módulos, arquivos, eventos, flags, testes). Comece por [`features/INDEX.md`](features/INDEX.md) (tabela gerada por `scripts/gerar-features-index.sh`; `features/features.json` tem o mesmo conteúdo para máquina). Formato e regras: [`features/README.md`](features/README.md). O CI valida que todo caminho, evento e flag do frontmatter existe.
 
@@ -128,10 +128,9 @@ Uma página por feature de produto, com negócio e técnico no mesmo arquivo e f
 `MATRIZ_DIAGNOSTICO_2026-07-03.xlsx` · `appshell-overlay-registry.md` ·
 `appshell-root-content-registry.md`.
 
-## Funcional pontual — `functional/` (3)
+## Funcional pontual — `functional/` (2)
 
-`FEATURE_FLAGS.md` · `JORNADA_ANDROID_GUIADA_2_SPEC.md` (jornada futura orientada por sintomas) ·
-`WIFI_CASA_MAPEAMENTO_SPEC.md` (implementada).
+`FEATURE_FLAGS.md` · `JORNADA_ANDROID_GUIADA_2_SPEC.md` (princípios da jornada, entregue na v1.0.9). O comportamento por feature vive em `features/`.
 
 ## Design — `design-system/` (5)
 

@@ -5,7 +5,7 @@ type: "técnico"
 status: "ativo"
 owner: "Camilo"
 last_updated: "2026-10-04"
-version: "1.0.0"
+version: "1.1.0"
 ---
 
 # `:featureRouter`
@@ -43,23 +43,8 @@ Sem Hilt, sem OkHttp em produção: o HTTP usa `HttpURLConnection` (`UrlConnecti
 
 ## Componentes principais
 
-| Arquivo / classe | Responsabilidade |
-|---|---|
-| `TpLinkArcherC6Driver.kt` | Fachada pública. `probe(host)` — sondagem sem credencial dos dois endpoints de bootstrap (`TpLinkProbeResult.STOK_LUCI_PASSWORD_ONLY`/`NOT_SUPPORTED`); `loginAndRead(password)` → `TpLinkReadResult.Success`/`Failure(TpLinkFailure)`. Modelo só é confirmado C6/A6 após o login. Contém `TpLinkStokLuciClient` e o transporte HTTP injetável (`TpLinkHttpTransport`) |
-| `TpLinkStokLuciCrypto.kt` | Handshake criptográfico do protocolo stok-luci (chaves RSA, cifra da senha e do corpo) |
-| `TpLinkArcherMapper.kt` | `TpLinkArcherMapper.map(...)` — converte as respostas JSON em `LocalNetworkDeviceSnapshot` (rádios 2.4/5 GHz, clientes cabeados e da malha); devolve `null` se o modelo não for suportado |
-
-`TpLinkFailure` é um conjunto fechado (`INVALID_CREDENTIALS`, `SESSION_EXPIRED`, `UNSUPPORTED_MODEL`,
-`COMMUNICATION`, `INVALID_RESPONSE`); a UI traduz uma vez e nunca expõe detalhe HTTP/cripto.
-
-Mapa de campos do levantamento: `docs_ai/technical/TPLINK_ARCHER_ROUTER_FIELD_MAP.md`.
+Fachada, handshake stok-luci, mapper, `TpLinkFailure` e fluxo de leitura estão em [`features/equipamento-internet.md`](../../features/equipamento-internet.md) (§7 Mapa de código). Mapa de campos do levantamento: `docs_ai/technical/TPLINK_ARCHER_ROUTER_FIELD_MAP.md`.
 
 ## Riscos e dívidas
 
-- **Um único modelo/família.** Sem abstração de família de driver; `:featureFibra` e este módulo
-  repetem a mesma forma (login → leitura → mapper) sem interface comum.
-- **Protocolo por engenharia reversa.** Atualização de firmware pode quebrar o login sem sinal de
-  compilação; o handshake é coberto por `TpLinkStokLuciCryptoTest`/`TpLinkStokLuciClientTest`
-  contra fixtures locais, não contra hardware em CI.
-- **Wiring no `AppShell.kt`:** a chamada ao driver e o fluxo de senha vivem em arquivo já acima do
-  limiar de 800 linhas; candidato a extração dedicada.
+Ver [`features/equipamento-internet.md`](../../features/equipamento-internet.md) (§12): modelo único sem abstração de driver, protocolo por engenharia reversa, wiring no `AppShell.kt` acima de 800 linhas.

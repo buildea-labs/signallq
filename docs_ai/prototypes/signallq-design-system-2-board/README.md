@@ -34,6 +34,6 @@ voz, paleta e exemplos de aplicação. Ela preserva os ativos oficiais sem redes
 ## Fontes
 
 - [`../../design-system/SIGNALLQ_DESIGN_SYSTEM_2_SPEC.md`](../../design-system/SIGNALLQ_DESIGN_SYSTEM_2_SPEC.md)
-- [`../../../DESIGN_SYSTEM.md`](../../../DESIGN_SYSTEM.md)
+- [`../../DESIGN_SYSTEM.md`](../../../DESIGN_SYSTEM.md)
 - `foundations.css`, cópia da skill canônica `SignallQ-design` no momento de criação da prancha;
   `styles.css` aplica os overrides do 2.0.

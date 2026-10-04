@@ -5,7 +5,7 @@ type: "técnico"
 status: "ativo"
 owner: "Camilo"
 last_updated: "2026-10-04"
-version: "2.0.0"
+version: "2.1.0"
 ---
 
 # Ponto de extensão de overlays do AppShell
@@ -71,28 +71,9 @@ devolveram ao `AppShell.kt` (medição da revisão da PR #1697). O resto foi wir
 estado hoisted e lambdas de regra de negócio, que não passam por aqui — o registro irmão de raízes
 cobre parte disso. Estado hoisted e callbacks que empilham overlay seguem no shell.
 
-## Diagnóstico guiado: medição própria e supressão de reações do shell
+## Diagnóstico guiado
 
-`AppShellDiagnosticoGuiadoEntry` tem um grupo `analise: AnaliseGuiadaContrato` (estado da medição
-derivado do snapshot do executor + `onIniciar`/`onCancelar`), separado de `dados` por ter outra
-origem (`ExecutorSpeedtest`, não os snapshots de diagnóstico). O fluxo abre sempre e mede por conta
-própria quando precisa — não depende de medição anterior.
-
-O `ExecutorSpeedtest` é global, então uma medição pedida pelo fluxo guiado é indistinguível de uma
-da tela Velocidade. O estado vive em `AppShellMedicaoGuiada.kt` (`rememberMedicaoGuiada`), fora do
-`AppShell`, para ser testável. O shell tem cinco reações ao executor; três são suprimidas por
-`suprimeReacoesDoShell`: `VelocidadeScreen` em tela cheia, `BackHandler` que descarta o erro e o
-empilhamento de `Overlay.ResultadoVelocidade` na conclusão. As outras duas (barra inferior some em
-`executando` via `shouldShowAppShellBottomBar`; Início reage via `Inicio2UiStateMapper.map`) só não
-atrapalham porque o overlay guiado as oclui — **oclusão não é mecanismo**: se alguma ficar visível
-durante a medição guiada, entra na supressão.
-
-`rememberMedicaoGuiada` impõe um **limite de início**: `onNovoTeste` não garante medição
-(`MainViewModel.reiniciarSuite` tem dois `return` silenciosos: execução em andamento e Wi-Fi sem
-internet). Passado o limite sem ver `executando`, o estado vira `Falhou` ("Tentar de novo").
-
-`ResultadoIndisponivelScreen` segue em uso por `ResultadoVelocidade` e `DetalhesTecnicos`, que
-consomem o `ResultadoSpeedtest` inteiro.
+A medição própria do fluxo e a supressão de reações do shell (`rememberMedicaoGuiada`, `suprimeReacoesDoShell`, limite de início) são comportamento da feature: ver [`features/assist-diagnostico.md`](../features/assist-diagnostico.md) (§10). Aqui fica só o mecanismo de back, abaixo.
 
 ## Delegação de back ao overlay do topo
 

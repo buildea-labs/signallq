@@ -5,7 +5,7 @@ type: "técnico"
 status: "ativo"
 owner: "Camilo"
 last_updated: "2026-10-04"
-version: "1.1.0"
+version: "1.2.0"
 ---
 
 # `:core:nds`
@@ -23,10 +23,9 @@ request e resposta, decoders tipados dos módulos confirmados no ADR (`asScoring
 `DiagnosticInput`/`DiagnosticReport` (de `:core:diagnostico`) e o contrato do NDS.
 
 Não é dele: decidir QUANDO usar a chamada viva — isso é orquestração de `:featureDiagnostico`
-(`DiagnosticOrchestrator` + `NdsDiagnosticRepository`), atrás das flags remotas
-`consumer_diagnostico_nds_live_enabled`, `consumer_diagnostico_nds_v2_enabled` e
-`consumer_diagnostico_assist_nds_v2_enabled` (todas com default ligado no catálogo). Qualquer falha
-mantém o fallback local.
+(`DiagnosticOrchestrator` + `NdsDiagnosticRepository`), atrás das flags remotas `consumer_diagnostico_nds_*` (combinação e defaults em
+[`features/assist-diagnostico.md`](../../features/assist-diagnostico.md)). Qualquer falha mantém o
+fallback local.
 
 Módulo dedicado (não `:coreNetwork`) porque o NDS vai substituir `:core:diagnostico`,
 `ai-diagnosis-worker` e `signallq-diagnostic-worker` (ADR-017) e precisa de contrato próprio,

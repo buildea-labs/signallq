@@ -5,7 +5,7 @@ type: "feature"
 status: "ativo"
 owner: "Ramon"
 last_updated: "2026-10-04"
-version: "1.0.0"
+version: "1.1.0"
 feature: "dns-ping"
 tipo: "transversal"
 modulos:
@@ -63,7 +63,7 @@ Telas cheias roteadas (`DnsScreen`, `PingScreen`), abertas como overlay pelo hub
 
 - **Ping:** latência **HTTPS**, nunca ICMP; o resultado declara "Via HTTPS · <host>". Destino padrão `speed.cloudflare.com`, sempre visível. "Testar outro endereço" é opção avançada, escondida por padrão (decisão de produto do Luiz, 2026-08-19). Host digitado passa por `DetectorEnderecoIpPrivado` (RFC 1918, loopback, link-local, ULA IPv6 são recusados antes de qualquer teste). `destinoContextual` opcional existe, mas hoje nenhum chamador o preenche (fica `null`).
 - **DNS:** compara resolvedores conhecidos, não testa host escolhido pelo usuário (sem opção avançada). Sete provedores públicos via DNS-over-HTTPS: Cloudflare, Google DNS, Quad9, OpenDNS, AdGuard, Control D, CleanBrowsing, mais o DNS do sistema. Cada linha: tempo em ms, nota A/B/C/D, badges "atual"/"mais rápido".
-- **Recomendação** (`AvaliadorRecomendacaoDns`): `Vencedor`, `EmpateTecnico` ou `SemDadosSuficientes`. Valores de margem de empate e taxa de sucesso mínima: ver `thresholds_em` (não copiados aqui). Em empate, a tela recusa declarar vencedor.
+- **Recomendação** (`AvaliadorRecomendacaoDns`): `Vencedor`, `EmpateTecnico` ou `SemDadosSuficientes`. Valores de margem de empate e taxa de sucesso mínima: ver `thresholds_em` (não copiados aqui). O benchmark faz 6 rounds por provedor (1 de aquecimento descartado + 5 avaliados), com timeout global de 25 s (`ROUNDS_POR_MEDICAO` e `TIMEOUT_SUITE_DNS_MS` em `BenchmarkDnsDoh.kt`). Em empate, a tela recusa declarar vencedor.
 - Quatro blocos na tela DNS: **Seu DNS atual** (latência omitida quando o DNS é o roteador, que só repassa consultas); **Benchmark** (botão "Comparar servidores DNS"); **Recomendação**; **Guia** colapsável "Quando vale a pena trocar DNS?" com passo a passo em duas abas (Dispositivo, 5 passos; Roteador, 6 passos), cada uma declarando o escopo do efeito.
 
 ### 4. Estados e honestidade
@@ -100,7 +100,7 @@ Não troca DNS, não mede ICMP, não persiste resultados do benchmark. Status: e
 | `feature/dns/.../OrientadorConfiguracaoDns.kt` | Primário/secundário/hostname de DNS privado por provedor; `null` quando o ativo já é o melhor e não há alerta de coerência |
 | `feature/dns/.../DetectorEnderecoIpPrivado.kt` | IPv4 RFC 1918/link-local/loopback; IPv6 `::1`, `fe80::/10`, `fc00::/7`. Fonte única (substituiu duplicata em `DnsScreen.kt`, GH#1212 item 10) |
 | `feature/dns/.../ResultadoBenchmarkDns.kt`, `BenchmarkDns.kt`, `SnapshotBenchmarkDns.kt`, `EstadoBenchmarkDns.kt`, `FeatureDnsModulo.kt` | Contrato por provedor, interface, snapshot/estados (`idle`/`executando`/`concluido`/`erro`), factory `criarBenchmarkDns()` |
-| `feature/speedtest/.../PingExecutor.kt` | Motor do Ping (HTTPS): 20 tentativas por padrão, timeout global, aborto após falhas consecutivas; também reaproveitado pelo teste de jogo apontando outro `targetUrl` |
+| `feature/speedtest/.../PingExecutor.kt` | Motor do Ping (HTTPS; arquitetura, timeouts e erros em [`PING_EXECUTOR_ARCHITECTURE.md`](../technical/PING_EXECUTOR_ARCHITECTURE.md)): 20 tentativas por padrão, timeout global, aborto após falhas consecutivas; também reaproveitado pelo teste de jogo apontando outro `targetUrl` |
 | `app/.../ui/screen/DnsScreen.kt`, `PingScreen.kt` | Telas (Scaffold + `CenterAlignedTopAppBar` + Voltar); Ping migrou de `ModalBottomSheet` na issue #1665 (épico #1647), DNS desde GH#933 Fase 4 |
 | `app/.../ui/screen/AppShellDnsOverlay.kt`, `AppShellPingOverlay.kt`, `AppShellFeatureGating.kt` | Overlays e gating (`ConsumerFeatureModuleIds.DNS = "dns"`) |
 | `core/network/.../connectivity/` (`DnsReachabilityProbe`, `DohFallbackProbe`, `ConnectivityDiagnosisEngine`) | Sonda DNS e fallback DoH do diagnóstico de conectividade (gateway → DNS → rota externa → hostname/captive portal) |

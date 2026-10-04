@@ -1,7 +1,7 @@
 # Regra permanente — Higiene e padronização do repositório
 
 - **Status:** ativo
-- **Última validação:** 2026-08-19 (§4.8b marcada RESOLVIDA após extração de `SinalScreen.kt` por aba, PR #1766/issue #1660)
+- **Última validação:** 2026-10-04 (§5 de módulos alinhada a `android/settings.gradle.kts`; regra de páginas de feature em §10; demais seções validadas em 2026-08-19)
 - **Fonte de verdade:** este arquivo (`.claude/rules/higiene-e-padronizacao-repositorio.md`) — não duplicar em `docs_ai/`, `AGENTS.md`, mirrors ou docs de módulo
 - **Escopo:** repositório `buildea-labs/signallq` (monorepo SignallQ) inteiro — Android, Admin, Cloudflare, docs
 - **Responsável:** Claudete (dono do processo). Esta regra se aplica a todos os agentes autorizados e aplicáveis ao repositório, conforme a governança canônica em ../ai-governance, e a qualquer sessão humana no repo.
@@ -282,36 +282,44 @@ correção-em-massa numa PR só.
 
 ## 5. Convenção de módulos
 
-Estrutura física atual (validada em `android/settings.gradle.kts`, 16 módulos):
+Estrutura física atual (validada em `android/settings.gradle.kts`, 22 módulos):
 
 ```
 android/
-├── app/
+├── app/                   (:app)
 ├── core/
-│   ├── network/          (:coreNetwork)
-│   ├── database/         (:coreDatabase)
-│   ├── datastore/        (:coreDatastore)
-│   ├── permissions/      (:corePermissions)
-│   ├── telephony/        (:coreTelephony)
-│   └── recommendation/   (:coreRecommendation)
+│   ├── network/           (:coreNetwork)
+│   ├── database/          (:coreDatabase)
+│   ├── datastore/         (:coreDatastore)
+│   ├── permissions/       (:corePermissions)
+│   ├── telephony/         (:coreTelephony)
+│   ├── recommendation/    (:coreRecommendation)
+│   ├── relatorio/         (:core:relatorio)
+│   ├── diagnostico/       (:core:diagnostico)
+│   ├── featureflags/      (:core:featureflags)
+│   ├── nds/               (:core:nds)
+│   └── probejogo/         (:core:probejogo)
 └── feature/
-    ├── home/         (:featureHome)
-    ├── speedtest/    (:featureSpeedtest)
-    ├── wifi/         (:featureWifi)
-    ├── devices/      (:featureDevices)
-    ├── dns/          (:featureDns)
-    ├── fibra/        (:featureFibra)
-    ├── diagnostico/  (:featureDiagnostico)
-    ├── history/      (:featureHistory)
-    └── settings/     (:featureSettings)
+    ├── home/              (:featureHome)
+    ├── speedtest/         (:featureSpeedtest)
+    ├── wifi/              (:featureWifi)
+    ├── devices/           (:featureDevices)
+    ├── dns/               (:featureDns)
+    ├── fibra/             (:featureFibra)
+    ├── router/            (:featureRouter)
+    ├── diagnostico/       (:featureDiagnostico)
+    ├── history/           (:featureHistory)
+    └── settings/          (:featureSettings)
 ```
 
-Os aliases Gradle atuais (`:coreNetwork`, `:featureWifi` etc.) são legado compatível, enquanto as
-pastas já usam estrutura hierárquica. O padrão desejado para uma **futura migração dedicada** é
-renomear os aliases para `:core:network`, `:core:database`, `:core:datastore`, `:core:permissions`,
-`:core:telephony`, `:core:recommendation`, `:feature:home`, `:feature:wifi`, `:feature:devices`,
-`:feature:dns`, `:feature:speedtest`, `:feature:diagnostico`, `:feature:fibra`, `:feature:history`,
-`:feature:settings`.
+Os cinco módulos `:core:*` mais novos (`relatorio`, `diagnostico`, `featureflags`, `nds`,
+`probejogo`) já nascem no padrão hierárquico. Os demais aliases (`:coreNetwork`, `:featureWifi`
+etc.) são legado compatível, enquanto as pastas já usam estrutura hierárquica. O padrão desejado
+para uma **futura migração dedicada** é renomear esses aliases para `:core:network`,
+`:core:database`, `:core:datastore`, `:core:permissions`, `:core:telephony`,
+`:core:recommendation`, `:feature:home`, `:feature:wifi`, `:feature:devices`, `:feature:dns`,
+`:feature:speedtest`, `:feature:diagnostico`, `:feature:fibra`, `:feature:router`,
+`:feature:history`, `:feature:settings`.
 
 Não renomear aliases Gradle de forma oportunista — essa migração afeta dependências, CI, comandos,
 documentação e possivelmente automações, e deve ser tarefa dedicada. Não criar novos módulos usando
@@ -430,9 +438,10 @@ docs_ai/
 ├── FUNCIONAL.md            (o que o app faz)
 ├── TECNICO.md               (como o app é construído/integrado)
 ├── DESIGN_SYSTEM.md         (tokens/componentes Android)
+├── features/                (uma página por feature: negócio + técnico + mapa de código; INDEX.md é o ponto de entrada)
 ├── ARQUITETURA/
 │   ├── README.md            (visão de sistema, dependências entre módulos)
-│   └── MODULOS/              (um doc por módulo Gradle real — 16 arquivos)
+│   └── MODULOS/              (um doc por módulo Gradle real — 22 arquivos)
 ├── CONTRATOS/
 │   ├── openapi/               (contrato OpenAPI 3.0 — 5 arquivos, um por Worker Cloudflare)
 │   └── schemas/                (índice de schemas reais: Room, D1, analytics — referencia a origem)
@@ -470,6 +479,20 @@ humanos liam como verdade atual. Ver `docs_ai/_archive/README.md` para recuperar
 removido.
 
 `docs_ai/README.md` deve funcionar como índice, não como uma segunda documentação completa.
+
+### Páginas de feature (`docs_ai/features/`)
+
+Mudou o comportamento de uma feature (regra de produto, estado ou copy, flag, evento, módulo ou
+arquivo do mapa de código)? **Atualize `docs_ai/features/<slug>.md` na mesma PR.** A página é a
+fonte por feature; `FUNCIONAL.md`, `ARQUITETURA/MODULOS/*` e `technical/*` guardam só o que é
+transversal ou específico do módulo e apontam para ela. Não copie limiares: use `thresholds_em`.
+
+O CI valida (`scripts/validar-docs.sh`): todo caminho de `modulos`, `arquivos`, `contratos`,
+`testes` e `thresholds_em` existe; todo evento existe no código Kotlin ou em
+`technical/analytics-events*.md`; toda flag existe no código ou no catálogo; `INDEX.md` e
+`features.json` batem com o gerado (`scripts/gerar-features-index.sh`); todo módulo Gradle aparece
+em alguma feature (aviso, ou falha com `FEATURES_COBERTURA_ESTRITA=1`); e avisa quando um `.kt`
+listado mudou sem tocar a página. Formato: `docs_ai/features/README.md`.
 
 ### Nomes
 

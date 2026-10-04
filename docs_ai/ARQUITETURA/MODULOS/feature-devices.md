@@ -5,7 +5,7 @@ type: "técnico"
 status: "ativo"
 owner: "Camilo"
 last_updated: "2026-10-04"
-version: "1.1.0"
+version: "1.2.0"
 ---
 
 # `:featureDevices`
@@ -18,6 +18,8 @@ version: "1.1.0"
 Varre a rede local e produz a lista de dispositivos conectados: descoberta por subnet scan + ARP, mDNS/Bonjour (jmDNS), SSDP/UPnP (com fetch e parse do XML de descrição) e probe TCP de portas. Sobre isso, resolve nome e fabricante por prioridade de fonte (`NamingPrioridade`), classifica o tipo de aparelho (`ClassificadorDispositivoRede`), atribui nível de confiança de identidade (`NivelConfiancaIdentidade`), correlaciona com a topologia Wi-Fi/gateway (`CorrelacaoTopologiaDispositivo`) e gerencia apelidos persistidos em Room via `DevicesViewModel`.
 
 Não é dele: renderizar a lista (`DispositivosScreen.kt` vive no `:app`), exibir notificação de dispositivo novo (o ViewModel só emite o evento; a `MainActivity` notifica, justamente para não depender do `:app`), ler o gateway ativamente (isso vem de `:coreNetwork` como `ClientSnapshot`) nem manter o catálogo OUI (`OuiCatalog`, de `:coreNetwork`).
+
+Comportamento da lista, regras de nome/sem invenção e privacidade: [`features/dispositivos-rede.md`](../../features/dispositivos-rede.md).
 
 ## Dependências
 
@@ -72,5 +74,5 @@ Nenhum outro módulo consome.
 
 - **`ScannerDispositivosAndroid.kt` acima de 1200 linhas** — dívida crítica (higiene §7). Concentra cinco protocolos de descoberta (subnet/ARP, mDNS, SSDP, TCP probe, DNS reverso), controle de concorrência (`Mutex`, `Semaphore`, `ConcurrentHashMap`) e enriquecimento; não tem teste direto — os testes cobrem as peças puras extraídas dele.
 - **Dependências de terceiros com versão hardcoded** fora do version catalog: `AndroidNetworkTools:0.4.5.3`, `jmdns:3.6.3` e `okhttp:5.4.0`. Esse último cria risco concreto de divergência de versão do OkHttp com os demais módulos, que usam `libs.okhttp`.
-- **Tela fora do módulo:** a apresentação vive em `android/app/.../ui/screen/` (`DispositivosScreen.kt` scaffold, `DispositivosLista.kt`, `DispositivoDetalheSheet.kt`; issue #1663), incluindo mapeamento de ícones/rótulos por papel de topologia. O módulo não contém nenhum Composable.
+- **Tela fora do módulo:** a apresentação vive em `:app` (ver `dispositivos-rede`), incluindo mapeamento de ícones/rótulos.
 - **Regra de dependência entre features: respeitada.** Só dependências `:core*`; o KDoc do `DevicesViewModel` registra explicitamente a decisão de não depender do `:app`.

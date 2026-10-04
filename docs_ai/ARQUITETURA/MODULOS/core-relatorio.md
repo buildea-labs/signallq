@@ -5,7 +5,7 @@ type: "técnico"
 status: "ativo"
 owner: "Camilo"
 last_updated: "2026-10-04"
-version: "1.1.0"
+version: "1.2.0"
 ---
 
 # `:core:relatorio`
@@ -52,9 +52,7 @@ As APIs de fato usadas (`android.webkit.WebView`, `android.print.PrintDocumentAd
 | `:app` | `ui/relatorio/RelatorioDiagnosticoExporter.kt` — renderer único de PDF do Consumer (GH#1219), usado pelo resultado de velocidade e pelo laudo do consumidor |
 | `:featureHistory` | `ExportadorHistoricoPDF.kt` — exportação do histórico de medições (origem do código extraído) |
 
-O reuso entre os dois consumidores foi o motivo declarado da extração (issue #1157 Fase 1b): o
-módulo nasceu com "zero acoplamento a `MedicaoEntity` ou qualquer schema do consumidor"
-precisamente para não prender o motor de PDF a um schema específico.
+Contexto de produto (Histórico e Relatório): [`features/historico-laudo.md`](../../features/historico-laudo.md).
 
 ## Componentes principais
 
