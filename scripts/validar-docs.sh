@@ -129,6 +129,169 @@ if [[ -n "${ALVOS//[[:space:]]/}" ]]; then
 fi
 
 # ---------------------------------------------------------------------------
+# 4b. Paginas de feature (docs_ai/features/*.md)
+# ---------------------------------------------------------------------------
+# O frontmatter dessas paginas e o mapa feature -> codigo que uma IA usa para se
+# localizar; mapa com caminho morto e pior que mapa nenhum. Entao toda referencia
+# do frontmatter precisa existir de verdade. Contrato: docs_ai/features/README.md.
+#
+# Promover a cobertura de modulos de AVISO para FALHA quando as 12 paginas existirem:
+#   FEATURES_COBERTURA_ESTRITA=1 bash scripts/validar-docs.sh   (ou troque o default 0 -> 1)
+COBERTURA_ESTRITA="${FEATURES_COBERTURA_ESTRITA:-0}"
+# Modulos de infraestrutura que nao pertencem a nenhuma feature de produto.
+# Lista explicita de proposito: modulo novo nao entra aqui por omissao.
+MODULOS_INFRA=(
+  android/core/database
+  android/core/datastore
+  android/core/permissions
+  android/core/featureflags
+)
+CATALOGO_FLAGS="android/core/featureflags/src/main/resources/featureflags/consumer-catalog.json"
+
+echo "→ páginas de feature"
+# shellcheck source=lib-features.sh
+source scripts/lib-features.sh
+PAGINAS_FEAT=$(features_paginas)
+
+if [[ "$MODO" == "alterados" ]]; then
+  # Alem do diff contra a base, inclui paginas ainda nao commitadas: sem isso uma
+  # pagina nova so seria validada depois do commit, que e tarde para o autor.
+  ALVOS_FEAT=$( { echo "$ALVOS"; git ls-files -m -o --exclude-standard -- docs_ai/features; } \
+    | grep -E '^docs_ai/features/[^/]+[.]md$' | grep -vE '/(README|INDEX)[.]md$' | sort -u || true)
+else
+  ALVOS_FEAT="$PAGINAS_FEAT"
+fi
+
+LIT_KT=""
+literais_kotlin() {
+  # Literais "snake_case" de todo o Kotlin do Android, uma vez por execucao.
+  if [[ -z "$LIT_KT" ]]; then
+    LIT_KT=$(mktemp)
+    grep -rhoE '"[a-z][a-z0-9_]*"' android --include='*.kt' --exclude-dir=build 2>/dev/null \
+      | tr -d '"' | sort -u > "$LIT_KT"
+  fi
+}
+
+n_feat=0
+if [[ -n "${ALVOS_FEAT//[[:space:]]/}" ]]; then
+  while read -r f; do
+    [[ -z "$f" || ! -f "$f" ]] && continue
+    n_feat=$((n_feat + 1))
+    base_f=$(basename "$f" .md)
+
+    faltando=""
+    for campo in feature tipo modulos arquivos contratos eventos flags testes adrs thresholds_em; do
+      sed -n '2,/^---$/p' "$f" | grep -qE "^$campo:" || faltando+="$campo "
+    done
+    [[ -n "$faltando" ]] && erro "$f — frontmatter de feature sem: $faltando"
+
+    slug=$(fm_escalar "$f" feature)
+    [[ "$slug" != "$base_f" ]] && erro "$f — feature '$slug' difere do nome do arquivo '$base_f'"
+    [[ "$(fm_escalar "$f" type)" != "feature" ]] && erro "$f — type deve ser \"feature\""
+    tp=$(fm_escalar "$f" tipo)
+    if [[ "$tp" != "jornada" && "$tp" != "transversal" ]]; then
+      erro "$f — tipo '$tp' invalido (esperado: jornada|transversal)"
+    fi
+
+    # Caminhos: modulos, arquivos, contratos, testes (+ ponteiro thresholds_em).
+    for campo in modulos arquivos contratos testes; do
+      while IFS= read -r item; do
+        [[ -z "$item" ]] && continue
+        if [[ ! -e "$item" ]]; then
+          # contratos pode vir relativo a docs_ai/ (ex.: CONTRATOS/openapi/x.yaml)
+          if [[ "$campo" == "contratos" && -e "docs_ai/$item" ]]; then continue; fi
+          erro "$f — $campo: caminho inexistente: $item"
+        fi
+      done < <(fm_lista "$f" "$campo")
+    done
+    th=$(fm_escalar "$f" thresholds_em)
+    if [[ -n "$th" && ! -e "$th" ]]; then
+      erro "$f — thresholds_em: caminho inexistente: $th"
+    fi
+
+    # Eventos: o nome e o primeiro token do item ("feature_used (feature_id=dns)").
+    while IFS= read -r item; do
+      [[ -z "$item" ]] && continue
+      ev=${item%%[^a-z0-9_]*}
+      [[ -z "$ev" ]] && { erro "$f — eventos: item sem nome de evento: $item"; continue; }
+      literais_kotlin
+      if grep -qxF "$ev" "$LIT_KT"; then continue; fi
+      if grep -qF "$ev" docs_ai/technical/analytics-events.md docs_ai/technical/analytics-events-schema.md 2>/dev/null; then
+        continue
+      fi
+      erro "$f — eventos: '$ev' não aparece no código Kotlin nem em technical/analytics-events*.md"
+    done < <(fm_lista "$f" eventos)
+
+    # Flags: chave no codigo Kotlin ou no catalogo de flags do Consumer.
+    while IFS= read -r item; do
+      [[ -z "$item" ]] && continue
+      fl=${item%%[^a-zA-Z0-9_.-]*}
+      [[ -z "$fl" ]] && { erro "$f — flags: item sem chave: $item"; continue; }
+      literais_kotlin
+      if grep -qxF "$fl" "$LIT_KT"; then continue; fi
+      if [[ -f "$CATALOGO_FLAGS" ]] && grep -qF "\"$fl\"" "$CATALOGO_FLAGS"; then continue; fi
+      erro "$f — flags: '$fl' não existe no código Kotlin nem em $CATALOGO_FLAGS"
+    done < <(fm_lista "$f" flags)
+  done <<< "$ALVOS_FEAT"
+fi
+[[ -n "$LIT_KT" ]] && rm -f "$LIT_KT"
+echo "  $n_feat página(s) de feature validada(s)"
+
+# INDEX.md e features.json sao gerados: divergir da fonte e erro (mesmo padrao do inventario).
+if [[ -n "$PAGINAS_FEAT" || -e docs_ai/features/INDEX.md ]]; then
+  if bash scripts/gerar-features-index.sh --check >/tmp/feat-idx.out 2>&1; then
+    echo "  ✓ INDEX.md e features.json em dia"
+  else
+    erro "docs_ai/features/INDEX.md ou features.json desatualizado — rode: scripts/gerar-features-index.sh"
+    sed 's/^/    /' /tmp/feat-idx.out | head -8
+  fi
+fi
+
+# Cobertura: todo modulo Gradle precisa aparecer em alguma pagina de feature
+# (ou estar na lista de infra). Aviso enquanto as 12 paginas nao existem.
+settings=android/settings.gradle.kts
+mods_gradle=$(sed -n '/^include(/,/^)/p' "$settings" | sed 's|//.*||' \
+  | grep -oE '":[a-zA-Z0-9:_-]+"' | tr -d '"' | sort -u | while read -r alias; do
+    dir=$(grep -E '^project\(' "$settings" | grep -F "(\"$alias\")" | head -1 | awk -F'"' '{print $4}')
+    if [[ -z "$dir" ]]; then dir=${alias#:}; dir=${dir//://}; fi
+    echo "android/$dir"
+  done)
+cobertos=$(for f in $PAGINAS_FEAT; do fm_lista "$f" modulos; done | sed 's|/$||' | sort -u)
+sem_feature=""
+while read -r m; do
+  [[ -z "$m" ]] && continue
+  printf '%s\n' "${MODULOS_INFRA[@]}" | grep -qxF "$m" && continue
+  echo "$cobertos" | grep -qxF "$m" || sem_feature+="${m#android/} "
+done <<< "$mods_gradle"
+if [[ -n "$sem_feature" ]]; then
+  msg="módulos Gradle sem nenhuma página de feature: $sem_feature"
+  if [[ "$COBERTURA_ESTRITA" == "1" ]]; then erro "$msg"; else aviso "$msg (vira falha com FEATURES_COBERTURA_ESTRITA=1)"; fi
+else
+  echo "  ✓ todo módulo Gradle coberto por alguma feature"
+fi
+
+# Aviso: .kt listado em arquivos mudou na PR e a pagina da feature nao foi tocada.
+if [[ "$MODO" == "alterados" ]]; then
+  CHANGED_KT=$( { git diff --name-only "$BASE"...HEAD 2>/dev/null; git ls-files -m -o --exclude-standard android; } \
+    | grep '[.]kt$' | sort -u || true)
+  if [[ -n "$CHANGED_KT" ]]; then
+    for f in $PAGINAS_FEAT; do
+      echo "$ALVOS_FEAT" | grep -qxF "$f" && continue
+      tocou=""
+      while IFS= read -r item; do
+        [[ -z "$item" ]] && continue
+        if [[ "$item" == *.kt ]]; then
+          echo "$CHANGED_KT" | grep -qxF "$item" && tocou+="${item##*/} "
+        else
+          echo "$CHANGED_KT" | grep -qF "${item%/}/" && tocou+="${item%/}/ "
+        fi
+      done < <(fm_lista "$f" arquivos)
+      [[ -n "$tocou" ]] && aviso "$f — código listado mudou ($tocou) mas a página não foi tocada"
+    done
+  fi
+fi
+
+# ---------------------------------------------------------------------------
 # 5. .md fora da arvore permitida
 # ---------------------------------------------------------------------------
 echo "→ localização dos .md"
