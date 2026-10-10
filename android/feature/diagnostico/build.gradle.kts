@@ -17,7 +17,7 @@ android {
         buildConfigField(
             "String",
             "AI_WORKER_URL",
-            "\"https://linka-ai-diagnosis-worker.giammattey-luiz.workers.dev\"",
+            "\"https://linka-ai-diagnosis-worker.gmmattey.workers.dev\"",
         )
         // GH#962/#965 — worker signallq-diagnostic (motor de diagnostico remoto +
         // diretorio de provedores). Deployado em producao em 2026-07-14 (GH#967) —
@@ -25,7 +25,7 @@ android {
         buildConfigField(
             "String",
             "DIAGNOSTIC_WORKER_URL",
-            "\"https://signallq-diagnostic.giammattey-luiz.workers.dev\"",
+            "\"https://signallq-diagnostic.gmmattey.workers.dev\"",
         )
         buildConfigField(
             "String",

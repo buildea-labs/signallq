@@ -32,7 +32,7 @@ O relatório local que alimenta o payload vem de `DiagnosticOrchestrator.executa
 
 ## 2. Worker e modelos
 
-- **Endpoint:** `POST https://linka-ai-diagnosis-worker.giammattey-luiz.workers.dev/api/ai/diagnostico-conexao` (`Content-Type: application/json`). Nome do worker em `wrangler.toml`: `linka-ai-diagnosis-worker`. Também expõe `GET /health`.
+- **Endpoint:** `POST https://linka-ai-diagnosis-worker.gmmattey.workers.dev/api/ai/diagnostico-conexao` (`Content-Type: application/json`). Nome do worker em `wrangler.toml`: `linka-ai-diagnosis-worker`. Também expõe `GET /health`.
 - **Provider primário:** Gemini, model id `gemini-flash-latest` (alias da Google; `providers.ts`), ativo quando a secret `GEMINI_API_KEY` está configurada.
 - **Fallback cloud:** Cloudflare Workers AI `@cf/qwen/qwen3-30b-a3b-fp8` (`AI_MODEL` em `wrangler.toml`, `DEFAULT_MODEL` em `src/index.ts`). Sem a secret do Gemini, é o único provider.
 - Llama/Meta não é padrão nem fallback (política do projeto). Persona da IA: "SignallQ".

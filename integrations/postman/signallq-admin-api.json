@@ -751,7 +751,7 @@
   "variable": [
     {
       "key": "baseUrl",
-      "value": "https://signallq-admin.giammattey-luiz.workers.dev",
+      "value": "https://signallq-admin.gmmattey.workers.dev",
       "type": "string",
       "description": "URL base"
     },

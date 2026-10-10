@@ -9,7 +9,7 @@ info:
   license:
     name: Internal
 servers:
-  - url: https://signallq-admin.giammattey-luiz.workers.dev
+  - url: https://signallq-admin.gmmattey.workers.dev
     description: Production Admin Server (no /v1 prefix in actual implementation)
 tags:
   - name: auth
