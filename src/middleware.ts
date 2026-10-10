@@ -1,11 +1,33 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-const validPaths = new Set(['/', '/privacidade', '/termos']);
+const validPaths = new Set([
+  '/',
+  '/privacidade',
+  '/termos',
+  '/como-funciona',
+  '/duvidas',
+  '/teste-de-velocidade',
+  '/guias',
+]);
+
+function isValidPath(pathname: string): boolean {
+  return validPaths.has(pathname) || pathname.startsWith('/guias/');
+}
 
 export function middleware(request: NextRequest) {
   const url = request.nextUrl.clone();
   const hostname = request.nextUrl.hostname;
+
+  // speedtest.signallq.com: domínio curto pensado pra busca/compartilhamento
+  // (pedido do Luiz). Rewrite — não redirect — pra manter o domínio bonito
+  // na barra de endereço; a tag canonical de /teste-de-velocidade (absoluta,
+  // via routeMetadata) continua apontando pra signallq.com, então não cria
+  // conteúdo duplicado para o Google.
+  if (hostname === 'speedtest.signallq.com') {
+    url.pathname = '/teste-de-velocidade';
+    return NextResponse.rewrite(url);
+  }
 
   if (hostname === 'signallq.pages.dev') {
     if (url.pathname === '/admin' || url.pathname.startsWith('/admin/')) {
@@ -17,7 +39,7 @@ export function middleware(request: NextRequest) {
     url.protocol = 'https:';
 
     // Se for uma rota que não é equivalente a uma das válidas conhecidas
-    if (!validPaths.has(url.pathname)) {
+    if (!isValidPath(url.pathname)) {
       url.pathname = '/';
     }
 

@@ -8,6 +8,22 @@ import {
   AppLandingCTA,
   APP_DIFERENCIAIS_ID,
 } from './AppLandingComponents'
+import { HowItWorksSteps } from './HowItWorksSteps'
+import { ResultOrder } from './ResultOrder'
+import { TrustPromises } from './TrustPromises'
+import { LandingFaq } from './LandingFaq'
+
+const HOME_JSON_LD = {
+  '@context': 'https://schema.org',
+  '@type': 'SoftwareApplication',
+  name: 'SignallQ',
+  operatingSystem: 'Android',
+  applicationCategory: 'UtilitiesApplication',
+  description: 'Diagnóstico de conectividade: analisa Wi-Fi, velocidade e DNS, explica o problema e orienta a solução.',
+  offers: { '@type': 'Offer', price: '0', priceCurrency: 'BRL' },
+  inLanguage: 'pt-BR',
+  publisher: { '@type': 'Organization', name: '7Agents Tecnologia', url: 'https://signallq.com' },
+}
 
 export function AppLandingClient() {
   const { baixarNaPlayStore } = useAppLanding()
@@ -28,6 +44,7 @@ export function AppLandingClient() {
 
   return (
     <div className="relative flex w-full flex-col">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(HOME_JSON_LD) }} />
       <AppLandingHero
         onBaixar={baixarNaPlayStore}
         onVerDiferenciais={verDiferenciais}
@@ -36,7 +53,11 @@ export function AppLandingClient() {
       <div className="w-full box-border flex justify-center pb-4 px-[var(--safe-x)]">
         <div className="w-full max-w-[1080px] flex flex-col gap-[56px]">
           <AppLandingFeatures />
+          <HowItWorksSteps />
+          <ResultOrder />
           <AppLandingGallery />
+          <TrustPromises />
+          <LandingFaq />
           <AppLandingCTA onBaixar={baixarNaPlayStore} />
         </div>
       </div>

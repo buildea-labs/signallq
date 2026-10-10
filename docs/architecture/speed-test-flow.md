@@ -1,49 +1,27 @@
 # Speed Test Flow
 
+Reintroduzido em 2026-10-10 (decisão do Luiz, revertendo a de 2026-08-27). A versão anterior — controller, jornada na Home, histórico, lock entre abas, baseline visual — foi removida junto com o resto do produto de medição e **não existe mais**; recuperável via `git show 311a899^:docs/architecture/speed-test-flow.md`. A implementação atual é deliberadamente mínima.
+
 ## Responsabilidades
 
-- `useSpeedTestController`: executa o motor, fases, cancelamento, lock entre abas, guarda de rede e resultado bruto.
-- `useSpeedTest`: fachada da medição; associa contexto de sessão ao controller.
-- `useSpeedTestJourney`: composition hook da Home; orquestra modo, entrada por problema, reteste, diagnóstico pós-resultado e ações.
-- `speedTestVisualState`: função pura que deriva o estado visual a partir de fase, modo e resultado existentes. Não cria fonte de verdade paralela.
-- `speedTestJourneySession`: lê/grava somente o resultado completo restaurável e o marcador de autostart em `sessionStorage`.
-- `speedTestJourneyComparison`: calcula e persiste comparação de reteste.
-- `speedTestJourneySharing`: encapsula compartilhamento e cópia do resumo.
-- `src/test/fixtures/speedTestResults.ts`: massas determinísticas com `SpeedTestResult` real. Área exclusiva de teste — código de aplicação não pode importá-las (regra `no-restricted-imports` em `eslint.config.mjs`).
-- `e2e-visual/`: baseline visual dos nove estados, exercitando a Home real. Não existe rota nem componente de harness dentro de `src/app`.
+Tudo em `src/app/teste-de-velocidade/`:
 
-## Fonte De Verdade
-
-A fonte funcional continua sendo `phase`, `result`, `measurementContext` e `modo`, vindos de `useSpeedTest` e da jornada. O estado visual é derivado por `deriveSpeedTestVisualState`; componentes não devem adicionar novos booleanos para representar telas quando o estado puder ser derivado dessas entradas.
+- `page.tsx`: só metadata (`PAGE_META['/teste-de-velocidade']`) e render.
+- `SpeedTestContent.tsx`: orquestrador client; escolhe qual estado renderizar, dispara a telemetria de início e injeta o JSON-LD `WebApplication`.
+- `useSpeedTestEngine.ts`: única peça que toca a rede. Máquina de estados `idle → running (ping → down → up) → done | error`, com cancelamento por `runId`.
+- `speedTestVerdict.ts`: funções puras (veredito, níveis de uso, formatação). Sem React nem rede; coberto por `speedTestVerdict.test.ts`.
+- `SpeedTestIdle|Running|Result|Error.tsx`: uma peça de UI por estado.
 
 ## Fluxo De Dados
 
-`HomeClient` compõe `useSpeedTestJourney` e passa contratos para os componentes da Home. A execução entra por `useSpeedTestJourney -> useSpeedTest -> useSpeedTestController -> speedEngine`. Resultados completos persistem no histórico pelo controller e ficam restauráveis pela sessão da jornada. Retestes geram comparação por `speedTestJourneyComparison`. Compartilhar/copiar passa por `speedTestJourneySharing`.
+O navegador chama direto `SPEEDTEST_DOWNLOAD_URL` / `SPEEDTEST_UPLOAD_URL` (`src/lib/config.ts`; default `speed.cloudflare.com/__down|__up`, sobrescritíveis por `NEXT_PUBLIC_SPEEDTEST_*`). Não há segredo envolvido nem proxy server-side. O projeto não define CSP/`connect-src`. Nada é persistido; o resultado vive só no estado do hook.
 
-## Protótipos Catalogados
+Telemetria: `trackFeatureUsed('teste_velocidade_iniciado')` (evento `feature_used` já whitelistado no admin-worker).
 
-Fonte inspecionada: `docs/prototypes/SignallQ - Protótipos de Tela.zip` — artefato de design local, deliberadamente não versionado (binário de ~750 KB, fora do escopo deste repositório de código). O que importa para a implementação está catalogado abaixo.
+## Domínio speedtest.signallq.com
 
-Conteúdo catalogado: `SignallQ Speed Flow.dc.html`, `Speedometer.dc.html`, frames Android/iOS/browser e assets de marca/ilustração. Estados futuros preparados no tipo visual: `forming`, `quick-running`, `quick-result`, `full-running`, `diagnosing`, `full-result`, `restored-result`, `error`, `offline`.
+`src/middleware.ts` faz **rewrite** (não redirect) de qualquer caminho em `speedtest.signallq.com` para `/teste-de-velocidade`. O canonical continua `https://signallq.com/teste-de-velocidade` (absoluto, via `routeMetadata`), então o subdomínio não gera conteúdo duplicado. Registrar DNS e domínio no projeto Vercel é passo manual de infraestrutura.
 
-## Pontos De Extensão
+## Não Duplicar
 
-- Adaptar layout e aparência futura nos componentes existentes, consumindo `visualState`.
-- Usar fixtures para testes de caracterização antes de alterar telas.
-- Capturar cada estado com `npm run test:visual` antes/depois da implementação 1:1.
-
-## Baseline Visual
-
-`npm run test:visual` (config `playwright.visual.config.ts`, testDir `e2e-visual/`) percorre os nove estados na Home real e grava as capturas em `test-results/speed-test-flow-baseline/`. Não há rota de harness, componente de depuração nem atributo de teste no bundle da Home: os estados são alcançados por `sessionStorage` (mesmas chaves que a aplicação grava), interceptação de rede do Playwright nas quatro origens externas do motor e interação pelos mesmos textos e papéis que a pessoa usuária vê. Determinismo é de estado, não de pixel — os números vêm do motor real sobre transporte simulado.
-
-Regra estrutural: nada em `src/app` pode importar `src/test/**`. Foi esse caminho que fez as fixtures serem emitidas em `.next/static/chunks` pelo harness anterior — `notFound()` é checagem de runtime e não impede o bundler de atravessar a fronteira `"use client"`. A regra de lint em `eslint.config.mjs` transforma a reincidência em erro de lint.
-
-Estado `error`: a baseline captura a fase `cancelado`. As demais fases de problema (`endpoint-indisponivel`, `conexao-interrompida`, `erro-inesperado`) não são alcançáveis pela Home hoje — `collectLatency` e `runThroughput` absorvem toda falha de requisição, então uma indisponibilidade do endpoint termina como resultado `inconclusive`/`partial`, nunca como fase de problema. Pendência registrada, fora do escopo desta preparação.
-
-## Não Duplicar Ou Reescrever
-
-- Não criar árvores separadas mobile/PWA/desktop.
-- Não duplicar motor, diagnóstico, histórico, telemetria ou persistência.
-- Não mover `gaugeMath` nem alterar comportamento funcional do `Velocimetro`.
-- Não trocar props por contexto global.
-- Não adicionar Redux, Zustand, XState, Storybook ou nova biblioteca de estado.
+Sem segunda árvore mobile/desktop, sem store global, sem persistência local, sem proxy para o motor. Se precisar de histórico ou comparação, é decisão de escopo nova — o AGENTS.md exige aprovação do Luiz.

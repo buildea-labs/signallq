@@ -3,12 +3,21 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import clsx from "clsx";
 import { PlayStoreBadge } from "./PlayStoreBadge";
+
+const NAV_LINKS = [
+  { href: "/teste-de-velocidade", label: "Teste de velocidade" },
+  { href: "/guias", label: "Guias" },
+  { href: "/como-funciona", label: "Como funciona" },
+  { href: "/duvidas", label: "Dúvidas" },
+];
 
 export function SiteNav() {
   const [scrolled, setScrolled] = useState(false);
   const [hidden, setHidden] = useState(false);
+  const pathname = usePathname() ?? "";
 
   useEffect(() => {
     let lastScrollY = window.scrollY;
@@ -56,6 +65,25 @@ export function SiteNav() {
             height={32}
           />
         </Link>
+
+        <nav className="hidden items-center gap-6 sm:flex" aria-label="Navegação principal">
+          {NAV_LINKS.map((link) => {
+            const active = pathname === link.href || pathname.startsWith(`${link.href}/`);
+            return (
+              <Link
+                key={link.href}
+                href={link.href}
+                className={clsx(
+                  "label-large no-underline",
+                  active ? "text-[color:var(--accent)]" : "text-[color:var(--text-secondary)]"
+                )}
+                aria-current={active ? "page" : undefined}
+              >
+                {link.label}
+              </Link>
+            );
+          })}
+        </nav>
 
         <PlayStoreBadge height={36} source="site_nav" />
       </div>

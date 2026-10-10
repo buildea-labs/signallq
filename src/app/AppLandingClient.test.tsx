@@ -13,31 +13,33 @@ describe('página / — AppLandingClient (landing pública do app Android)', () 
     vi.spyOn(window, 'open').mockImplementation(() => null)
   })
 
-  it('renderiza a galeria com as 8 capturas reais, cada uma com alt text específico', () => {
+  // Alinhado ao GALLERY_ITEMS real de AppLandingComponents.tsx (reduzido a
+  // 4 capturas em afd3d3a, "redesign web to match DS 2.0") — este teste
+  // ficou descrevendo um set de 8 telas (fluxo de teste/diagnóstico) que já
+  // não existe desde aquele commit; corrigido pra refletir a galeria atual.
+  it('renderiza a galeria com as 4 capturas reais, cada uma com alt text específico', () => {
     render(<AppLandingClient />)
 
     const expectedAlts = [
-      /Tela 'Medindo\.\.\.' do SignallQ/,
-      /Tela de resultado do teste do SignallQ/,
-      /Tela 'Vamos descobrir o que está acontecendo'/,
-      /Tela 'O que identifiquei' do SignallQ/,
-      /Aba Sinal \(Wi-Fi\) do SignallQ/,
-      /Aba Sinal \(Móvel\) do SignallQ/,
-      /Aba Sinal \(Canal\) do SignallQ/,
-      /Tela 'Resultado para o jogo' do SignallQ/,
+      /Tela Início do SignallQ\./,
+      /Tela de Velocidade do SignallQ\./,
+      /Tela de Histórico\./,
+      /Tela de Ferramentas\./,
     ]
 
     for (const pattern of expectedAlts) {
       expect(screen.getByAltText(pattern)).toBeInTheDocument()
     }
 
-    expect(screen.queryAllByAltText(/^Tela Início do SignallQ/)).toHaveLength(1)
+    // 2 ocorrências esperadas: a captura real do hero ("Conexão excelente")
+    // e a tela escura "Início" na galeria — composições diferentes da mesma tela.
+    expect(screen.queryAllByAltText(/^Tela Início do SignallQ/)).toHaveLength(2)
   })
 
   it('a galeria é uma grade de <figure>/<figcaption> navegável', () => {
     render(<AppLandingClient />)
     const figures = document.querySelectorAll('figure')
-    expect(figures.length).toBe(8)
+    expect(figures.length).toBe(4)
     figures.forEach((fig) => {
       expect(fig.querySelector('img')).not.toBeNull()
       expect(fig.querySelector('figcaption')).not.toBeNull()
@@ -49,10 +51,11 @@ describe('página / — AppLandingClient (landing pública do app Android)', () 
     expect(screen.getByRole('link', { name: 'Privacidade' })).toHaveAttribute('href', '/privacidade')
   })
 
-  it('mantém um único CTA de download, presente no hero e na faixa final', () => {
+  it('mantém o CTA de download na faixa final, com copy distinta do hero', () => {
     render(<AppLandingClient />)
     const primaryButtons = screen.getAllByRole('button', { name: 'Baixar na Play Store' })
-    expect(primaryButtons).toHaveLength(2)
+    expect(primaryButtons).toHaveLength(1)
+    expect(screen.getByRole('button', { name: 'Baixar grátis na Play Store' })).toBeInTheDocument()
   })
 
   it('dispara telemetria de download ao clicar no CTA e abre a Play Store', async () => {

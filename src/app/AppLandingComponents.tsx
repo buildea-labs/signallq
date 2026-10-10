@@ -80,10 +80,10 @@ export function AppLandingHero({
 
         <div className="sq-app-float flex-none rounded-[28px] p-[6px] box-border bg-[#16181d] shadow-md mx-auto sm:mx-0">
           <Image
-            src="/assets/playstore/01-inicio-escuro.png"
-            alt="Tela Início do SignallQ"
-            width={380}
-            height={844}
+            src="/assets/playstore/09-inicio-conexao-excelente.jpg"
+            alt="Tela Início do SignallQ mostrando o diagnóstico Conexão excelente"
+            width={369}
+            height={800}
             className="block rounded-[22px]"
           />
         </div>
@@ -157,7 +157,7 @@ export function AppLandingGallery() {
 
 export function AppLandingCTA({ onBaixar }: { onBaixar: () => void }) {
   return (
-    <div className="sq-app-reveal flex flex-col gap-5 text-center mt-[32px]">
+    <div id="baixar" className="sq-app-reveal flex flex-col gap-5 text-center mt-[32px] scroll-mt-24">
       <div className="flex flex-col items-center gap-4 rounded-[16px] p-[32px] box-border bg-[color:var(--bg-secondary)] mx-auto w-full max-w-[720px]">
         <div className="font-semibold text-[22px] leading-[28px] text-[color:var(--text-primary)] font-sans">
           Pare de adivinhar o problema da sua conexão.

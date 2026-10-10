@@ -3,6 +3,7 @@ import "../index.css";
 import { SiteNav } from "../components/SiteNav";
 import { SiteFooter } from "../components/SiteFooter";
 import { ThemeScript } from "../components/ThemeScript";
+import { TelemetryInit } from "../components/TelemetryInit";
 import { SITE_ORIGIN } from "../lib/routeMetadata";
 
 export const metadata: Metadata = {
@@ -63,6 +64,7 @@ export default function RootLayout({
         <ThemeScript />
       </head>
       <body className="bg-[color:var(--bg-primary)] text-[color:var(--text-primary)]">
+        <TelemetryInit />
         {/* SiteNav + miolo em min-h-screen própria (não a <body> inteira, que
             também engloba o SiteFooter abaixo) — garante que o rodapé nunca
             apareça na primeira vista, mesmo em telas com pouco conteúdo
