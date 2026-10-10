@@ -169,7 +169,7 @@ fun TermosDeUsoScreen(onVoltar: () -> Unit) {
                     titulo = "7. Privacidade",
                     corpo =
                         "O tratamento dos seus dados é regido pela nossa Política de Privacidade, disponível " +
-                            "em signallq-privacy.pages.dev/privacy e dentro do App.",
+                            "em signallq-privacy.gmmattey.workers.dev/privacy e dentro do App.",
                     c = c,
                 )
             }
