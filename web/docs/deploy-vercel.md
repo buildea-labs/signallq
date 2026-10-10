@@ -1,12 +1,14 @@
 # Deploy manual na Vercel
 
+> **Migração (2026-10):** o site saiu do repositório `signallq-web` (arquivado) e vive em `web/` do repositório `signallq`. Workflows: `.github/workflows/web-ci.yml` e `web-deploy-vercel.yml` (**Web Deploy manual na Vercel**). Projeto Vercel, domínio e fluxo manual são os mesmos; os comandos abaixo rodam de dentro de `web/`, e os 3 secrets `VERCEL_*` precisam existir no repositório `signallq`.
+
 A CI é automática e valida cada `push` e pull request destinado a `main`; ela nunca publica o site. A publicação acontece somente pelo workflow **Deploy manual na Vercel**, iniciado em **Actions**. Não há integração Git nativa entre este repositório e a Vercel.
 
 As referências públicas canônicas do aplicativo usam `https://signallq.com`: Metadata API, Open Graph, compartilhamento, `robots.txt` e sitemap. Mantenha esse domínio apontado para a produção antes de publicar uma versão que contenha essas referências; a alteração de DNS não publica código.
 
 ## Preparação inicial
 
-Na raiz do repositório, execute os gates antes do primeiro deploy:
+Em `web/`, execute os gates antes do primeiro deploy:
 
 ```powershell
 npm ci
@@ -23,7 +25,7 @@ npx vercel login
 npx vercel link
 ```
 
-Use a conta pessoal gratuita do Luiz, crie ou selecione `signallq-web` na raiz deste repositório e confirme Next.js. Não conecte o projeto à integração Git da Vercel. A pasta local `.vercel/` continua ignorada e não deve ser versionada.
+Use a conta pessoal gratuita do Luiz, crie ou selecione `signallq-web` em `web/` e confirme Next.js. Não conecte o projeto à integração Git da Vercel. A pasta local `.vercel/` continua ignorada e não deve ser versionada.
 
 Faça primeiro um preview e valide a URL exibida; só então publique em produção:
 
@@ -48,7 +50,7 @@ Opcionalmente, crie o GitHub Environment `production` e configure revisores obri
 
 ## Publicar ou redeployar
 
-Em **Actions**, abra **Deploy manual na Vercel** e clique em **Run workflow**. Escolha:
+Em **Actions**, abra **Web Deploy manual na Vercel** e clique em **Run workflow**. Escolha:
 
 - `preview` para uma URL de validação;
 - `production` apenas para publicação explícita;

@@ -1,10 +1,19 @@
-name: CI
+name: Web CI
+
+# Valida o site público (web/). Nunca publica — o deploy é o workflow manual
+# `Web Deploy manual na Vercel`.
 
 on:
   push:
+    paths:
+      - 'web/**'
+      - '.github/workflows/web-ci.yml'
   pull_request:
     branches:
       - main
+    paths:
+      - 'web/**'
+      - '.github/workflows/web-ci.yml'
 
 permissions:
   contents: read
@@ -17,12 +26,16 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: web
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 24
           cache: npm
+          cache-dependency-path: web/package-lock.json
       - run: npm ci
       - run: npm run lint
       - run: npm run typecheck

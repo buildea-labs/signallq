@@ -29,7 +29,8 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Diretorios onde .md e permitido. Qualquer outro lugar exige decisao explicita.
-ARVORE_PERMITIDA='^(docs_ai/|\.claude/|\.github/|\.agents/|android/|integrations/|packages/|scripts/|brand/|docs/|_archive/|[A-Z_]+\.md$)'
+# web/ (site publico, migrado do repo signallq-web em 2026-10) tem docs e skills proprios.
+ARVORE_PERMITIDA='^(docs_ai/|\.claude/|\.github/|\.agents/|android/|integrations/|packages/|scripts/|brand/|docs/|web/|_archive/|[A-Z_]+\.md$)'
 
 CAMPOS_OBRIGATORIOS=(title description type status owner last_updated)
 

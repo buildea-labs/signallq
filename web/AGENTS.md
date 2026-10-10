@@ -2,12 +2,12 @@
 
 ## Identidade e estado atual
 
-- **Organização:** `buildea-labs`
+- **Organização/repositório:** vive em `web/` do repositório `signallq` (migrado em 2026-10 do `signallq-web`, hoje arquivado e somente leitura). Rode os comandos abaixo de dentro de `web/`; o CI e o deploy estão em `.github/workflows/web-*.yml` na raiz do repositório.
 - **Finalidade:** landing page pública do SignallQ Android — divulgação do app e direcionamento para a Play Store, com as páginas legais exigidas pelo Google Play.
 - **Classificação:** produto.
 - **Estado atual:** aplicação Next.js com App Router, sem PWA, três rotas públicas (`/`, `/privacidade`, `/termos`) e um Route Handler de telemetria (`/api/track`), com validações Vitest.
 - **Mudança de escopo (2026-08-27):** o site deixou de ser o produto de medição/PWA e passou a ser só a landing do app Android. Ferramentas de diagnóstico, comparador de planos, PWA/Serwist, AdSense e conteúdo editorial/SEO foram removidos do repositório; ver histórico de commits para o corte completo.
-- **Publicação (2026-08-28):** PR #160 mergeada em `main` e publicada em produção via workflow **Deploy manual na Vercel** (`target=production`). `https://signallq.com` já serve a landing reduzida.
+- **Publicação (2026-08-28):** PR #160 mergeada em `main` e publicada em produção via workflow **Deploy manual na Vercel** (`target=production`, ainda no repo `signallq-web`). `https://signallq.com` já serve a landing reduzida.
 
 ## Escopo e exclusões
 
@@ -37,7 +37,7 @@
 - **Privacidade:** segredos, incluindo `SITE_INGEST_KEY`, devem permanecer somente no servidor.
 - **SEO técnico:** Renan responde por rotas, metadados, redirecionamentos, indexação e dados estruturados. SEO editorial e aquisição pertencem a Marcos.
 - **Custos:** mudanças em telemetria, hospedagem ou serviços externos exigem aprovação do Luiz quando criarem custo ou compromisso externo.
-- **Publicação:** deploy, produção, alteração pública de marca, rotas públicas, consentimento ou mudança irreversível exigem aprovação explícita do Luiz.
+- **Publicação:** o deploy continua manual (`Web Deploy manual na Vercel`, projeto Vercel `signallq-web`, secrets `VERCEL_*` deste repositório); deploy, produção, alteração pública de marca, rotas públicas, consentimento ou mudança irreversível exigem aprovação explícita do Luiz.
 
 ## Agentes aplicáveis
 

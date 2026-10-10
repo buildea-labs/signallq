@@ -1,4 +1,8 @@
-name: Deploy manual na Vercel
+name: Web Deploy manual na Vercel
+
+# Publica o site (web/) no projeto Vercel `signallq-web`, que serve signallq.com.
+# Mesmo projeto, token e IDs de antes da migração para este repositório; só o
+# diretório de trabalho mudou (web/). Único gatilho: workflow_dispatch.
 
 on:
   workflow_dispatch:
@@ -21,7 +25,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: vercel-deploy-${{ inputs.target }}
+  group: web-vercel-deploy-${{ inputs.target }}
   cancel-in-progress: false
 
 jobs:
@@ -51,6 +55,9 @@ jobs:
     needs: prepare
     runs-on: ubuntu-latest
     environment: ${{ inputs.target == 'production' && 'production' || 'preview' }}
+    defaults:
+      run:
+        working-directory: web
     env:
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
@@ -65,6 +72,7 @@ jobs:
         with:
           node-version: 24
           cache: npm
+          cache-dependency-path: web/package-lock.json
 
       - name: Validar configuração de publicação
         shell: bash
