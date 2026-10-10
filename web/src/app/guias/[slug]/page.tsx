@@ -5,6 +5,9 @@ import { routeMetadata } from '@/lib/routeMetadata'
 import { GUIDES, getGuide } from '../guides-data'
 import GuideContent from './GuideContent'
 
+// Os guias são fixos: slug fora da lista vira 404 estático, sem função serverless de fallback.
+export const dynamicParams = false
+
 export function generateStaticParams() {
   return GUIDES.map((guide) => ({ slug: guide.slug }))
 }
