@@ -1,0 +1,124 @@
+name: Deploy manual na Vercel
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Ambiente de destino
+        required: true
+        default: preview
+        type: choice
+        options:
+          - preview
+          - production
+      ref:
+        description: Commit, tag ou branch a publicar
+        required: true
+        default: main
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: vercel-deploy-${{ inputs.target }}
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    name: Resolver ref solicitada
+    runs-on: ubuntu-latest
+    outputs:
+      sha: ${{ steps.commit.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Registrar commit imutável
+        id: commit
+        shell: bash
+        run: |
+          sha="$(git rev-parse HEAD)"
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "## Ref resolvida" >> "$GITHUB_STEP_SUMMARY"
+          echo >> "$GITHUB_STEP_SUMMARY"
+          echo "- Ref solicitada: \`${{ inputs.ref }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Commit que será publicado: \`$sha\`" >> "$GITHUB_STEP_SUMMARY"
+
+  deploy:
+    name: Publicar ${{ inputs.target }} (${{ needs.prepare.outputs.sha }})
+    needs: prepare
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.target == 'production' && 'production' || 'preview' }}
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      VERCEL_CLI_VERSION: 58.4.4
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Validar configuração de publicação
+        shell: bash
+        run: |
+          for value in VERCEL_TOKEN VERCEL_ORG_ID VERCEL_PROJECT_ID; do
+            if [ -z "${!value}" ]; then
+              echo "Configuração ausente: $value. Cadastre o secret no repositório antes do deploy." >&2
+              exit 1
+            fi
+          done
+
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+
+      - name: Obter configuração Vercel
+        run: npx --yes "vercel@$VERCEL_CLI_VERSION" pull --yes --environment=${{ inputs.target == 'production' && 'production' || 'preview' }} --token="$VERCEL_TOKEN"
+
+      - name: Preparar artefato Vercel de preview
+        if: inputs.target == 'preview'
+        run: npx --yes "vercel@$VERCEL_CLI_VERSION" build --token="$VERCEL_TOKEN"
+
+      - name: Preparar artefato Vercel de produção
+        if: inputs.target == 'production'
+        run: npx --yes "vercel@$VERCEL_CLI_VERSION" build --prod --token="$VERCEL_TOKEN"
+
+      - name: Publicar preview
+        if: inputs.target == 'preview'
+        id: preview
+        shell: bash
+        run: |
+          url="$(npx --yes "vercel@$VERCEL_CLI_VERSION" deploy --prebuilt --token="$VERCEL_TOKEN")"
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+
+      - name: Publicar produção
+        if: inputs.target == 'production'
+        id: production
+        shell: bash
+        run: |
+          url="$(npx --yes "vercel@$VERCEL_CLI_VERSION" deploy --prebuilt --prod --token="$VERCEL_TOKEN")"
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+
+      - name: Registrar resultado
+        shell: bash
+        env:
+          DEPLOY_URL: ${{ steps.preview.outputs.url || steps.production.outputs.url }}
+        run: |
+          {
+            echo "## Deploy Vercel"
+            echo
+            echo "- Ambiente: \`${{ inputs.target }}\`"
+            echo "- Ref solicitada: \`${{ inputs.ref }}\`"
+            echo "- Commit publicado: \`${{ needs.prepare.outputs.sha }}\`"
+            echo "- URL: $DEPLOY_URL"
+          } >> "$GITHUB_STEP_SUMMARY"
