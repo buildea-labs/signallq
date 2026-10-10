@@ -9,7 +9,7 @@
 // app Android (retrocompat, authenticateIngest aceita INGEST_KEY OU
 // ADMIN_SECRET) ou um novo com escopo próprio — decisão/config do Luiz, fora
 // do escopo desta implementação.
-const ADMIN_WORKER_URL = 'https://signallq-admin.giammattey-luiz.workers.dev'
+const ADMIN_WORKER_URL = 'https://signallq-admin.gmmattey.workers.dev'
 
 export async function POST(request: Request) {
   const ingestKey = process.env.SITE_INGEST_KEY
