@@ -80,7 +80,7 @@ suporte@signallq.com
 > `workers.dev` — confirmado ao vivo (HTTP 200) antes de corrigir aqui.
 
 ```
-https://signallq-privacy.giammattey-luiz.workers.dev/privacy
+https://signallq-privacy.gmmattey.workers.dev/privacy
 ```
 
 ## URL dos Termos de Uso
@@ -88,5 +88,5 @@ https://signallq-privacy.giammattey-luiz.workers.dev/privacy
 Mesmo worker, confirmado ao vivo (HTTP 200):
 
 ```
-https://signallq-privacy.giammattey-luiz.workers.dev/terms
+https://signallq-privacy.gmmattey.workers.dev/terms
 ```

@@ -104,7 +104,7 @@ android {
         buildConfigField(
             "String",
             "ADMIN_INGEST_URL",
-            "\"https://signallq-admin.giammattey-luiz.workers.dev\"",
+            "\"https://signallq-admin.gmmattey.workers.dev\"",
         )
         // Chave de ingest (scope limitado: POST /ingest/* apenas).
         // Lida de local.properties em dev, variavel de ambiente em CI.
@@ -122,7 +122,7 @@ android {
         buildConfigField(
             "String",
             "GAME_LATENCY_PROBE_URL",
-            "\"https://signallq-game-latency-probe.giammattey-luiz.workers.dev/probe\"",
+            "\"https://signallq-game-latency-probe.gmmattey.workers.dev/probe\"",
         )
         // Beacon UDP publico de referencia da AWS GameLift (regiao sa-east-1) -- endpoint
         // documentado pela AWS, ja validado em producao pelo LagCheck (produto irmao iOS,
