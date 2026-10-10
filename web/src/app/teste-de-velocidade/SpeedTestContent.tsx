@@ -1,7 +1,5 @@
 "use client";
 
-import { Banda } from '@/components/Banda'
-import { ReadingLayout } from '@/components/institutional/InstitutionalFoundation'
 import { trackFeatureUsed } from '@/lib/telemetry'
 import { SITE_ORIGIN } from '@/lib/routeMetadata'
 import { useSpeedTestEngine } from './useSpeedTestEngine'
@@ -32,14 +30,12 @@ export function SpeedTestContent() {
   }
 
   return (
-    <Banda className="py-8 md:py-12 lg:py-16">
+    <section className="mx-auto min-h-[560px] max-w-[768px] bg-white px-6 pb-28 pt-20 font-sans leading-[normal] text-[#1C1B1F]">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD) }} />
-      <ReadingLayout className="min-h-[480px]">
-        {state.phase === 'idle' && <SpeedTestIdle onStart={handleStart} />}
-        {state.phase === 'running' && <SpeedTestRunning state={state} onCancel={cancel} />}
-        {state.phase === 'done' && <SpeedTestResult state={state} onRetry={handleStart} />}
-        {state.phase === 'error' && <SpeedTestError onRetry={handleStart} />}
-      </ReadingLayout>
-    </Banda>
+      {state.phase === 'idle' && <SpeedTestIdle onStart={handleStart} />}
+      {state.phase === 'running' && <SpeedTestRunning state={state} onCancel={cancel} />}
+      {state.phase === 'done' && <SpeedTestResult state={state} onRetry={handleStart} />}
+      {state.phase === 'error' && <SpeedTestError onRetry={handleStart} />}
+    </section>
   )
 }

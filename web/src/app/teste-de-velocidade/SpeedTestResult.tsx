@@ -2,59 +2,56 @@ import Link from 'next/link'
 import { formatMetric, getUsageLevels, getVerdict } from './speedTestVerdict'
 import type { SpeedTestState } from './useSpeedTestEngine'
 
+function Metric({ label, value, unit, text }: { label: string; value: string; unit: string; text: string }) {
+  return (
+    <div>
+      <div className="text-[13px] font-medium text-[#49454F]">{label}</div>
+      <div className="mt-[6px] text-[36px] font-bold tracking-[-1px]">
+        {value}
+        <span className="text-[15px] font-medium tracking-normal text-[#49454F]"> {unit}</span>
+      </div>
+      <div className="mt-[6px] text-[14px] leading-5 text-[#49454F]">{text}</div>
+    </div>
+  )
+}
+
 export function SpeedTestResult({ state, onRetry }: { state: SpeedTestState; onRetry: () => void }) {
   const verdict = getVerdict(state.download)
   const usage = getUsageLevels(state.download, state.upload, state.ping)
 
   return (
     <div>
-      <div className="body-medium" style={{ color: 'var(--text-secondary)' }}>Resultado</div>
-      <h1 className="headline-large m-0 mt-3 text-balance">{verdict.title}</h1>
-      <p className="body-medium mt-4 text-pretty" style={{ color: 'var(--text-secondary)' }}>{verdict.subtitle}</p>
+      <div className="text-[14px] font-medium text-[#49454F]">Resultado</div>
+      <h1 className="m-0 mt-3 text-balance text-[clamp(34px,4.6vw,48px)] font-bold leading-[1.08] tracking-[-1.2px]">{verdict.title}</h1>
+      <p className="mt-4 text-pretty text-[18px] leading-7 text-[#49454F]">{verdict.subtitle}</p>
 
-      <div className="mt-10 grid grid-cols-3 gap-6 border-t pt-7" style={{ borderColor: 'var(--border)' }}>
-        <div>
-          <div className="label-large" style={{ color: 'var(--text-secondary)' }}>Download</div>
-          <div className="mt-1 font-bold text-[32px] leading-none">{formatMetric(state.download)}<span className="label-large" style={{ color: 'var(--text-secondary)' }}> Mbps</span></div>
-          <div className="body-small mt-2" style={{ color: 'var(--text-secondary)' }}>Para baixar vídeos, páginas e arquivos.</div>
-        </div>
-        <div>
-          <div className="label-large" style={{ color: 'var(--text-secondary)' }}>Upload</div>
-          <div className="mt-1 font-bold text-[32px] leading-none">{formatMetric(state.upload)}<span className="label-large" style={{ color: 'var(--text-secondary)' }}> Mbps</span></div>
-          <div className="body-small mt-2" style={{ color: 'var(--text-secondary)' }}>Para enviar fotos e fazer videochamadas.</div>
-        </div>
-        <div>
-          <div className="label-large" style={{ color: 'var(--text-secondary)' }}>Latência</div>
-          <div className="mt-1 font-bold text-[32px] leading-none">{state.ping ?? '—'}<span className="label-large" style={{ color: 'var(--text-secondary)' }}> ms</span></div>
-          <div className="body-small mt-2" style={{ color: 'var(--text-secondary)' }}>Quanto menor, melhor para jogos e chamadas.</div>
-        </div>
+      <div className="mt-10 grid grid-cols-3 gap-6 border-t border-[#E7E0EC] pt-7">
+        <Metric label="Download" value={formatMetric(state.download)} unit="Mbps" text="Velocidade para baixar vídeos, páginas e arquivos." />
+        <Metric label="Upload" value={formatMetric(state.upload)} unit="Mbps" text="Velocidade para enviar fotos e fazer videochamadas." />
+        <Metric label="Latência" value={state.ping == null ? '—' : String(state.ping)} unit="ms" text="Tempo de resposta. Quanto menor, melhor para jogos e chamadas." />
       </div>
 
       <div className="mt-10">
-        <div className="label-large mb-1" style={{ color: 'var(--text-secondary)' }}>Com essa conexão</div>
+        <div className="mb-1 text-[14px] font-semibold text-[#49454F]">Com essa conexão</div>
         {usage.map((u) => (
-          <div key={u.n} className="flex justify-between gap-4 border-b py-3 body-medium" style={{ borderColor: 'var(--bg-secondary)' }}>
+          <div key={u.n} className="flex justify-between gap-4 border-b border-[#F3EEFA] py-[14px] text-[16px]">
             <span>{u.n}</span>
             <b style={{ color: u.c }}>{u.s}</b>
           </div>
         ))}
       </div>
 
-      <div className="mt-10 flex flex-wrap items-center justify-between gap-4 rounded-[var(--radius-card)] px-6 py-6" style={{ background: 'var(--bg-secondary)' }}>
+      <div className="mt-10 flex flex-wrap items-center justify-between gap-x-6 gap-y-5 rounded-3xl bg-[#EAE0FF] p-7">
         <div className="max-w-[24em]">
-          <div className="title-medium m-0">Algo não parece certo?</div>
-          <div className="body-small mt-1" style={{ color: 'var(--text-secondary)' }}>O app descobre a causa e diz o que fazer.</div>
+          <div className="text-[20px] font-semibold text-[#210A5C]">Algo não parece certo?</div>
+          <div className="mt-[6px] text-[15px] leading-[22px] text-[#210A5C]">O app descobre a causa e diz o que fazer.</div>
         </div>
-        <Link
-          href="/#baixar"
-          className="label-large flex h-10 items-center justify-center rounded-[var(--radius-button)] px-5 no-underline"
-          style={{ background: 'var(--accent)', color: 'var(--on-accent)' }}
-        >
+        <Link href="/#baixar" className="rounded-full bg-[#5B21D6] px-[26px] py-[14px] text-[15px] font-medium text-white no-underline">
           Diagnosticar no app
         </Link>
       </div>
 
-      <button type="button" onClick={onRetry} className="label-large mt-7 p-0" style={{ background: 'none', border: 0, color: 'var(--accent)' }}>
+      <button type="button" onClick={onRetry} className="mt-7 cursor-pointer border-0 bg-transparent px-0 py-2 text-[16px] font-semibold text-[#5B21D6]">
         Testar de novo
       </button>
     </div>

@@ -1,22 +1,21 @@
 export function SpeedTestIdle({ onStart }: { onStart: () => void }) {
   return (
     <div className="text-center">
-      <div className="label-overline" style={{ color: 'var(--accent)' }}>Teste de velocidade</div>
-      <h1 className="headline-large m-0 mt-5 text-balance">Quão rápida está sua internet agora?</h1>
-      <p className="body-medium mx-auto mt-5 max-w-[28em] text-pretty" style={{ color: 'var(--text-secondary)' }}>
+      <div className="mb-5 text-[14px] font-medium text-[#5B21D6]">Teste de velocidade</div>
+      <h1 className="m-0 text-balance text-[clamp(36px,5vw,56px)] font-bold leading-[1.05] tracking-[-1.4px]">
+        Quão rápida está sua internet agora?
+      </h1>
+      <p className="mx-auto mt-5 max-w-[28em] text-[18px] leading-7 text-[#49454F]">
         Leva cerca de 20 segundos. Você vê o resultado em palavras, não só em números.
       </p>
       <button
         type="button"
         onClick={onStart}
-        className="label-large mt-10 rounded-[var(--radius-button)] px-10 py-5 text-[18px]"
-        style={{ background: 'var(--accent)', color: 'var(--on-accent)' }}
+        className="mt-10 cursor-pointer rounded-full border-0 bg-[#5B21D6] px-12 py-5 text-[18px] font-medium text-white"
       >
         Iniciar teste
       </button>
-      <div className="body-small mt-4" style={{ color: 'var(--text-secondary)' }}>
-        Mede latência, download e upload. Nenhum dado pessoal é coletado.
-      </div>
+      <div className="mt-4 text-[14px] text-[#49454F]">Mede latência, download e upload. Nenhum dado pessoal é coletado.</div>
     </div>
   )
 }

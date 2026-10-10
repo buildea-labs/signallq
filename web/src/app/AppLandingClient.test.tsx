@@ -8,54 +8,43 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-describe('página / — AppLandingClient (landing pública do app Android)', () => {
+describe('página / — AppLandingClient (home, 1:1 com o protótipo)', () => {
   beforeEach(() => {
     vi.spyOn(window, 'open').mockImplementation(() => null)
   })
 
-  // Alinhado ao GALLERY_ITEMS real de AppLandingComponents.tsx (reduzido a
-  // 4 capturas em afd3d3a, "redesign web to match DS 2.0") — este teste
-  // ficou descrevendo um set de 8 telas (fluxo de teste/diagnóstico) que já
-  // não existe desde aquele commit; corrigido pra refletir a galeria atual.
-  it('renderiza a galeria com as 4 capturas reais, cada uma com alt text específico', () => {
+  it('mostra o título do hero, o texto de apoio e a captura real do app', () => {
     render(<AppLandingClient />)
-
-    const expectedAlts = [
-      /Tela Início do SignallQ\./,
-      /Tela de Velocidade do SignallQ\./,
-      /Tela de Histórico\./,
-      /Tela de Ferramentas\./,
-    ]
-
-    for (const pattern of expectedAlts) {
-      expect(screen.getByAltText(pattern)).toBeInTheDocument()
-    }
-
-    // 2 ocorrências esperadas: a captura real do hero ("Conexão excelente")
-    // e a tela escura "Início" na galeria — composições diferentes da mesma tela.
-    expect(screen.queryAllByAltText(/^Tela Início do SignallQ/)).toHaveLength(2)
+    expect(screen.getByRole('heading', { level: 1, name: 'Descubra por que sua internet está ruim.' })).toBeInTheDocument()
+    expect(screen.getByText('Diagnóstico de internet para Android')).toBeInTheDocument()
+    expect(screen.getByText('Grátis · Sem cadastro para começar')).toBeInTheDocument()
+    expect(screen.getByAltText(/Tela Início do SignallQ mostrando o diagnóstico Conexão excelente/)).toBeInTheDocument()
   })
 
-  it('a galeria é uma grade de <figure>/<figcaption> navegável', () => {
+  it('segue a ordem das seções do protótipo', () => {
     render(<AppLandingClient />)
-    const figures = document.querySelectorAll('figure')
-    expect(figures.length).toBe(4)
-    figures.forEach((fig) => {
-      expect(fig.querySelector('img')).not.toBeNull()
-      expect(fig.querySelector('figcaption')).not.toBeNull()
-    })
+    const headings = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)
+    expect(headings).toEqual([
+      'Quatro perguntas. Uma resposta de cada vez.',
+      'Primeiro a conclusão. Os números vêm depois.',
+      'Sem achismo. Sem jargão.',
+      'Dúvidas comuns',
+      'Sua internet está ruim agora? Descubra em minutos.',
+    ])
+    // não há mais "Diferenciais" nem galeria de capturas
+    expect(screen.queryByText('Diferenciais')).toBeNull()
+    expect(document.querySelectorAll('figure')).toHaveLength(0)
   })
 
-  it('exibe o bloco de requisitos/privacidade com link para /privacidade', () => {
+  it('lista as 4 perguntas do FAQ e o link para o teste de velocidade', () => {
     render(<AppLandingClient />)
-    expect(screen.getByRole('link', { name: 'Privacidade' })).toHaveAttribute('href', '/privacidade')
+    expect(document.querySelectorAll('details')).toHaveLength(4)
+    expect(screen.getByRole('link', { name: 'Fazer teste de velocidade' })).toHaveAttribute('href', '/teste-de-velocidade')
   })
 
-  it('mantém o CTA de download na faixa final, com copy distinta do hero', () => {
+  it('tem o CTA de download no hero e na faixa final', () => {
     render(<AppLandingClient />)
-    const primaryButtons = screen.getAllByRole('button', { name: 'Baixar na Play Store' })
-    expect(primaryButtons).toHaveLength(1)
-    expect(screen.getByRole('button', { name: 'Baixar grátis na Play Store' })).toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: 'Baixar no Google Play' })).toHaveLength(2)
   })
 
   it('dispara telemetria de download ao clicar no CTA e abre a Play Store', async () => {
@@ -64,8 +53,8 @@ describe('página / — AppLandingClient (landing pública do app Android)', () 
     const user = userEvent.setup()
     render(<AppLandingClient />)
 
-    const [primaryHero] = screen.getAllByRole('button', { name: 'Baixar na Play Store' })
-    await user.click(primaryHero)
+    const [hero] = screen.getAllByRole('button', { name: 'Baixar no Google Play' })
+    await user.click(hero)
     expect(trackSpy).toHaveBeenCalledWith('download_app_clicado')
     expect(window.open).toHaveBeenCalledWith(
       expect.stringContaining('play.google.com/store/apps/details?id=io.signallq.app'),

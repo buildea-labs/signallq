@@ -42,15 +42,19 @@ body {
   margin: 0;
   background: var(--bg-primary);
   font-family: var(--font-sans);
+  font-optical-sizing: none; /* o protótipo usa a instância fixa do Google Fonts, sem opsz automático */
   color: var(--text-primary);
 }
 
-a {
-  color: var(--accent);
-}
+/* Em @layer base para as utilidades do Tailwind (text-white, text-[#49454F]...) vencerem. */
+@layer base {
+  a {
+    color: var(--accent);
+  }
 
-a:hover {
-  color: var(--accent-blue);
+  a:hover {
+    color: var(--accent-blue);
+  }
 }
 
 .material-symbols-outlined {
@@ -374,3 +378,6 @@ html.sq-footer-visible .pwa-toast-stack {
   }
 }
 
+
+/* Site público é só claro (protótipo de 2026-10-10): sem modo escuro. */
+html { color-scheme: light; }

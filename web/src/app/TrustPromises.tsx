@@ -6,20 +6,20 @@ const PROMISES = [
 
 export function TrustPromises() {
   return (
-    <div className="sq-app-reveal w-full bg-black text-[#F5F2F7] rounded-[16px] px-6 py-10 sm:px-10 sm:py-14">
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-10 w-full max-w-[1080px] mx-auto">
-        <h2 className="m-0 font-bold text-[26px] leading-[32px] font-sans text-balance">
+    <section className="bg-black px-6 py-24 text-[#F5F2F7]">
+      <div className="mx-auto grid max-w-[1120px] grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-14">
+        <h2 className="m-0 text-balance text-[clamp(30px,3.8vw,42px)] font-bold leading-[1.1] tracking-[-1px]">
           Sem achismo. Sem jargão.
         </h2>
-        <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-7">
           {PROMISES.map((p) => (
             <div key={p.t}>
-              <div className="font-semibold text-[17px] font-sans">{p.t}</div>
-              <p className="mt-1 font-normal text-[14px] leading-[20px] text-[#CAC4D0] font-sans">{p.d}</p>
+              <div className="text-[20px] font-semibold">{p.t}</div>
+              <p className="mt-2 text-[16px] leading-6 text-[#CAC4D0]">{p.d}</p>
             </div>
           ))}
         </div>
       </div>
-    </div>
+    </section>
   );
 }

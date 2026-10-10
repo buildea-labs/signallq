@@ -7,19 +7,21 @@ const STEPS = [
 
 export function HowItWorksSteps() {
   return (
-    <div className="sq-app-reveal flex flex-col gap-6">
-      <h2 className="m-0 text-center font-bold text-[26px] leading-[32px] text-[color:var(--text-primary)] font-sans">
-        Quatro perguntas. Uma resposta de cada vez.
-      </h2>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 w-full max-w-[1080px] mx-auto">
-        {STEPS.map((s) => (
-          <div key={s.n} className="border-t-2 border-[color:var(--text-primary)] pt-3">
-            <div className="font-semibold text-[13px] text-[color:var(--accent)] font-sans">{s.n}</div>
-            <div className="mt-2 font-semibold text-[17px] leading-[22px] text-[color:var(--text-primary)] font-sans">{s.q}</div>
-            <p className="mt-2 font-normal text-[14px] leading-[20px] text-[color:var(--text-secondary)] font-sans">{s.a}</p>
-          </div>
-        ))}
+    <section id="como" className="bg-[#F8F5FB] px-6 py-24">
+      <div className="mx-auto max-w-[1120px]">
+        <h2 className="m-0 max-w-[16em] text-balance text-[clamp(30px,3.8vw,42px)] font-bold leading-[1.1] tracking-[-1px]">
+          Quatro perguntas. Uma resposta de cada vez.
+        </h2>
+        <div className="mt-14 grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-10">
+          {STEPS.map((s) => (
+            <div key={s.n} className="border-t-2 border-[#1C1B1F] pt-5">
+              <div className="text-[14px] font-semibold text-[#5B21D6]">{s.n}</div>
+              <div className="mt-3 text-[22px] font-semibold leading-7">{s.q}</div>
+              <p className="mt-3 text-[16px] leading-6 text-[#49454F]">{s.a}</p>
+            </div>
+          ))}
+        </div>
       </div>
-    </div>
+    </section>
   );
 }

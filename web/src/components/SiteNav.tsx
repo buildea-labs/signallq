@@ -1,83 +1,51 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import clsx from "clsx";
-import { PlayStoreBadge } from "./PlayStoreBadge";
 
-const NAV_LINKS = [
-  { href: "/teste-de-velocidade", label: "Teste de velocidade" },
+// O protótipo não destaca "Teste de velocidade" na própria página (SiteHeader sem `active`).
+const LINKS: { href: string; label: string; neverActive?: boolean }[] = [
+  { href: "/teste-de-velocidade", label: "Teste de velocidade", neverActive: true },
   { href: "/guias", label: "Guias" },
   { href: "/como-funciona", label: "Como funciona" },
   { href: "/duvidas", label: "Dúvidas" },
 ];
 
+// Na home o protótipo usa outra ordem e um atalho para a seção "O resultado".
+const HOME_LINKS: { href: string; label: string; neverActive?: boolean }[] = [
+  { href: "/teste-de-velocidade", label: "Teste de velocidade" },
+  { href: "/como-funciona", label: "Como funciona" },
+  { href: "/guias", label: "Guias" },
+  { href: "#resultado", label: "O resultado" },
+  { href: "/duvidas", label: "Dúvidas" },
+];
+
 export function SiteNav() {
-  const [scrolled, setScrolled] = useState(false);
-  const [hidden, setHidden] = useState(false);
   const pathname = usePathname() ?? "";
-
-  useEffect(() => {
-    let lastScrollY = window.scrollY;
-
-    const handleScroll = () => {
-      const currentScrollY = window.scrollY;
-      setScrolled(currentScrollY > 10);
-
-      // Esconde a barra se rolar para baixo (passando do topo), revela se rolar para cima
-      if (currentScrollY > lastScrollY && currentScrollY > 80) {
-        setHidden(true);
-      } else if (currentScrollY < lastScrollY) {
-        setHidden(false);
-      }
-      lastScrollY = currentScrollY;
-    };
-
-    handleScroll(); // Verifica no primeiro render
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
+  const links = pathname === "/" ? HOME_LINKS : LINKS;
 
   return (
-    <header className={clsx(
-      "sticky top-0 z-[3] w-full box-border transition-all duration-300",
-      scrolled ? "bg-[color:var(--bg-card)] border-b border-[color-mix(in_srgb,_var(--border)_25%,_transparent)] shadow-[0_4px_24px_rgba(0,0,0,0.2)]" : "bg-transparent border-b border-transparent",
-      hidden ? "-translate-y-full" : "translate-y-0"
-    )}>
-      <div className="relative mx-auto max-w-[1280px] min-h-[76px] flex items-center justify-between gap-4 py-[14px] px-[20px] box-border">
-        <Link href="/" aria-label="Página inicial SignallQ">
-          <Image
-            className="sq-logo-light block shrink-0"
-            src="/assets/signallq-lockup-light-bg-v5.png"
-            alt=""
-            aria-hidden="true"
-            width={128}
-            height={32}
-          />
-          <Image
-            className="sq-logo-dark hidden shrink-0"
-            src="/assets/signallq-lockup-dark-bg-v5.png"
-            alt=""
-            aria-hidden="true"
-            width={128}
-            height={32}
-          />
+    <header className="sticky top-0 z-10 leading-[normal] border-b border-[#F3EEFA] bg-white/[0.92] backdrop-blur-[8px]">
+      <div className="mx-auto flex max-w-[1168px] items-center gap-8 px-6 py-[14px]">
+        <Link
+          href="/"
+          aria-label="Página inicial SignallQ"
+          className="flex items-center gap-[10px] text-[18px] font-bold text-[#1C1B1F] no-underline"
+        >
+          <Image src="/assets/signallq-symbol-512.png" alt="" width={32} height={32} className="h-8 w-8 object-contain" />
+          SignallQ
         </Link>
 
-        <nav className="hidden items-center gap-6 sm:flex" aria-label="Navegação principal">
-          {NAV_LINKS.map((link) => {
-            const active = pathname === link.href || pathname.startsWith(`${link.href}/`);
+        <nav className="ml-auto hidden gap-7 text-[14px] sm:flex" aria-label="Navegação principal">
+          {links.map((link) => {
+            const active = !link.neverActive && !link.href.startsWith("#") && (pathname === link.href || pathname.startsWith(`${link.href}/`));
             return (
               <Link
                 key={link.href}
                 href={link.href}
-                className={clsx(
-                  "label-large no-underline",
-                  active ? "text-[color:var(--accent)]" : "text-[color:var(--text-secondary)]"
-                )}
                 aria-current={active ? "page" : undefined}
+                className={`no-underline ${active ? "font-bold text-[#5B21D6]" : "font-medium text-[#49454F]"}`}
               >
                 {link.label}
               </Link>
@@ -85,7 +53,12 @@ export function SiteNav() {
           })}
         </nav>
 
-        <PlayStoreBadge height={36} source="site_nav" />
+        <Link
+          href="/#baixar"
+          className="ml-auto rounded-full bg-[#5B21D6] px-5 py-[11px] text-[14px] font-medium text-white no-underline sm:ml-0"
+        >
+          Baixar o app
+        </Link>
       </div>
     </header>
   );

@@ -8,26 +8,29 @@ const ORDER = [
 
 export function ResultOrder() {
   return (
-    <div className="sq-app-reveal grid grid-cols-1 lg:grid-cols-2 gap-10 w-full max-w-[1080px] mx-auto items-start">
+    <section
+      id="resultado"
+      className="mx-auto grid w-full max-w-[1168px] scroll-mt-20 grid-cols-[repeat(auto-fit,minmax(320px,1fr))] items-center gap-[72px] px-6 py-28"
+    >
       <div>
-        <h2 className="m-0 font-bold text-[26px] leading-[32px] text-[color:var(--text-primary)] font-sans">
+        <h2 className="m-0 text-balance text-[clamp(30px,3.8vw,42px)] font-bold leading-[1.1] tracking-[-1px]">
           Primeiro a conclusão. Os números vêm depois.
         </h2>
-        <p className="mt-3 font-normal text-[15px] leading-[22px] text-[color:var(--text-secondary)] font-sans">
+        <p className="mt-5 text-pretty text-[18px] leading-7 text-[#49454F]">
           Cada resultado segue a mesma ordem, em palavras simples. Detalhe técnico só aparece se você quiser.
         </p>
       </div>
       <ol className="m-0 flex list-none flex-col p-0">
         {ORDER.map((o) => (
-          <li key={o.n} className="flex gap-4 items-baseline py-3 border-b border-[color:var(--border)]">
-            <span className="font-semibold text-[13px] text-[color:var(--accent)] w-5 shrink-0 font-sans">{o.n}</span>
+          <li key={o.n} className="flex items-baseline gap-5 border-b border-[#F3EEFA] py-5">
+            <span className="w-6 shrink-0 text-[14px] font-semibold text-[#5B21D6]">{o.n}</span>
             <div>
-              <div className="font-semibold text-[16px] text-[color:var(--text-primary)] font-sans">{o.t}</div>
-              <div className="mt-1 font-normal text-[14px] leading-[20px] text-[color:var(--text-secondary)] font-sans">{o.d}</div>
+              <div className="text-[18px] font-semibold">{o.t}</div>
+              <div className="mt-1 text-[15px] leading-[22px] text-[#49454F]">{o.d}</div>
             </div>
           </li>
         ))}
       </ol>
-    </div>
+    </section>
   );
 }
