@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+Disallow: /brand
+
+Sitemap: https://signallq.com/sitemap.xml
