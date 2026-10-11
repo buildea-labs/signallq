@@ -59,3 +59,14 @@ test('envia o embed ao webhook e falha se o Discord recusar', async () => {
   const bad = (async () => new Response(null, { status: 500 })) as unknown as typeof fetch
   await assert.rejects(sendDailyVisitReport(env, new Date('2026-10-11T12:00:00Z'), bad), /500/)
 })
+
+test('a janela do dia cobre created_at em segundos e em milissegundos', async () => {
+  const db = new StatsDb()
+  const { collectWebStats } = await import('../src/dailyVisitReport.ts')
+  const { from, to } = dayWindowBrt('2026-10-10')
+  await collectWebStats(db as never, { from, to })
+  for (const call of db.calls) {
+    assert.deepEqual(call.binds.slice(0, 4), [from, to, from * 1000, to * 1000])
+    assert.match(call.sql, /OR \(created_at >= \? AND created_at < \?\)/)
+  }
+})
