@@ -14,7 +14,7 @@ version: "1.1.0"
   bloco de inventário abaixo são **gerados** por `scripts/gerar-inventario-docs.sh`.
 - **Escopo:** app consumer Android (`io.signallq.app`) e sua relação com o backend Cloudflare.
   Não cobre SignallQ Pro (descontinuado permanentemente, ver ADR-016), Admin (`buildea-admin`)
-  nem web (`signallq-web`).
+  nem o site público (`web/`, com documentação própria em `web/docs/` e `web/AGENTS.md`).
 - **Detalhe por módulo:** `MODULOS/` — um documento por módulo Gradle consumer.
 
 <!-- INVENTARIO:INICIO — gerado por scripts/gerar-inventario-docs.sh, nao editar a mao -->
