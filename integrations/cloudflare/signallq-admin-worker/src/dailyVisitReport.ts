@@ -32,8 +32,12 @@ async function count(db: D1Database, sql: string, binds: unknown[]): Promise<num
 }
 
 export async function collectWebStats(db: D1Database, window?: { from: number; to: number }): Promise<WebStats> {
-  const range = window ? ' AND created_at >= ? AND created_at < ?' : ''
-  const range_binds = window ? [window.from, window.to] : []
+  // O site grava created_at em milissegundos (Date.now()) e o app em segundos; a janela do dia
+  // precisa cobrir as duas escalas, senão o "Ontem" sai zerado.
+  const range = window
+    ? ' AND ((created_at >= ? AND created_at < ?) OR (created_at >= ? AND created_at < ?))'
+    : ''
+  const range_binds = window ? [window.from, window.to, window.from * 1000, window.to * 1000] : []
   const base = `FROM analytics_events WHERE platform = 'web'${range}`
   const [visits, downloads, tests] = await Promise.all([
     count(db, `SELECT COUNT(DISTINCT session_id) AS n ${base} AND event_name = 'session_start'`, range_binds),
