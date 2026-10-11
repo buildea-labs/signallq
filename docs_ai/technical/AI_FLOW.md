@@ -3,7 +3,7 @@ title: "AI Flow"
 description: "Fluxo de diagnóstico assistido por IA no app Android, o ai-diagnosis-worker que o atende, o desvio via NDS e o fallback local."
 type: "técnico"
 status: "ativo"
-owner: "Ramon"
+owner: "Marcelo"
 last_updated: "2026-10-04"
 version: "2.1.0"
 ---

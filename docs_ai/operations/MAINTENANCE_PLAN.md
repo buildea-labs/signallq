@@ -3,7 +3,7 @@ title: "Plano de atualização — documentos, agentes e skills"
 description: "Rotina de manutenção da documentação, dos agentes e das skills a cada mudança."
 type: "runbook"
 status: "ativo"
-owner: "Cora"
+owner: "Claudete"
 last_updated: "2026-10-04"
 version: "2.0.0"
 ---

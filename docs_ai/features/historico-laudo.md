@@ -3,7 +3,7 @@ title: "Histórico e Relatório para sua operadora"
 description: "Lista, comparação, filtro e exportação (CSV/PDF) das medições passadas e o Relatório de diagnóstico (Laudo) exportável em PDF: regras, estados, código e testes."
 type: "feature"
 status: "ativo"
-owner: "Cora"
+owner: "Claudete"
 last_updated: "2026-10-04"
 version: "1.1.1"
 feature: "historico-laudo"
@@ -122,7 +122,7 @@ Lista em `testes:`. `HistoricoUptimeWiringCaracterizacaoTest` cobre a religaçã
 
 ### 12. Riscos
 
-- Privacidade do PDF: mascaramento de SSID/IP e omissão do nome dependem de `RelatorioPrivacidade`; qualquer campo novo no Relatório exige revisão de Breno.
+- Privacidade do PDF: mascaramento de SSID/IP e omissão do nome dependem de `RelatorioPrivacidade`; qualquer campo novo no Relatório exige revisão de Tiago.
 - `:core:relatorio` sem nenhum teste (nem `src/test`); erros de timeout/`onWriteFailed`/`onLayoutCancelled` só se verificam em produção. `RelatorioDiagnosticoExporter` (`:app`) é o renderer único de PDF do Consumer (GH#1219), usado também pelo resultado de velocidade.
 - Comparação livre entre duas medições da lista do Histórico não existe (conforme FUNCIONAL; não reconferido no código): o único fluxo de comparação é o reteste vinculado do Assist.
 - Mapper de conclusão cai em fallback por download para dado legado — texto pode divergir do diagnóstico original.

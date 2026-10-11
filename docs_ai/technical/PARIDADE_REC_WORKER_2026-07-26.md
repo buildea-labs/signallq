@@ -3,7 +3,7 @@ title: "Paridade REC-01..REC-14 — motor local vs worker"
 description: "Rastreabilidade entre as 14 regras REC-01..REC-14 do motor local (Kotlin, featureDiagnostico) e o ruleset do signallq-diagnostic-worker."
 type: "técnico"
 status: "ativo"
-owner: "Ramon"
+owner: "Marcelo"
 last_updated: "2026-10-04"
 version: "1.1.0"
 ---

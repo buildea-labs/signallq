@@ -3,7 +3,7 @@ title: "Índice de schemas — SignallQ"
 description: "Ponteiro para os schemas reais (Room, D1, analytics, feature flags) na origem; não copia conteúdo."
 type: "técnico"
 status: "ativo"
-owner: "Ramon"
+owner: "Marcelo"
 last_updated: "2026-10-04"
 version: "2.0.0"
 ---

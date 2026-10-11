@@ -46,7 +46,7 @@ Se a release depende de Worker/API:
 
 Use `growth-check` quando screenshots, descrição, ASO, marca ou superfície pública forem afetados.
 
-Cora confirma que o comportamento entregue corresponde ao produto; Breno confirma qualidade e regressão. Camillo revisa apenas quando a release contém mudança sistêmica que acionou o gate arquitetural.
+Claudete confirma que o comportamento entregue corresponde ao produto; Tiago confirma qualidade e regressão. Camillo revisa apenas quando a release contém mudança sistêmica que acionou o gate arquitetural.
 
 ## Saída
 
@@ -59,7 +59,7 @@ Workers/API: ...
 Docs/contratos: ...
 Privacidade: ...
 Store/growth: ...
-Breno: PASSA/AJUSTA/BLOQUEIA/N/A
+Tiago: PASSA/AJUSTA/BLOQUEIA/N/A
 Camillo: OK/PENDENTE/N/A
 Autorização de publicação: PENDENTE|CONCEDIDA (com evidência)
 

@@ -3,7 +3,7 @@ title: "Mapeamento de campos — ONT Nokia G-1425G-B (GPON)"
 description: "Levantamento da interface web da ONT Nokia G-1425G-B (série ALCL): campos por tela, segredos e esquema de autenticação. Insumo de reconhecimento, não de produto."
 type: "técnico"
 status: "ativo"
-owner: "Ramon"
+owner: "Marcelo"
 last_updated: "2026-10-04"
 version: "2.0.0"
 ---

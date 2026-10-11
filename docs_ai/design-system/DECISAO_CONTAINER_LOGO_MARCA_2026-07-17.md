@@ -3,7 +3,7 @@ title: "Decisão — Container de logo de marca de terceiros"
 description: "Regra de container (fundo branco fixo + anel) para logos de operadora; implementada em OperadoraBadge.kt."
 type: "adr"
 status: "ativo"
-owner: "Cora"
+owner: "Claudete"
 last_updated: "2026-10-04"
 version: "1.1.0"
 ---

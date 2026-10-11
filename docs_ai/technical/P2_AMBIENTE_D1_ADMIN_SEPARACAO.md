@@ -3,7 +3,7 @@ title: "P2 — Separação de ambiente do Admin Worker e do D1"
 description: "Plano técnico, ainda não executado, para isolar o D1 de desenvolvimento do de produção no signallq-admin-worker."
 type: "técnico"
 status: "draft"
-owner: "Ramon"
+owner: "Marcelo"
 last_updated: "2026-10-04"
 version: "1.1.0"
 ---

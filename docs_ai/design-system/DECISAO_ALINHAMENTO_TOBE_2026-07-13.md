@@ -3,7 +3,7 @@ title: "Decisão — Alinhamento do design ao Fluxo de Telas To-Be"
 description: "Registro histórico: Fluxo de Telas (#5B21D6) substituiu o manual MD3 de 2026-07-11 (#6C2BFF) como fonte de paleta."
 type: "adr"
 status: "ativo"
-owner: "Cora"
+owner: "Claudete"
 last_updated: "2026-10-04"
 version: "1.1.0"
 ---

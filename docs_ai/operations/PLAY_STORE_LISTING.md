@@ -3,7 +3,7 @@ title: "Descrição da Play Store"
 description: "Copy oficial do listing do SignallQ na Play Console."
 type: "referência"
 status: "ativo"
-owner: "Cora"
+owner: "Claudete"
 last_updated: "2026-10-04"
 version: "1.2.0"
 ---

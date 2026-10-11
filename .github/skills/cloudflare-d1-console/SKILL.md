@@ -55,4 +55,4 @@ Testes: ...
 Gate Camillo: SIM/NÃO — motivo
 ```
 
-Ramon normalmente responde por Worker/contrato do diagnóstico. Camillo entra por gate sistêmico. Breno revisa migration/compatibilidade. A skill não executa migration de produção nem deploy.
+Marcelo normalmente responde por Worker/contrato do diagnóstico. Camillo entra por gate sistêmico. Tiago revisa migration/compatibilidade. A skill não executa migration de produção nem deploy.

@@ -39,7 +39,7 @@ Antes de desenhar uma superfície nova, confirme com a direção de produto:
 - nível de detalhe técnico necessário;
 - o que acontece quando a evidência é incompleta.
 
-Cora decide direção de produto; Davi implementa Compose; Ramon valida semântica de diagnóstico quando a UI representa evidência/classificação; Breno revisa qualidade. Mudança sistêmica segue o gate do Camillo.
+Claudete decide direção de produto; Rian implementa Compose; Marcelo valida semântica de diagnóstico quando a UI representa evidência/classificação; Tiago revisa qualidade. Mudança sistêmica segue o gate do Camillo.
 
 ## Artefatos
 

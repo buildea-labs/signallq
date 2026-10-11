@@ -3,7 +3,7 @@ title: "Jornada Android guiada — SignallQ 2.0"
 description: "Princípios de produto da jornada guiada (Início → análise → conclusão → próximo passo → confirmação), já implementada na v1.0.x; comportamento atual em FUNCIONAL.md."
 type: "funcional"
 status: "ativo"
-owner: "Cora"
+owner: "Claudete"
 last_updated: "2026-10-04"
 version: "2.0.0"
 ---

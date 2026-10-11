@@ -3,7 +3,7 @@ title: "Contrato de Eventos — Firebase Analytics (funil e jornada)"
 description: "Eventos Firebase do funil principal SIG-155, da jornada guiada, do NDS e do Recommendation Engine, conferidos contra o código; eventos do schema SIG-134 ficam em analytics-events-schema.md."
 type: "técnico"
 status: "ativo"
-owner: "Ramon"
+owner: "Marcelo"
 last_updated: "2026-10-04"
 version: "2.0.0"
 ---

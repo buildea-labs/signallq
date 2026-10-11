@@ -3,7 +3,7 @@ title: "Histórico de releases — SignallQ Android"
 description: "Releases do Android: versão, versionCode, data e escopo (detalhe de v1.0.2 em diante; versões anteriores resumidas)."
 type: "referência"
 status: "ativo"
-owner: "Cora"
+owner: "Claudete"
 last_updated: "2026-10-04"
 version: "2.0.0"
 ---

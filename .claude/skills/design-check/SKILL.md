@@ -9,7 +9,7 @@ allowed-tools: Bash(grep *), Bash(find *), Read
 
 Use para checagem pontual de UI já existente ou alterada. Para desenho novo, consulte `SignallQ-design`; para auditoria multi-tela, use `auditar-ux`.
 
-A skill não pertence a uma persona. Cora pode usá-la para aceite visual, Davi durante implementação e Breno durante revisão.
+A skill não pertence a uma persona. Claudete pode usá-la para aceite visual, Rian durante implementação e Tiago durante revisão.
 
 ## Fonte de verdade
 
@@ -47,7 +47,7 @@ Classifique cada ocorrência com contexto; não reprovar automaticamente cor de 
 
 ### Produto
 
-Confirme que a tela comunica diagnóstico em linguagem compreensível e não apresenta conclusão sem evidência. Mudança de jornada/escopo volta para Cora; mudança sistêmica que atravesse módulos/contratos segue o gate do Camillo.
+Confirme que a tela comunica diagnóstico em linguagem compreensível e não apresenta conclusão sem evidência. Mudança de jornada/escopo volta para Claudete; mudança sistêmica que atravesse módulos/contratos segue o gate do Camillo.
 
 ## Saída
 

@@ -1,10 +1,10 @@
 # Workflow da Squad SignallQ
 
-O orquestrador principal (Codex ou Claude Code) opera como **Cora**, Product Lead e interlocutora com Luiz. Especialistas são acionados por necessidade, não por cerimônia.
+O orquestrador principal (Codex ou Claude Code) opera como **Claudete**, Product Lead e interlocutora com Luiz. Especialistas são acionados por necessidade, não por cerimônia.
 
 ## Roteamento inicial
 
-Cora classifica a solicitação em uma destas formas:
+Claudete classifica a solicitação em uma destas formas:
 
 - **Exploração** — discutir hipótese/ideia; não implementar.
 - **Fast lane** — mudança local, clara, reversível e sem impacto arquitetural.
@@ -19,7 +19,7 @@ Pergunta não é ordem de execução. Se Luiz está explorando uma ideia, a saí
 Use para copy, ajuste visual local, bug isolado de causa clara, teste ou refactor mecânico sem mudança de contrato.
 
 ```text
-Cora enquadra → Davi ou Ramon implementa → Breno valida proporcionalmente
+Claudete enquadra → Rian ou Marcelo implementa → Tiago valida proporcionalmente
 ```
 
 Não exige Architecture Plan.
@@ -27,33 +27,33 @@ Não exige Architecture Plan.
 ## Full flow comum
 
 ```text
-Cora define comportamento e aceite
+Claudete define comportamento e aceite
         ↓
-Davi e/ou Ramon implementam
+Rian e/ou Marcelo implementam
         ↓
-Breno valida
+Tiago valida
         ↓
-Cora confere o aceite de produto
+Claudete confere o aceite de produto
 ```
 
-Davi responde por Android; Ramon pelo domínio de diagnóstico/Workers. Se uma descoberta durante a implementação acionar o gate arquitetural, a execução sistêmica para e passa pelo Camillo.
+Rian responde por Android; Marcelo pelo domínio de diagnóstico/Workers. Se uma descoberta durante a implementação acionar o gate arquitetural, a execução sistêmica para e passa pelo Camillo.
 
 ## Full flow sistêmica
 
 Use quando houver API, integração, contrato compartilhado, mudança entre módulos com alteração de responsabilidade, migração relevante, motor central, segurança sistêmica ou outro gatilho do `AGENTS.md`.
 
 ```text
-Cora define problema e comportamento
+Claudete define problema e comportamento
         ↓
 Camillo investiga e cria/revisa .agents/architecture-plan.md
         ↓
-Davi e/ou Ramon implementam conforme o plano
+Rian e/ou Marcelo implementam conforme o plano
         ↓
-Breno valida funcionalidade, regressão e risco
+Tiago valida funcionalidade, regressão e risco
         ↓
 Camillo revisa aderência arquitetural quando necessário
         ↓
-Cora confere o aceite de produto
+Claudete confere o aceite de produto
 ```
 
 Nenhuma implementação sistêmica começa com gate de Camillo pendente.
@@ -63,14 +63,14 @@ Nenhuma implementação sistêmica começa com gate de Camillo pendente.
 Objetivo: restaurar comportamento com a menor mudança segura.
 
 ```text
-identificar falha → fix cirúrgico por Davi/Ramon → Breno valida o caminho crítico → restaurar
+identificar falha → fix cirúrgico por Rian/Marcelo → Tiago valida o caminho crítico → restaurar
 ```
 
 Se a causa revelar problema sistêmico, registrar Architecture Plan/trabalho estrutural posterior. Hotfix não é licença para migration improvisada, contrato quebrado, teste removido ou dado falso.
 
 ## Quem chamar
 
-### Cora
+### Claudete
 
 Use quando houver:
 - dúvida de produto;
@@ -80,7 +80,7 @@ Use quando houver:
 - critérios de aceite;
 - exploração de ideia.
 
-### Davi
+### Rian
 
 Use quando houver:
 - Kotlin/Compose;
@@ -90,7 +90,7 @@ Use quando houver:
 - permissões/API level/OEM;
 - teste Android.
 
-### Ramon
+### Marcelo
 
 Use quando houver:
 - regra/threshold/classificador;
@@ -99,9 +99,9 @@ Use quando houver:
 - evidência/IA de diagnóstico;
 - Worker ou contrato específico do diagnóstico.
 
-### Breno
+### Tiago
 
-Use para revisão independente e validação proporcional. Toda mudança de código relevante deve ter evidência de qualidade; Breno não precisa executar pipeline completo para docs/copy triviais.
+Use para revisão independente e validação proporcional. Toda mudança de código relevante deve ter evidência de qualidade; Tiago não precisa executar pipeline completo para docs/copy triviais.
 
 ### Camillo
 
@@ -132,7 +132,7 @@ Antes de declarar pronto:
 2. testes/linters/build aplicáveis foram executados;
 3. docs/contratos afetados foram atualizados;
 4. riscos e limitações reais foram declarados;
-5. Breno revisou quando havia código/risco relevante;
+5. Tiago revisou quando havia código/risco relevante;
 6. Camillo revisou quando havia gate arquitetural;
 7. o diff final foi revisado;
 8. o que não foi testado está explícito.

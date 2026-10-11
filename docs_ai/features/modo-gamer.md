@@ -3,7 +3,7 @@ title: "Jogos online (Modo gamer)"
 description: "Avalia se a conexão serve para um jogo e aparelho específicos: catálogo, veredito, sonda UDP de rota, estados, código e testes."
 type: "feature"
 status: "ativo"
-owner: "Cora"
+owner: "Claudete"
 last_updated: "2026-10-04"
 version: "1.0.0"
 feature: "modo-gamer"
@@ -114,5 +114,5 @@ Lista em `testes:`. `ModoGamerConvergenciaCaracterizacaoTest` protege a converg�
 
 - **Beacon de terceiro (AWS):** disponibilidade e política fora do controle; UDP bloqueado cai no fallback.
 - **Rota de referência ≠ rota do jogo:** limite de promessa — não apresentar como "ping do jogo".
-- Convergência com o diagnóstico guiado depende de uma função compartilhada; mudar limiar exige revisão de Ramon.
+- Convergência com o diagnóstico guiado depende de uma função compartilhada; mudar limiar exige revisão de Marcelo.
 - Dois consumidores de estatística de ping (sonda UDP e `PingExecutor`) — manter o mesmo analisador.
