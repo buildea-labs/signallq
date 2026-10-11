@@ -66,7 +66,7 @@ Antes de implementar ou revisar thresholds de sinal, análise de velocidade, det
 
 ## Limites
 - Esta skill orienta regras e thresholds; não define quem implementa.
-- Ramon responde pela coerência do domínio; Davi implementa partes Android quando aplicável; Breno exige teste de regressão para mudança de regra.
+- Marcelo responde pela coerência do domínio; Rian implementa partes Android quando aplicável; Tiago exige teste de regressão para mudança de regra.
 - Se a alteração cruza módulos, Worker/API ou contrato compartilhado, aplique o gate do Camillo.
 - Se o comportamento for variável por ISP, declarar a incerteza e recomendar validação em campo.
 

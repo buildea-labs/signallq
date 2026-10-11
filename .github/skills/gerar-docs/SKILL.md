@@ -49,6 +49,6 @@ Verifique links relativos, referências a arquivo/seção e termos aposentados.
 
 ## Responsabilidades
 
-Cora normalmente valida documento de produto; Davi documenta Android; Ramon, diagnóstico/Workers/contratos; Camillo, arquitetura sistêmica; Breno revisa documentação de risco/release quando necessário.
+Claudete normalmente valida documento de produto; Rian documenta Android; Marcelo, diagnóstico/Workers/contratos; Camillo, arquitetura sistêmica; Tiago revisa documentação de risco/release quando necessário.
 
 A skill é procedimento, não persona, e não define modelo de IA.

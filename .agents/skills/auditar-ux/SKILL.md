@@ -7,7 +7,7 @@ description: Auditoria profunda de UX, acessibilidade, arquitetura de informaç�
 
 Use para revisão multi-tela, fluxo completo, navegação ou problema de usabilidade que não cabe num `design-check` pontual.
 
-A skill é procedimento. Cora pode acioná-la para produto, Davi para preparar uma implementação ampla e Breno para revisão de qualidade.
+A skill é procedimento. Claudete pode acioná-la para produto, Rian para preparar uma implementação ampla e Tiago para revisão de qualidade.
 
 ## Fontes
 
@@ -83,7 +83,7 @@ Evidência: ...
 Severidade: crítico | importante | melhoria
 Problema: ...
 Recomendação: ...
-Responsável provável: Cora | Davi | Ramon | Camillo
+Responsável provável: Claudete | Rian | Marcelo | Camillo
 ```
 
 Feche com os 3–5 achados que realmente merecem prioridade. A skill não altera código nem aprova release.

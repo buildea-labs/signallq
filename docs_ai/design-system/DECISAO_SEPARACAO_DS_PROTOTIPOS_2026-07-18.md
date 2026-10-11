@@ -3,7 +3,7 @@ title: "Decisão — Separar Design System de Protótipos no Claude Design"
 description: "Telas e fluxos não pertencem ao design system: DS reutilizável em projeto próprio, protótipos em outro."
 type: "adr"
 status: "ativo"
-owner: "Cora"
+owner: "Claudete"
 last_updated: "2026-10-04"
 version: "1.1.0"
 ---

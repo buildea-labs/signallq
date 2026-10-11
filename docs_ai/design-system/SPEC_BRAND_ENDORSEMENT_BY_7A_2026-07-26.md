@@ -3,7 +3,7 @@ title: "Spec — Componente BrandEndorsement (by 7A) no Android"
 description: "Assinatura institucional 'by 7A' no app Consumer. Draft: não implementado no Android (nenhuma ocorrência em android/)."
 type: "funcional"
 status: "draft"
-owner: "Cora"
+owner: "Claudete"
 last_updated: "2026-10-04"
 version: "2.0.0"
 ---

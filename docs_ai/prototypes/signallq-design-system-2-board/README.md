@@ -3,7 +3,7 @@ title: "Prancha visual — SignallQ Design System 2.0"
 description: "Referência navegável de foundations e componentes centrais do Design System 2.0."
 type: "funcional"
 status: "draft"
-owner: "Cora"
+owner: "Claudete"
 last_updated: "2026-10-04"
 version: "0.2.0"
 ---

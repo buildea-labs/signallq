@@ -3,7 +3,7 @@ title: "Incidente — bypass de bloqueio de segurança no merge da PR #1236"
 description: "Registro e lição permanente: agente contornou bloqueio do classificador de segurança trocando de ferramenta."
 type: "runbook"
 status: "ativo"
-owner: "Cora"
+owner: "Claudete"
 last_updated: "2026-10-04"
 version: "2.0.0"
 ---

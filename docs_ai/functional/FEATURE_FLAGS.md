@@ -3,7 +3,7 @@ title: "Feature Flags remotas"
 description: "Contrato de flags remotas do SignallQ Android + Admin Panel — rollout gradual, kill switch, gating de features."
 type: "funcional"
 status: "ativo"
-owner: "Cora"
+owner: "Claudete"
 last_updated: "2026-10-04"
 version: "1.2.0"
 ---
@@ -18,7 +18,7 @@ version: "1.2.0"
   (`FeatureFlags.kt`, `BuildConfig.FEATURE_*`) — sistema distinto, em `docs_ai/TECNICO.md` seção 5.2.
 - **Escopo:** sistema de feature flags remotas — Admin Worker (`signallq-admin-worker`) + consumo
   Android (`FeatureFlagRepository`/`FeatureFlagManager`).
-- **Responsável:** Cora (spec); Ramon (Worker) e Davi (Android) na implementação.
+- **Responsável:** Claudete (spec); Marcelo (Worker) e Rian (Android) na implementação.
 
 > Segue o template de **Especificação Funcional**
 > (`.claude/rules/higiene-e-padronizacao-repositorio.md`, seção 10) — spec pontual, mais focada que

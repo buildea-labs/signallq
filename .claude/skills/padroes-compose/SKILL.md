@@ -49,4 +49,4 @@ Use tokens do SignallQ; não hardcode cor/tipografia por conveniência. Rode `de
 
 ## Responsabilidades
 
-Davi normalmente aplica esta skill na implementação Android. Ramon participa se o estado representa diagnóstico. Breno revisa regressão/lifecycle. A skill em si não pertence a um agente nem define modelo de IA.
+Rian normalmente aplica esta skill na implementação Android. Marcelo participa se o estado representa diagnóstico. Tiago revisa regressão/lifecycle. A skill em si não pertence a um agente nem define modelo de IA.

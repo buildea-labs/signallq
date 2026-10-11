@@ -27,7 +27,7 @@ Use para documentar um equipamento específico (ONT, roteador, AP, mesh) antes d
 
 ## Integração
 
-Reconhecimento não é implementação. Ramon valida a utilidade diagnóstica dos campos; Davi implementa a integração Android quando local; Breno revisa segurança/regressão.
+Reconhecimento não é implementação. Marcelo valida a utilidade diagnóstica dos campos; Rian implementa a integração Android quando local; Tiago revisa segurança/regressão.
 
 Se o suporte exigir novo contrato, driver estrutural, API/Worker ou atravessar múltiplos módulos com nova responsabilidade, aplique o gate do Camillo antes de implementar.
 

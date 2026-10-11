@@ -4,10 +4,10 @@ A governança vive em [`AGENTS.md`](../AGENTS.md). Este diretório contém proce
 
 ## Equipe
 
-- **Cora** — Product Lead e persona principal da sessão.
-- **Davi** — Android Engineer.
-- **Ramon** — Diagnostic Systems Engineer.
-- **Breno** — QA & Reliability.
+- **Claudete** — Product Lead e persona principal da sessão.
+- **Rian** — Android Engineer.
+- **Marcelo** — Diagnostic Systems Engineer.
+- **Tiago** — QA & Reliability.
 - **Camillo** — Principal Engineer / System Architect transversal.
 
 O orquestrador principal (Codex ou Claude Code) integra o trabalho. Não simule conversa entre personagens nem declare revisão que não ocorreu.

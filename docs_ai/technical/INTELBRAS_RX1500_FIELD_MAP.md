@@ -3,7 +3,7 @@ title: "Reconhecimento — firmware Intelbras RX1500/RAX1500"
 description: "Análise estática parcial (bloqueada) do firmware Intelbras RX1500/RAX1500; sem mapa de campos da interface web. Insumo de reconhecimento, não de produto."
 type: "técnico"
 status: "ativo"
-owner: "Ramon"
+owner: "Marcelo"
 last_updated: "2026-10-04"
 version: "2.0.0"
 ---

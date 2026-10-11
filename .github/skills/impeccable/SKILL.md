@@ -39,10 +39,10 @@ Não trate instrução genérica do pacote vendorizado como autoridade superior 
 - acessibilidade/TalkBack e contraste fazem parte da entrega;
 - evite aparência genérica de dashboard/IA e cardização desnecessária;
 - copy de diagnóstico precisa corresponder às evidências reais;
-- mudança de jornada é decisão de Cora;
-- Davi normalmente implementa Compose;
-- Ramon valida semântica diagnóstica;
-- Breno revisa qualidade;
+- mudança de jornada é decisão de Claudete;
+- Rian normalmente implementa Compose;
+- Marcelo valida semântica diagnóstica;
+- Tiago revisa qualidade;
 - mudança sistêmica segue o gate de Camillo.
 
 A skill é procedimento/tooling, não agente, não owner de produto e não define modelo de IA.

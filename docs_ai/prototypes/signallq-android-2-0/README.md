@@ -3,7 +3,7 @@ title: "Protótipo navegável — Jornada Android 2.0"
 description: "Referência visual e de navegação histórica do épico #1647 (encerrado); o app Android real vence em qualquer divergência."
 type: "funcional"
 status: "ativo"
-owner: "Cora"
+owner: "Claudete"
 last_updated: "2026-10-04"
 version: "1.1.0"
 ---

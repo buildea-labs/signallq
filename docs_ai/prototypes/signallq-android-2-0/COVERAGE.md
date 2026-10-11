@@ -3,7 +3,7 @@ title: "Cobertura do protótipo — SignallQ Android 2.0"
 description: "Quais telas e fluxos da Jornada Android 2.0 o protótipo cobre, e onde ele diverge do app real v1.0.9."
 type: "funcional"
 status: "ativo"
-owner: "Cora"
+owner: "Claudete"
 last_updated: "2026-10-04"
 version: "1.1.0"
 ---

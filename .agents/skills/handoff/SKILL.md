@@ -1,7 +1,7 @@
 ---
 name: handoff
 description: Registra passagem formal de contexto entre responsáveis do SignallQ quando uma transição precisa sobreviver à sessão.
-argument-hint: "<issue> --de <cora|davi|ramon|breno|camillo|luiz> --para <...> --decisao \"<texto>\""
+argument-hint: "<issue> --de <claudete|rian|marcelo|tiago|camillo|luiz> --para <...> --decisao \"<texto>\""
 allowed-tools: Bash(gh *), Bash(git *)
 ---
 
@@ -13,7 +13,7 @@ Não use para tarefa simples que o Codex principal consegue integrar sem cerimô
 
 ## Responsáveis válidos
 
-`cora` · `davi` · `ramon` · `breno` · `camillo` · `luiz`
+`claudete` · `rian` · `marcelo` · `tiago` · `camillo` · `luiz`
 
 O roteamento e a autoridade de cada um vivem em `AGENTS.md`; esta skill não redefine papéis.
 
@@ -44,7 +44,7 @@ Se o handoff disser que código está disponível, o estado precisa estar commit
 Exemplo:
 
 ```text
-De: Cora → Para: Camillo
+De: Claudete → Para: Camillo
 Decisão: a feature deve diagnosticar falha de DNS sem rodar novo speedtest.
 Escopo: featureDiagnostico + contrato do diagnostic-worker.
 Validações: análise de produto; sem código nesta etapa.
@@ -56,9 +56,9 @@ Referência: issue #NNNN · .agents/architecture-plan.md
 ## Regras
 
 - Não invente aprovação ou validação de outro agente.
-- Não use handoff para transferir decisão de produto de Cora/Luiz para engenharia.
+- Não use handoff para transferir decisão de produto de Claudete/Luiz para engenharia.
 - Não use handoff para bypassar o gate de Camillo.
-- Breno permanece independente de quem implementou.
+- Tiago permanece independente de quem implementou.
 - Handoff para Luiz ocorre apenas quando existe decisão humana real: produto material, custo, publicação, privacidade sensível, risco crítico ou ação irreversível.
 
 A skill registra contexto; não faz merge, deploy, publicação, mudança de assignee ou aceite de risco.

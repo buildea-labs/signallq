@@ -3,7 +3,7 @@ title: "FAQ — SignallQ"
 description: "Perguntas frequentes de usuários finais do SignallQ (Play Store + landing page)."
 type: "referência"
 status: "ativo"
-owner: "Cora"
+owner: "Claudete"
 last_updated: "2026-10-04"
 version: "1.2.0"
 ---

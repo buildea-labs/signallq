@@ -3,7 +3,7 @@ title: "Mapeamento de campos — roteador TP-Link Archer (stok-luci)"
 description: "Levantamento da interface web do TP-Link Archer C6/A6 v2 (família tplink-stok-luci): campos por menu, achados de segurança e esquema de autenticação. Insumo de reconhecimento, não de produto."
 type: "técnico"
 status: "ativo"
-owner: "Ramon"
+owner: "Marcelo"
 last_updated: "2026-10-04"
 version: "2.0.0"
 ---

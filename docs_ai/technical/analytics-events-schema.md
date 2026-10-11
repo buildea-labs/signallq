@@ -3,7 +3,7 @@ title: "Schema de Eventos GA4 — AnalyticsTracker (SIG-134)"
 description: "Eventos genéricos do AnalyticsTracker (feature_used, screen_view, sessão, crash, bateria, feature_blocked_remote) e user properties do app Android."
 type: "técnico"
 status: "ativo"
-owner: "Ramon"
+owner: "Marcelo"
 last_updated: "2026-10-04"
 version: "2.0.0"
 ---

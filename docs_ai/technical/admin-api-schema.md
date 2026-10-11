@@ -3,7 +3,7 @@ title: "Admin API — guia do worker signallq-admin"
 description: "Mapa de rotas, autenticação, regras de negócio sem equivalente no OpenAPI e schema D1 do signallq-admin-worker. Request/response de cada endpoint vivem no OpenAPI."
 type: "técnico"
 status: "ativo"
-owner: "Ramon"
+owner: "Marcelo"
 last_updated: "2026-10-10"
 version: "2.1.0"
 ---

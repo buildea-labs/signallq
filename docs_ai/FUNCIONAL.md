@@ -3,7 +3,7 @@ title: "SignallQ Consumer — Documentação Funcional"
 description: "O que o app Android SignallQ (io.signallq.app) entrega ao usuário final: navegação, mapa de features, permissões e limitações transversais. O detalhe por feature vive em docs_ai/features/."
 type: "funcional"
 status: "ativo"
-owner: "Cora"
+owner: "Claudete"
 last_updated: "2026-10-04"
 version: "2.2.0"
 ---
@@ -17,7 +17,7 @@ version: "2.2.0"
 - **Fora do escopo:** SignallQ Pro (descontinuado permanentemente, ver ADR-016), painel
   Admin (repositório `buildea-admin`), site/PWA (repositório `signallq-web`) e arquitetura interna
   (ver `docs_ai/TECNICO.md`).
-- **Responsável:** Cora (documentação funcional).
+- **Responsável:** Claudete (documentação funcional).
 - **Onde está o detalhe:** comportamento, regras, estados e mapa de código de cada feature vivem em
   [`features/`](features/README.md) (uma página por feature). Aqui ficam só navegação, permissões,
   limitações transversais e o mapa de ponteiros da seção 5.

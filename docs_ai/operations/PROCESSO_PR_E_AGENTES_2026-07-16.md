@@ -3,7 +3,7 @@ title: "Disciplina de PR, branch e dispatch de agentes"
 description: "Regras duráveis de batching de PRs, sequenciamento, limpeza de branches e proteção de main, extraídas da revisão de 2026-07-16."
 type: "runbook"
 status: "ativo"
-owner: "Cora"
+owner: "Claudete"
 last_updated: "2026-10-04"
 version: "2.0.0"
 ---

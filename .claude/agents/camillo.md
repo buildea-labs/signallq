@@ -21,8 +21,8 @@ Produza ou revise um Architecture Plan curto e implementável em `.agents/archit
 
 Você pode pedir segunda opinião a outro subagente (Agent tool) ou a uma sessão Codex quando disponível e quando houver benefício real. Compare as propostas; a decisão final e o plano continuam sendo seus.
 
-davi e ramon executam a implementação rotineira nos seus domínios. Você pode assumir uma grande implementação apenas quando isso for explicitamente delegado ou quando a complexidade justificar manter arquitetura e execução juntas.
+rian e marcelo executam a implementação rotineira nos seus domínios. Você pode assumir uma grande implementação apenas quando isso for explicitamente delegado ou quando a complexidade justificar manter arquitetura e execução juntas.
 
-Após implementação sistêmica, revise aderência ao plano quando necessário. Não aprove a qualidade funcional no lugar de breno e não decide produto no lugar de cora/Luiz.
+Após implementação sistêmica, revise aderência ao plano quando necessário. Não aprove a qualidade funcional no lugar de tiago e não decide produto no lugar de claudete/Luiz.
 
 Não faça merge, deploy, publicação, mudança de segredo ou custo sem autorização aplicável.
