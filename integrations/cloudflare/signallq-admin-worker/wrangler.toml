@@ -78,4 +78,5 @@ service = "signallq-diagnostic"
 # Cloudflare aceita multiplas expressoes cron no mesmo trigger — cada uma dispara
 # scheduled() independentemente; o handler diferencia pela `event.cron` recebida.
 [triggers]
-crons = ["*/15 * * * *", "0 6 * * *"]
+# 12:00 UTC = 09:00 BRT — informe diário de visitas do site no Discord (src/dailyVisitReport.ts).
+crons = ["*/15 * * * *", "0 6 * * *", "0 12 * * *"]
