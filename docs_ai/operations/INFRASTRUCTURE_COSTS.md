@@ -4,8 +4,8 @@ description: "Inventário verificado dos recursos de infraestrutura do SignallQ 
 type: "técnico"
 status: "ativo"
 owner: "Camillo"
-last_updated: "2026-10-04"
-version: "1.2.0"
+last_updated: "2026-10-10"
+version: "1.3.0"
 ---
 
 # Custos de Infraestrutura — SignallQ
@@ -22,7 +22,7 @@ version: "1.2.0"
 
 | Worker (`name` no wrangler) | Pasta | D1 | Cron | Outros bindings |
 |---|---|---|---|---|
-| `signallq-admin` | `signallq-admin-worker` | `signallq-admin-db` (`DB`) | `*/15 * * * *` (snapshot de latência/uptime) e `0 6 * * *` (sync de telemetria, hoje desligado por `FIREBASE_SYNC_ENABLED="false"`) | service binding `DIAGNOSTIC_WORKER` → `signallq-diagnostic` |
+| `signallq-admin` | `signallq-admin-worker` | `signallq-admin-db` (`DB`) | `*/15 * * * *` (snapshot de latência/uptime), `0 6 * * *` (sync de telemetria, hoje desligado por `FIREBASE_SYNC_ENABLED="false"`) e `0 12 * * *` (informe diário de visitas do site no Discord, 09:00 BRT; secret `DISCORD_WEBHOOK_URL`) | service binding `DIAGNOSTIC_WORKER` → `signallq-diagnostic` |
 | `signallq-diagnostic` | `signallq-diagnostic-worker` | `signallq-diagnostic-db` (`DB`) | `0 * * * *` (de hora em hora) | `observability` habilitada |
 | `linka-ai-diagnosis-worker` | `ai-diagnosis-worker` | — | — | `[ai]` binding `AI` (Workers AI); service binding `ADMIN_WORKER` → `signallq-admin` |
 | `signallq-game-latency-probe` | `game-latency-probe-worker` | — | — | — |
@@ -35,7 +35,7 @@ Workers consumidos pelo app mas **fora deste repositório**: `linka-assist-relay
 - **KV, R2, Queues, Durable Objects:** nenhum binding em nenhum `wrangler.toml`. R2 foi descartado em 2026-07-14 por decisão de produto (exigiria cartão cadastrado na Cloudflare); logos de operadora ficam em BLOB base64 no D1 (`provider_assets`).
 - **BigQuery / export GA4:** nunca criado. O projeto Firebase `signallq-app` está sem billing por decisão do Luiz; a perna de sync está desligada (`FIREBASE_SYNC_ENABLED="false"`).
 - **Firebase Cloud Storage, Firestore, Auth, Messaging, Performance:** nenhuma dependência no Gradle.
-- **Deploy do site/PWA em Cloudflare Pages a partir deste repositório:** workflows `site-deploy` e `pages-deploy` estão `.disabled` (o de Pages desativado em 2026-07-16). Site e painel vivem em `signallq-web` e `buildea-admin`.
+- **Deploy do site em Cloudflare Pages:** workflows `site-deploy` e `pages-deploy` estão `.disabled` (o de Pages desativado em 2026-07-16). O site (`web/`) é publicado na **Vercel** (projeto `signallq-web`, conta `buildea-projects`, plano gratuito) pelo workflow manual `web-deploy-vercel.yml`; o DNS de `signallq.com` fica na Hostinger. O painel vive em `buildea-admin`.
 
 ### Cloudflare D1 (2 bancos) ✅
 
@@ -83,7 +83,7 @@ Os valores abaixo vieram da versão anterior deste documento (estimativas de 202
 | D1 armazenamento | 5 GB | ~100 MB | ⚠️ |
 | Workers AI neurons/dia | 10.000 | ~300 neurons/request no fallback Qwen | ⚠️ |
 
-Crons somam 96 execuções/dia no admin (15 min) + 1 + 24 no diagnostic, contados nas requisições do Workers ✅ (conta, não limite).
+Crons somam 96 execuções/dia no admin (15 min) + 2 (sync diário e informe do Discord) + 24 no diagnostic, contados nas requisições do Workers ✅ (conta, não limite).
 
 ## 3. Custo total estimado — ⚠️ NÃO VERIFICADO
 

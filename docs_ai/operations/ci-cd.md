@@ -4,8 +4,8 @@ description: "Workflows do GitHub Actions do SignallQ: CI Android, docs, release
 type: "técnico"
 status: "ativo"
 owner: "Camillo"
-last_updated: "2026-10-04"
-version: "2.0.0"
+last_updated: "2026-10-10"
+version: "2.1.0"
 ---
 
 # CI/CD Pipeline — SignallQ
@@ -24,7 +24,9 @@ version: "2.0.0"
 | `firebase-distribution.yml` | manual | Build para Firebase App Distribution — ver `RELEASE.md` |
 | `auto-move-board.yml` | issues/PRs | Move cards do GitHub Project |
 | `auto-update-branch.yml` | push em `main` | Atualiza PRs abertas atrasadas em relação a `main` |
-| `pages-deploy.yml.disabled`, `site-ci.yml.disabled`, `site-deploy.yml.disabled` | — | Desativados (sufixo `.disabled`); o site vive em `signallq-web` |
+| `web-ci.yml` | push/PR que mexe em `web/**` | Site (`web/`): lint, typecheck, testes e build; nunca publica |
+| `web-deploy-vercel.yml` | manual (`workflow_dispatch`) | Publica o site na Vercel (`preview` ou `production`); exige os secrets `VERCEL_TOKEN`, `VERCEL_ORG_ID` e `VERCEL_PROJECT_ID` — ver `web/docs/deploy-vercel.md` |
+| `pages-deploy.yml.disabled`, `site-ci.yml.disabled`, `site-deploy.yml.disabled` | — | Desativados (sufixo `.disabled`); legado do site em Cloudflare Pages, substituído por `web-ci`/`web-deploy-vercel` |
 
 ## Android CI — `android-ci.yml`
 

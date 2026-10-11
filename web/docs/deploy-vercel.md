@@ -60,9 +60,27 @@ O workflow primeiro resolve a ref para um SHA imutável e o exibe antes de solic
 
 Para redeployar uma versão anterior, informe o SHA daquela versão no campo `ref` e escolha o ambiente conscientemente. Não há rollback automático.
 
+## Publicar pela Vercel CLI (sem o workflow)
+
+Enquanto os secrets `VERCEL_*` não estiverem no repositório `signallq`, a publicação pode ser feita de dentro de `web/` com a CLI autenticada (`npx vercel whoami` deve mostrar a conta dona do projeto `signallq-web`):
+
+```bash
+npx vercel link --yes --project signallq-web
+npx vercel deploy --yes          # preview
+npx vercel deploy --prod --yes   # produção
+```
+
+Use `vercel deploy` **sem** `--prebuilt`: o build roda na Vercel (Linux). O `vercel build` local no Windows falha com `Unable to find lambda for route` nas rotas dinâmicas. Previews têm proteção por login; para testar rotas use `vercel curl <caminho> --deployment <url>` (no Git Bash do Windows, defina `MSYS_NO_PATHCONV=1`, senão `/caminho` vira caminho de disco).
+
+## Variáveis de ambiente e domínios
+
+- `SITE_INGEST_KEY` precisa estar em **Production** (`vercel env add SITE_INGEST_KEY production --sensitive`) com o mesmo valor da secret do Worker `signallq-admin`. Variável nova só vale em um **novo deploy**.
+- Domínios do projeto: `signallq.com` (e `www`, que redireciona) e `speedtest.signallq.com`. O DNS está na **Hostinger**: `speedtest.signallq.com` usa um registro `A speedtest → 76.76.21.21`. Depois que o DNS propagar, a Vercel emite o certificado (se demorar, `npx vercel certs issue speedtest.signallq.com`).
+
 ## Falhas comuns
 
 - **Secret ausente:** cadastre os três secrets acima sem registrar valores em qualquer artefato público.
 - **Falha nos gates:** corrija o commit indicado; o workflow não publica uma build reprovada.
 - **Falha no `vercel pull` ou `build`:** confirme que os IDs pertencem ao projeto vinculado e que o token tem acesso a ele.
+- **`/api/track` responde 501:** falta `SITE_INGEST_KEY` em Production na Vercel (ou o deploy foi feito antes de criá-la).
 - **Deploy inesperado após push/merge:** investigue a configuração do projeto na Vercel; este repositório não tem gatilho automático de deploy e a integração Git deve permanecer desativada.
