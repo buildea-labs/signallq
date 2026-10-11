@@ -24,7 +24,7 @@ import java.util.concurrent.ConcurrentHashMap
  * diferente do ADMIN_SECRET usado pelo painel web). Vazar INGEST_KEY nao da acesso
  * de leitura aos dados do painel.
  *
- * @param baseUrl URL base do admin worker, ex: "https://signallq-admin.giammattey-luiz.workers.dev"
+ * @param baseUrl URL base do admin worker, ex: "https://signallq-admin.gmmattey.workers.dev"
  * @param ingestKey Chave de autenticacao para endpoints /ingest/ (BuildConfig.ADMIN_INGEST_KEY)
  * @param client OkHttpClient com timeout adequado para telemetria (curto — e best-effort)
  */

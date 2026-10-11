@@ -1,0 +1,383 @@
+/* Fonte real de verdade dos tokens visuais do SignallQ — reaproveitada direto
+   do pacote packages/design-system (mesmo usado pelo bundle do Claude Design),
+   sem duplicar os valores aqui. Ver decisão de arquitetura: consumir o CSS de
+   tokens diretamente (Plan B) em vez do pacote React @signallq/design-system,
+   que nunca foi integrado a um app React de produção até hoje.
+   Precisa vir antes de @import 'tailwindcss' — CSS exige que @import fique no
+   topo do arquivo, e tokens.css também começa com @import (fontes do Google). */
+@import './styles/tokens.css';
+@import 'tailwindcss';
+@source "./components";
+@source "./app";
+
+/* Removido height 100% do html e body para evitar quebra do scroll nativo da janela */
+
+/* Reserva o espaço da barra de rolagem vertical em toda página, mesmo nas
+   que não têm conteúdo suficiente pra precisar dela — sem isso, a largura
+   útil da página muda entre uma rota curta (sem scrollbar) e uma longa como
+   /privacidade (com scrollbar), fazendo o shell inteiro (nav, miolo
+   centralizado) "pular" alguns pixels de largura ao trocar de rota no
+   Windows (scrollbar clássica, ocupa espaço de layout — diferente da
+   scrollbar overlay do macOS). Achado 01/08/2026, distinto do bug de
+   remontagem do SiteNav (já corrigido movendo-o pro layout raiz). */
+html {
+}
+
+:root {
+  /* Área segura do shell de página (Guia de Implementação v4, §3) — mínimo
+     24px, escala com 6% da viewport, máximo 96px. Usada como padding-inline
+     do container do shell em toda tela; não recalcular por tela. */
+  --safe-x: clamp(24px, 6vw, 96px);
+}
+
+html.dark .sq-logo-light {
+  display: none !important;
+}
+
+html.dark .sq-logo-dark {
+  display: block !important;
+}
+
+body {
+  margin: 0;
+  background: var(--bg-primary);
+  font-family: var(--font-sans);
+  font-optical-sizing: none; /* o protótipo usa a instância fixa do Google Fonts, sem opsz automático */
+  color: var(--text-primary);
+}
+
+/* Em @layer base para as utilidades do Tailwind (text-white, text-[#49454F]...) vencerem. */
+@layer base {
+  a {
+    color: var(--accent);
+  }
+
+  a:hover {
+    color: var(--accent-blue);
+  }
+}
+
+.material-symbols-outlined {
+  font-family: 'Material Symbols Outlined';
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  vertical-align: middle;
+}
+
+@keyframes sq-ring-pulse {
+  0% {
+    opacity: 0.28;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0.6;
+    transform: scale(1.015);
+  }
+}
+
+@keyframes sq-pulse-dot {
+  0%,
+  100% {
+    opacity: 0.18;
+  }
+  50% {
+    opacity: 0.38;
+  }
+}
+
+@keyframes sq-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.sq-ring {
+  animation: sq-ring-pulse 5s ease-in-out infinite alternate;
+}
+
+/* Halo pulsante atrás do velocímetro (`Velocimetro.tsx`) — 1:1 com
+   `ScreenHome.dc.html` (`sq-gauge-pulse`). */
+@keyframes sq-gauge-pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  50% {
+    opacity: 0.55;
+    transform: translate(-50%, -50%) scale(1.08);
+  }
+}
+
+.sq-gauge-glow {
+  animation: sq-gauge-pulse 4.5s ease-in-out infinite;
+}
+
+/* Mostrador do protótipo (`Speedometer.dc.html`): halo do arco, anel do
+   marcador luminoso e ponto pulsante da formação. */
+@keyframes sq-dial-arcpulse {
+  0%,
+  100% {
+    opacity: 0.22;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
+@keyframes sq-dial-dotpulse {
+  0% {
+    opacity: 0.55;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(2.1);
+  }
+}
+
+@keyframes sq-dial-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+.sq-dial-arcpulse {
+  filter: blur(7px);
+  animation: sq-dial-arcpulse 1.8s ease-in-out infinite;
+}
+
+.sq-dial-dotpulse {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: sq-dial-dotpulse 1.4s ease-out infinite;
+}
+
+.sq-dial-pulse {
+  animation: sq-dial-pulse 1.3s ease-in-out infinite;
+}
+
+/* Status da medição: um ponto que pulsa junto do texto da fase corrente. */
+@keyframes sq-status-dot {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
+.sq-status-dot {
+  animation: sq-status-dot 1s ease-in-out infinite;
+}
+
+.sq-fade-up {
+  animation: sq-fade-up 450ms ease-out both;
+}
+
+.sq-pulse-dot {
+  animation: sq-pulse-dot 1.4s ease-in-out infinite;
+}
+
+.sq-diagnostico-bg {
+  background: var(--bg-primary);
+}
+.dark .sq-diagnostico-bg {
+  background: #000000;
+}
+
+/* PwaToastStack — some quando o rodapé (SiteFooter) entra na viewport, senão
+   o toast fixed fica sobreposto ao conteúdo do rodapé (bug real, 2026-07-26).
+   Classe `sq-footer-visible` publicada no <html> pelo próprio SiteFooter via
+   IntersectionObserver — reaparece com a mesma transição se o usuário rolar
+   de volta pra cima antes do rodapé sair de vista. */
+.pwa-toast-stack {
+  transition:
+    opacity 180ms ease,
+    transform 180ms ease;
+}
+
+html.sq-footer-visible .pwa-toast-stack {
+  opacity: 0;
+  transform: translateY(12px);
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .sq-gauge-glow,
+  .sq-dial-arcpulse,
+  .sq-dial-dotpulse,
+  .sq-dial-pulse,
+  .sq-status-dot {
+    animation: none;
+  }
+}
+
+/* Achado da Lia (nice-to-have): pista visual de overflow horizontal na
+   tabela do Histórico em telas pequenas — sem isso não fica claro que há
+   mais colunas pro lado. */
+@media (max-width: 480px) {
+  .sq-table-scroll {
+    position: relative;
+  }
+  .sq-table-scroll::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 24px;
+    background: linear-gradient(to right, transparent, var(--bg-primary));
+    pointer-events: none;
+  }
+}
+
+.sq-fade-up {
+  animation: sqFadeUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes sqFadeUp {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.delay-100 { animation-delay: 100ms; opacity: 0; }
+.delay-200 { animation-delay: 200ms; opacity: 0; }
+.delay-300 { animation-delay: 300ms; opacity: 0; }
+
+/* Carrossel/animações da landing do app (`src/app/app/page.tsx`) — movidas de
+   `src/app/globals.css` (achado 01/08/2026: arquivo nunca importado por
+   nenhuma página, então essas regras nunca surtiam efeito; arquivo removido). */
+@keyframes sq-app-marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+@keyframes sq-app-glow { 0%,100% { transform: translate3d(0,0,0) scale(1); opacity: .8; } 50% { transform: translate3d(20px,-16px,0) scale(1.12); opacity: 1; } }
+@keyframes sq-app-glow2 { 0%,100% { transform: translate3d(0,0,0) scale(1.05); opacity: .6; } 50% { transform: translate3d(-18px,14px,0) scale(1); opacity: .9; } }
+@keyframes sq-app-float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+@keyframes sq-app-bounce { 0%,100% { transform: translateY(0); opacity: .6; } 50% { transform: translateY(6px); opacity: 1; } }
+@keyframes sq-app-dot { 0%,100% { opacity: 1; box-shadow: 0 0 0 0 color-mix(in srgb, var(--success) 55%, transparent); } 50% { opacity: .6; box-shadow: 0 0 0 6px transparent; } }
+
+.sq-app-track { display: flex; gap: 14px; width: max-content; animation: sq-app-marquee 26s linear infinite; }
+.sq-app-track:hover { animation-play-state: paused; }
+.sq-app-glow-a { animation: sq-app-glow 9s ease-in-out infinite; }
+.sq-app-glow-b { animation: sq-app-glow2 11s ease-in-out infinite; }
+.sq-app-float { animation: sq-app-float 4.5s ease-in-out infinite; }
+.sq-app-bounce { animation: sq-app-bounce 1.8s ease-in-out infinite; }
+.sq-app-dot { animation: sq-app-dot 1.8s ease-in-out infinite; }
+
+.sq-app-reveal { opacity: 0; transform: translateY(28px); }
+.sq-app-reveal.sq-in { opacity: 1; transform: none; transition: opacity .7s cubic-bezier(.22,1,.36,1), transform .7s cubic-bezier(.22,1,.36,1); }
+
+@media (prefers-reduced-motion: reduce) {
+  .sq-app-track { animation: none; }
+  .sq-app-scroller { overflow-x: auto; }
+  .sq-app-glow-a, .sq-app-glow-b, .sq-app-float, .sq-app-bounce, .sq-app-dot { animation: none !important; }
+  .sq-app-reveal, .sq-app-reveal.sq-in { opacity: 1; transform: none; transition: none; }
+}
+
+/* Matriz de comparação (`ComparisonMatrix`, issue #63) — uma única <table>
+   semântica permanece no DOM em todos os breakpoints; abaixo de 640px
+   (mesmo breakpoint `sm:` do Tailwind já usado no restante do site) ela
+   reflui para cartão empilhado via `display: block`, sem esconder o
+   <thead> (fica visível como bloco de rótulos no topo, não `display:none`)
+   e sem duplicar conteúdo — o rótulo de coluna por célula
+   (`.sq-comparison-col-label`) já existe sempre no DOM, só troca de
+   visualmente-escondido (clip) para visível conforme o breakpoint. */
+.sq-comparison-col-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 639px) {
+  .sq-comparison-table,
+  .sq-comparison-table thead,
+  .sq-comparison-table tbody,
+  .sq-comparison-table tr,
+  .sq-comparison-table th,
+  .sq-comparison-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .sq-comparison-table thead tr {
+    display: flex;
+    flex-wrap: wrap;
+    column-gap: 16px;
+    row-gap: 2px;
+  }
+
+  .sq-comparison-table thead th {
+    padding: 8px 12px;
+  }
+
+  .sq-comparison-table tbody tr {
+    padding: 14px 4px;
+    border-top: 1px solid color-mix(in srgb, var(--border) 40%, transparent);
+  }
+
+  .sq-comparison-table tbody tr:first-child {
+    border-top: none;
+  }
+
+  .sq-comparison-table tbody th,
+  .sq-comparison-table tbody td {
+    border-top: none !important;
+    padding: 6px 12px;
+  }
+
+  .sq-comparison-table tbody th {
+    padding-bottom: 2px;
+  }
+
+  .sq-comparison-table .sq-comparison-col-label {
+    position: static;
+    display: inline;
+    width: auto;
+    height: auto;
+    padding: 0;
+    margin: 0 4px 0 0;
+    overflow: visible;
+    clip: auto;
+    white-space: normal;
+  }
+}
+
+
+/* Site público é só claro (protótipo de 2026-10-10): sem modo escuro. */
+html { color-scheme: light; }

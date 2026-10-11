@@ -4,8 +4,8 @@ description: "Mapa de rotas, autenticação, regras de negócio sem equivalente 
 type: "técnico"
 status: "ativo"
 owner: "Marcelo"
-last_updated: "2026-10-04"
-version: "2.0.0"
+last_updated: "2026-10-10"
+version: "2.1.0"
 ---
 
 # Admin API — guia do worker `signallq-admin`
@@ -83,6 +83,15 @@ Catálogo remoto por produto+canal, lido pelo app Android (comparação sempre p
 - **`POST /ingest/diagnostic`**: único campo obrigatório é `id`; os demais têm default no D1 (`INSERT OR REPLACE`). A UF vem de `request.cf.regionCode` (nunca o IP) e só aceita as 27 UFs de `UF_WHITELIST`.
 - **`POST /ingest/ai-usage`**: obrigatórios `id` e `model`; `cost_usd` é calculado pelo worker (`costForModel()`) quando ausente; `status` (`success` | `error`, default `success`) e `error_message` permitem auditar falhas de inferência (migration `009_gh421.sql`).
 - Eventos de analytics: ver [`analytics-events-schema.md`](analytics-events-schema.md).
+
+### Informe diário de visitas do site (Discord)
+
+Cron `0 12 * * *` (09:00 BRT) chama `sendDailyVisitReport` (`src/dailyVisitReport.ts`): envia um embed ao webhook `DISCORD_WEBHOOK_URL` (secret; sem ela o informe é ignorado) com visitas, cliques em Baixar e testes de velocidade do `signallq.com`, de D-1 (dia em America/Sao_Paulo) e acumulado.
+
+- **Fonte:** `analytics_events` com `platform = 'web'`. Visita = sessões distintas em `session_start`; cliques = `feature_used` com `feature_id = 'download_app_clicado'`; testes = `feature_id = 'teste_velocidade_iniciado'`.
+- **Escalas de tempo:** o site grava `created_at` em milissegundos e o app em segundos; a janela do dia cobre as duas.
+- **O acumulado** inclui sessões do site anterior à reformulação de 2026-08-27.
+- O Lagcheck envia o próprio informe, no mesmo canal, por Worker independente.
 
 ## Schema do Cloudflare D1
 

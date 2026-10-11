@@ -54,12 +54,13 @@ Este repositório contém:
 - Android nativo em `android/` — Kotlin, Jetpack Compose, Material 3, MVVM, StateFlow, Hilt, Room, DataStore, WorkManager e Firebase;
 - módulos `:app`, `:core*`, `:feature*` e `:core:featureflags` definidos em `android/settings.gradle.kts`;
 - Workers Cloudflare em `integrations/cloudflare/`;
+- site público `signallq.com` em `web/` (Next.js; migrado do repositório `signallq-web`, hoje arquivado) — governado pelo `web/AGENTS.md`;
 - contratos e documentação técnica em `docs_ai/`;
 - integrações de diagnóstico e IA associadas ao produto.
 
 Não pertencem a este repositório:
 
-- `signallq-web` — site/PWA Web;
+- `signallq-web` — repositório arquivado; o site vive em `web/` (ver acima);
 - `buildea-admin` — painel administrativo;
 - Linka — produto Apple;
 - produtos legados descontinuados pelo portfólio.

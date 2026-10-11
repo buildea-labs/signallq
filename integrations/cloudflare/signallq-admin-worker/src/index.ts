@@ -6,6 +6,7 @@
 // Separar os secrets reduz o blast radius: vazar INGEST_KEY nao da acesso
 // aos dados do admin. INGEST_KEY so pode escrever em /ingest/*.
 
+import { sendDailyVisitReport } from "./dailyVisitReport.ts";
 import { hashPassword, verifyPassword, createSession, validateSession, revokeSession } from './auth.ts'
 import { getFirebaseAccessToken } from './firebaseAuth.ts'
 import {
@@ -66,6 +67,9 @@ export interface Env {
    * destino que a chamada já passou pela sessão do admin-worker, sem exigir uma segunda sessão
    * (evita duas fontes de verdade de "quem é admin"). Sem esta secret, o proxy responde 502. */
   DIAGNOSTIC_PROXY_SECRET?: string;
+  /** Webhook do Discord do informe diário de visitas (mesmo canal do Lagcheck). Secret via
+   * `wrangler secret put DISCORD_WEBHOOK_URL`; sem ela o informe é simplesmente ignorado. */
+  DISCORD_WEBHOOK_URL?: string;
 }
 
 function corsHeaders(env: Env): Record<string, string> {
@@ -3459,6 +3463,14 @@ export async function handleIntegrationReadiness(_req: Request, env: Env): Promi
 // (ver `scheduled` no export default). Reaproveita os MESMOS checks reais já
 // usados por /admin/system-health (checkD1Health, checkFirebaseCredentialsHealth,
 // checkBigQueryHealth) — nenhum dado novo é fabricado, só passa a ser persistido.
+async function runDailyVisitReport(env: Env): Promise<void> {
+  try {
+    await sendDailyVisitReport(env);
+  } catch (e) {
+    await logError(env, 'daily-visit-report', String(e), e instanceof Error ? (e.stack ?? '') : '');
+  }
+}
+
 async function runHealthSnapshot(env: Env): Promise<void> {
   const now = nowSec();
   const d1 = await checkD1Health(env);
@@ -5591,7 +5603,10 @@ export default {
   // Cloudflare Cron Trigger (ver [triggers] em wrangler.toml) — dois crons
   // compartilham o mesmo handler; diferencia pela expressão recebida em event.cron.
   async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
-    if (event.cron === "0 6 * * *") {
+    if (event.cron === "0 12 * * *") {
+      // Informe diário de visitas do site no Discord (09:00 BRT, mesmo horário do Lagcheck).
+      ctx.waitUntil(runDailyVisitReport(env));
+    } else if (event.cron === "0 6 * * *") {
       // GH#877 — sync diário de telemetria (Firebase Analytics + Google Play).
       ctx.waitUntil(runScheduledSync(env));
     } else {

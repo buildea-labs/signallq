@@ -42,7 +42,7 @@ Extraídas de `android/feature/diagnostico/build.gradle.kts`.
 | `libs.junit`, `org.json:json:20260719`, `libs.kotlinx.coroutines.test`, `libs.okhttp.mockwebserver` | `testImplementation` | `org.json` é necessário porque `JSONObject` do SDK não existe no unit test JVM |
 | `libs.androidx.junit`, `libs.androidx.espresso.core`, `libs.kotlinx.coroutines.test`, `libs.androidx.room.testing` | `androidTestImplementation` | |
 
-`buildConfigField` declarados no módulo: `AI_WORKER_URL` (`https://linka-ai-diagnosis-worker.giammattey-luiz.workers.dev`), `DIAGNOSTIC_WORKER_URL` (`https://signallq-diagnostic.giammattey-luiz.workers.dev`), `APP_VERSION`, `VERSION_CODE`.
+`buildConfigField` declarados no módulo: `AI_WORKER_URL` (`https://linka-ai-diagnosis-worker.gmmattey.workers.dev`), `DIAGNOSTIC_WORKER_URL` (`https://signallq-diagnostic.gmmattey.workers.dev`), `APP_VERSION`, `VERSION_CODE`.
 
 ## Consumidores
 

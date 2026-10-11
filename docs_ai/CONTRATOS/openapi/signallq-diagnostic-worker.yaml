@@ -10,7 +10,7 @@ info:
     server-to-server, fora de CORS.
   version: "1"
 servers:
-  - url: https://signallq-diagnostic.giammattey-luiz.workers.dev
+  - url: https://signallq-diagnostic.gmmattey.workers.dev
     description: >
       Produção — confirmado via `PROVIDER_LOGO_PUBLIC_BASE_URL` em wrangler.toml (usado para
       montar URLs absolutas de `GET /providers/:id/logo`).

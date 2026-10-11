@@ -4,8 +4,8 @@ description: "Ambientes locais, de CI e de backend do app Android e dos 5 Worker
 type: "técnico"
 status: "ativo"
 owner: "Camillo"
-last_updated: "2026-10-04"
-version: "2.0.0"
+last_updated: "2026-10-10"
+version: "2.1.0"
 ---
 
 # Ambientes
@@ -36,6 +36,18 @@ GitHub Actions, JDK 17 (Temurin); ver `ci-cd.md`. Release e trilhas: `RELEASE.md
 | `game-latency-probe-worker` | `signallq-game-latency-probe` | Probe de latência para jogos |
 
 Cada Worker tem seu `wrangler.toml`, bindings e secrets; não há arquivo único. Modelos e fallbacks de IA: `docs_ai/TECNICO.md` e `docs_ai/CONTRATOS/`.
+
+## Hosts públicos dos Workers
+
+Todos os Workers respondem em `*.gmmattey.workers.dev`. O subdomínio antigo `*.giammattey-luiz.workers.dev` **não resolve mais** (conferido em 2026-10-10). Os hosts ficam fixos em `BuildConfig` (`:app` e `:featureDiagnostico`), então uma versão do app publicada com o host errado só se corrige com nova versão; `WorkerHostsBuildConfigTest` (nos dois módulos) falha se o host antigo voltar. Workers de outra conta: `linka-assist-relay` e `network-diagnostics-service`, em `*.buildealabs.workers.dev`.
+
+## Site público (`web/`)
+
+- **Hospedagem:** Vercel, projeto `signallq-web` (conta `buildea-projects`); sem integração Git, publicação só pelo workflow manual `web-deploy-vercel.yml` (ou pela Vercel CLI de dentro de `web/`).
+- **Domínios:** `signallq.com` (redireciona `www`) e `speedtest.signallq.com` (rewrite para `/teste-de-velocidade`). O DNS está na **Hostinger**; o subdomínio usa um registro `A speedtest → 76.76.21.21`.
+- **Telemetria:** o site envia eventos para `/api/track`, que repassa ao `signallq-admin` com a secret `SITE_INGEST_KEY`. O **mesmo valor** precisa existir como secret do Worker (`wrangler secret put SITE_INGEST_KEY`) e como variável `SITE_INGEST_KEY` de produção na Vercel.
+- **Secrets e variáveis (só os nomes):** Worker — `DISCORD_WEBHOOK_URL`, `SITE_INGEST_KEY`; Vercel — `SITE_INGEST_KEY`; GitHub Actions — `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID` (necessários para o workflow de deploy).
+- Detalhes: `web/AGENTS.md`, `web/docs/deploy-vercel.md`.
 
 ## Riscos
 

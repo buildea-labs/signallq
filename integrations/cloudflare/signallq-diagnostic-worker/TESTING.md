@@ -222,7 +222,7 @@ worker real via `npx wrangler dev --local` — não só a suíte `node --test` c
 | `npx wrangler d1 execute signallq-diagnostic-db --local --file=migrations/006_gh965_provider_logo_d1.sql` | Aplicada sem erro sobre as 5 migrations anteriores |
 | `POST /admin/auth/bootstrap` + `/admin/auth/login` | 201 / 200 + `Set-Cookie` |
 | `POST /admin/providers` (cria `regional_manual_teste`) | 201 |
-| `POST /admin/providers/regional_manual_teste/logo` com 13 bytes reais (`Content-Type: image/png`) | 201, `url` = `https://signallq-diagnostic.giammattey-luiz.workers.dev/providers/regional_manual_teste/logo` (URL absoluta, sem R2) |
+| `POST /admin/providers/regional_manual_teste/logo` com 13 bytes reais (`Content-Type: image/png`) | 201, `url` = `https://signallq-diagnostic.gmmattey.workers.dev/providers/regional_manual_teste/logo` (URL absoluta, sem R2) |
 | `GET /providers/regional_manual_teste/logo` | 200, `content-type: image/png`, `content-length: 13` — bytes comparados via `cmp` contra o arquivo original enviado: **idênticos** |
 | `GET /providers/regional_manual_teste` | 200, `logo.url` aponta pra própria rota do worker, `logo.version=1` |
 | `POST /admin/providers/regional_manual_teste/logo` com 586KB (`/dev/urandom`) | 413, `{"error":"Logo too large. Max 500KB, got 586KB."}` — nunca 500 cru |

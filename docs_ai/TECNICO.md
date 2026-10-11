@@ -4,8 +4,8 @@ description: "Stack, build, persistência, integrações Cloudflare, analytics e
 type: "técnico"
 status: "ativo"
 owner: "Camilo"
-last_updated: "2026-10-04"
-version: "1.1.0"
+last_updated: "2026-10-10"
+version: "1.1.1"
 ---
 
 # Documentação técnica — SignallQ consumer
@@ -13,7 +13,7 @@ version: "1.1.0"
 - **Fonte de verdade:** o código. Este documento é derivado dele. Números vêm do bloco de
   inventário abaixo, **gerado** por `scripts/gerar-inventario-docs.sh` — não editar à mão.
 - **Escopo:** app consumer Android (`io.signallq.app`) e backend Cloudflare. Não cobre SignallQ Pro
-  (descontinuado permanentemente, ver ADR-016), Admin (`buildea-admin`) nem web (`signallq-web`).
+  (descontinuado permanentemente, ver ADR-016), Admin (`buildea-admin`) nem o site público (`web/`, com documentação própria em `web/docs/` e `web/AGENTS.md`).
 - **Perspectiva do usuário:** `FUNCIONAL.md`. **Detalhe por módulo:** `ARQUITETURA/MODULOS/`.
 
 <!-- INVENTARIO:INICIO — gerado por scripts/gerar-inventario-docs.sh, nao editar a mao -->

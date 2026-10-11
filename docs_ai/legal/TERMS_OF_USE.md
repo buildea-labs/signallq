@@ -65,7 +65,7 @@ O App depende de serviços de terceiros (Cloudflare, Firebase) que podem sofrer 
 
 ## 7. Privacidade
 
-O tratamento dos seus dados é regido pela nossa Política de Privacidade, disponível em https://signallq-privacy.pages.dev/privacy e dentro do App.
+O tratamento dos seus dados é regido pela nossa Política de Privacidade, disponível em https://signallq-privacy.gmmattey.workers.dev/privacy e dentro do App.
 
 ## 8. Propriedade Intelectual
 

@@ -14,6 +14,25 @@ O formato é baseado em [Keep a Changelog](https://keepachangelog.com/) e este p
 
 ---
 
+## [Unreleased] — Site, Workers e host (2026-10-10)
+
+### Adicionado
+
+- Site público (`signallq.com`) incorporado ao monorepo em `web/` (histórico preservado do `signallq-web`, arquivado), com páginas Como funciona, Dúvidas, Guias, Teste de velocidade, e `speedtest.signallq.com`; workflows `web-ci` e `web-deploy-vercel` (deploy manual).
+- Admin Worker: informe diário de visitas do site no Discord (cron `0 12 * * *`, secret `DISCORD_WEBHOOK_URL`).
+- Testes de guarda (`WorkerHostsBuildConfigTest`) que falham se o `BuildConfig` apontar para o host antigo dos Workers.
+
+### Corrigido
+
+- Android: hosts dos Workers trocados de `*.giammattey-luiz.workers.dev` (não resolve mais) para `*.gmmattey.workers.dev`; vale a partir da próxima versão do app. Também corrigida a URL de privacidade citada na tela de Termos de Uso.
+- Telemetria do site: o `/api/track` apontava para o host antigo e a Vercel não tinha `SITE_INGEST_KEY`; ambos corrigidos.
+
+### Publicado fora do ciclo de release
+
+- `signallq-admin` (Worker) publicado a partir da `main`, incluindo a ingestão que devolve `acceptedIds` (confirmação do outbox de analytics do app) e a normalização de timestamps.
+
+---
+
 ## [1.0.8] — 2026-09-13
 
 ### Adicionado
